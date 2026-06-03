@@ -123,7 +123,7 @@ class chat_hook {
 
         // Check 2: Course-specific enabled (double enablement).
         $courseconfig = \local_dttutor\course_config::get_by_course($courseid);
-        if (!$courseconfig->indexing_enabled) {
+        if (!\local_dttutor\course_config::is_enabled_for_course($courseid)) {
             return; // Tutor not enabled for this course.
         }
 
@@ -187,6 +187,8 @@ class chat_hook {
             'position_style' => $positionstyle,
         ];
 
+        $chatproxyurl = new \moodle_url('/local/dttutor/chatproxy.php');
+
         $drawerdata = [
             'uniqid' => $uniqid,
             'courseid' => $courseid,
@@ -200,6 +202,7 @@ class chat_hook {
             'is_configured' => $isconfigured,
             'is_admin' => $isadmin,
             'config_url' => $configurl,
+            'chatproxy_url' => $chatproxyurl->out(false),
         ];
 
         $toggle = $OUTPUT->render_from_template('local_dttutor/tutor_ia_toggle', $toggledata);

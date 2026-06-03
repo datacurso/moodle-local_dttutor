@@ -28,7 +28,7 @@ define([
     'core/pubsub',
     'core/str',
     'local_dttutor/error_modal'
-], function(
+], function (
     $,
     Ajax,
     Notification,
@@ -45,6 +45,7 @@ define([
         MESSAGES: '[data-region="tutor-ia-messages"]',
         INPUT: '[data-region="tutor-ia-input"]',
         SEND_BTN: '[data-action="send-message"]',
+        EDIT_MESSAGE: '[data-action="edit-message"]',
         PAGE: '#page',
         JUMP_TO: '#jump-to',
         BODY: 'body'
@@ -73,12 +74,14 @@ define([
             this.userId = userId;
             this.streaming = false;
             this.currentEventSource = null;
+            this.currentAbortController = null;
             this.currentSessionId = null;
             this.currentAIMessageEl = null;
             this.currentAIMessageContainer = null;
             this.currentAIMessageRawText = '';
             this.markdownRenderFrameId = null;
             this.markdownRenderScheduled = false;
+            this.editingMessageEl = null;
 
             // Text selection state.
             this.selectedText = '';
@@ -108,7 +111,7 @@ define([
 
             this.welcomeMessage = root.getAttribute('data-welcomemessage') || '';
             this.isConfigured = root.getAttribute('data-is-configured') === '1' ||
-                                root.getAttribute('data-is-configured') === 'true';
+                root.getAttribute('data-is-configured') === 'true';
 
             this.drawerElement = document.querySelector(SELECTORS.DRAWER);
             this.pageElement = document.querySelector(SELECTORS.PAGE);
@@ -233,28 +236,32 @@ define([
          */
         loadStrings() {
             Str.get_strings([
-                {key: 'line', component: 'local_dttutor'},
-                {key: 'lines', component: 'local_dttutor'},
-                {key: 'char', component: 'local_dttutor'},
-                {key: 'chars', component: 'local_dttutor'},
-                {key: 'selected', component: 'local_dttutor'},
-                {key: 'yesterday', component: 'local_dttutor'},
-                {key: 'loading', component: 'local_dttutor'},
-                {key: 'error_invalid_message', component: 'local_dttutor'},
-                {key: 'error_message_too_long', component: 'local_dttutor'},
-                {key: 'error_no_credits', component: 'local_dttutor'},
-                {key: 'error_no_credits_short', component: 'local_dttutor'},
-                {key: 'error_internal', component: 'local_dttutor'},
-                {key: 'connection_interrupted', component: 'local_dttutor'},
-                {key: 'error_establish_sse_connection', component: 'local_dttutor'},
-                {key: 'error_unexpected', component: 'local_dttutor'},
-                {key: 'error_unknown', component: 'local_dttutor'},
-                {key: 'configuration_error', component: 'local_dttutor'},
-                {key: 'error_attempt_later', component: 'local_dttutor'},
-                {key: 'error_license_fallback', component: 'local_dttutor'},
-                {key: 'error_license_fallback_short', component: 'local_dttutor'},
-                {key: 'error_no_credits_fallback', component: 'local_dttutor'},
-                {key: 'error_insufficient_tokens_short', component: 'local_dttutor'}
+                { key: 'line', component: 'local_dttutor' },
+                { key: 'lines', component: 'local_dttutor' },
+                { key: 'char', component: 'local_dttutor' },
+                { key: 'chars', component: 'local_dttutor' },
+                { key: 'selected', component: 'local_dttutor' },
+                { key: 'yesterday', component: 'local_dttutor' },
+                { key: 'loading', component: 'local_dttutor' },
+                { key: 'error_invalid_message', component: 'local_dttutor' },
+                { key: 'error_message_too_long', component: 'local_dttutor' },
+                { key: 'error_no_credits', component: 'local_dttutor' },
+                { key: 'error_no_credits_short', component: 'local_dttutor' },
+                { key: 'error_internal', component: 'local_dttutor' },
+                { key: 'connection_interrupted', component: 'local_dttutor' },
+                { key: 'error_establish_sse_connection', component: 'local_dttutor' },
+                { key: 'error_unexpected', component: 'local_dttutor' },
+                { key: 'error_unknown', component: 'local_dttutor' },
+                { key: 'configuration_error', component: 'local_dttutor' },
+                { key: 'error_attempt_later', component: 'local_dttutor' },
+                { key: 'error_license_fallback', component: 'local_dttutor' },
+                { key: 'error_license_fallback_short', component: 'local_dttutor' },
+                { key: 'error_no_credits_fallback', component: 'local_dttutor' },
+                { key: 'error_insufficient_tokens_short', component: 'local_dttutor' },
+                { key: 'edit_message', component: 'local_dttutor' },
+                { key: 'editing_message', component: 'local_dttutor' },
+                { key: 'edit_save', component: 'local_dttutor' },
+                { key: 'edit_cancel', component: 'local_dttutor' }
             ]).then((strings) => {
                 this.strings = {
                     line: strings[0],
@@ -278,7 +285,11 @@ define([
                     errorLicenseFallback: strings[18],
                     errorLicenseFallbackShort: strings[19],
                     errorNoCreditssFallback: strings[20],
-                    errorInsufficientTokensShort: strings[21]
+                    errorInsufficientTokensShort: strings[21],
+                    editMessage: strings[22],
+                    editingMessage: strings[23],
+                    editSave: strings[24],
+                    editCancel: strings[25]
                 };
                 this.stringsLoaded = true;
                 return;
@@ -306,7 +317,11 @@ define([
                     errorLicenseFallback: 'License error: {$a}',
                     errorLicenseFallbackShort: 'License Error',
                     errorNoCreditssFallback: 'Insufficient credits: {$a}',
-                    errorInsufficientTokensShort: 'Insufficient Credits'
+                    errorInsufficientTokensShort: 'Insufficient Credits',
+                    editMessage: 'Edit message',
+                    editingMessage: 'Editing message',
+                    editSave: 'Save',
+                    editCancel: 'Cancel'
                 };
                 this.stringsLoaded = true;
             });
@@ -342,7 +357,7 @@ define([
                 }
             });
 
-            input.on('input', function() {
+            input.on('input', function () {
                 this.style.height = 'auto';
                 this.style.height = Math.min(this.scrollHeight, 120) + 'px';
             });
@@ -350,6 +365,11 @@ define([
             const messagesContainer = this.root.find(SELECTORS.MESSAGES);
             messagesContainer.on('scroll', () => {
                 this.handleHistoryScroll();
+            });
+
+            messagesContainer.on('click', SELECTORS.EDIT_MESSAGE, (e) => {
+                e.preventDefault();
+                this.startEditingMessage($(e.currentTarget).closest('.tutor-ia-message.user'));
             });
 
             document.addEventListener('keydown', (e) => {
@@ -620,6 +640,7 @@ define([
                 methodname: "local_dttutor_get_chat_history",
                 args: {
                     courseid: parseInt(this.courseId, 10),
+                    cmid: this.cmId ? parseInt(this.cmId, 10) : null,
                     limit: this.historyLimit,
                     offset: this.historyOffset
                 },
@@ -718,7 +739,9 @@ define([
             const messageDiv = $('<div>')
                 .addClass('tutor-ia-message')
                 .addClass(msg.role === 'user' ? 'user' : 'ai')
-                .attr('data-message-id', msg.id);
+                .attr('data-message-id', msg.id)
+                .attr('data-message-role', msg.role === 'user' ? 'user' : 'assistant')
+                .attr('data-message-content', msg.content || '');
 
             const contentDiv = $('<div>')
                 .addClass('message-content');
@@ -736,7 +759,25 @@ define([
             messageDiv.append(contentDiv);
             messageDiv.append(timestampDiv);
 
+            if (msg.role === 'user') {
+                messageDiv.append(this.createEditButton());
+            }
+
             return messageDiv;
+        }
+
+        /**
+         * Create the edit button for user messages.
+         *
+         * @returns {jQuery} Edit button element
+         */
+        createEditButton() {
+            return $('<button type="button"></button>')
+                .addClass('tutor-ia-edit-message')
+                .attr('data-action', 'edit-message')
+                .attr('aria-label', this.strings.editMessage || 'Edit message')
+                .attr('title', this.strings.editMessage || 'Edit message')
+                .text('✎');
         }
 
         /**
@@ -808,6 +849,9 @@ define([
                 return;
             }
 
+            // Sending a new message cancels any active inline editing.
+            this.clearEditingState();
+
             if (messageText === '.') {
                 this.addMessage('[Error] ' + this.strings.errorInvalidMessage, 'ai');
                 return;
@@ -823,95 +867,205 @@ define([
                 sendBtn.prop('disabled', true);
 
                 this.addMessage(messageText, 'user');
+                const payloadMessages = this.buildConversationMessages();
+
                 input.val('');
                 input.css('height', 'auto');
                 this.scrollToBottom();
                 this.showTypingIndicator();
 
-                const metaData = {
-                    user_role: 'Student',
-                    timestamp: Math.floor(Date.now() / 1000)
+                // Build page context for the proxy.
+                const context = {
+                    course_id: parseInt(this.courseId, 10) || 0,
+                    activity_id: parseInt(this.cmId, 10) || 0,
+                    page_url: window.location.href,
+                    page_title: document.title,
+                    pagetype: this.pageContext.pagetype || '',
                 };
 
-                if (this.pageContext.pagetype) {
-                    metaData.page = this.pageContext.pagetype;
-                }
-                if (this.pageContext.discussionid) {
-                    metaData.discussionid = this.pageContext.discussionid;
-                }
-                if (this.pageContext.forumid) {
-                    metaData.forumid = this.pageContext.forumid;
-                }
-                if (this.pageContext.attemptid) {
-                    metaData.attemptid = this.pageContext.attemptid;
-                }
-                if (this.pageContext.assignid) {
-                    metaData.assignid = this.pageContext.assignid;
-                }
-                if (this.pageContext.pageid) {
-                    metaData.pageid = String(this.pageContext.pageid);
-                }
-                if (this.cmId) {
-                    metaData.cmid = String(parseInt(this.cmId, 10));
-                }
-                if (this.selectedText && this.selectedText.length > 0) {
-                    metaData.selected_text = this.selectedText;
-                }
+                // Build payload for chatproxy.php.
+                const payload = {
+                    messages: payloadMessages,
+                    model: this.getModelName(),
+                    sesskey: M.cfg.sesskey || '',
+                    context: context,
+                };
 
-                const forceReindexCheckbox = this.root.find('[data-region="debug-force-reindex"]');
-                if (forceReindexCheckbox.length && forceReindexCheckbox.is(':checked')) {
-                    metaData.force_reindex = 'true';
-                }
+                const proxyUrl = this.getChatProxyUrl();
 
-                const requests = Ajax.call([{
-                    methodname: "local_dttutor_create_chat_message",
-                    args: {
-                        courseid: parseInt(this.courseId, 10),
-                        message: this.sanitizeString(messageText.substring(0, 4000)),
-                        meta: JSON.stringify(metaData)
-                    },
-                }]);
+                // Use AbortController so closeCurrentStream() can cancel the fetch.
+                this.currentAbortController = new AbortController();
+                const signal = this.currentAbortController.signal;
+                this.streaming = true;
+                let firstTokenReceived = false;
 
-                requests[0]
-                    .then((data) => {
-                        if (!data || !data.stream_url) {
-                            throw new Error('Stream URL missing in response');
+                fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: signal,
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            return response.json().then((errData) => {
+                                throw new Error(errData.error || 'HTTP ' + response.status);
+                            });
                         }
-                        this.currentSessionId = data.session_id;
-                        this.startSSE(data.stream_url, sendBtn);
+                        return this._readChatProxyStream(response, sendBtn, firstTokenReceived);
+                    })
+                    .then(() => {
+                        // Stream completed successfully.
+                        this.finalizeStream(sendBtn);
                         this.clearSelection();
-
-                        return data;
                     })
                     .catch((err) => {
-                        this.hideTypingIndicator();
-
-                        if (this.isNoCreditsError(err)) {
-                            const errorHtml = err.message || this.strings.errorNoCredits;
-                            this.showNoCreditsWarning(errorHtml);
-
-                            const inputEl = this.root.find(SELECTORS.INPUT);
-                            inputEl.prop('disabled', true);
-                            sendBtn.prop('disabled', true);
-                        } else {
-                            sendBtn.prop('disabled', false);
-
-                            const errorMessage = this.getFriendlyErrorMessage(err);
-                            const isConfigError = this.isWebserviceConfigError(err);
-                            const configUrl = this.extractConfigUrl(err);
-
-                            if (isConfigError) {
-                                ErrorModal.showConfigError(errorMessage, configUrl);
-                            } else {
-                                ErrorModal.showGeneralError(errorMessage);
-                            }
+                        if (err.name === 'AbortError') {
+                            return; // Cancelled by closeCurrentStream.
                         }
+                        this.hideTypingIndicator();
+                        sendBtn.prop('disabled', false);
+                        ErrorModal.showGeneralError(this.strings.errorUnexpected);
                     });
             } catch (error) {
                 this.hideTypingIndicator();
                 sendBtn.prop('disabled', false);
                 ErrorModal.showGeneralError(this.strings.errorInternal.replace('{$a}', error.message));
             }
+        }
+
+        /**
+         * Read and parse SSE events from the chatproxy.php response stream.
+         *
+         * The proxy emits 'token' events with {"t":"..."} and a 'done' event
+         * when complete. This replicates the EventSource handling from startSSE()
+         * but uses fetch() + ReadableStream for POST support.
+         *
+         * @param {Response} response - The fetch Response object.
+         * @param {jQuery} sendBtn - Send button element.
+         * @param {boolean} firstTokenReceived - Reference boolean (mutated by reference in closure).
+         * @returns {Promise<void>}
+         */
+        _readChatProxyStream(response, sendBtn, firstTokenReceived) {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let messageCompleted = false;
+            let that = this;
+
+            return new Promise((resolve, reject) => {
+                /**
+                 * Process each chunk from the stream reader.
+                 * @return {void}
+                 */
+                function processChunk() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            if (!messageCompleted) {
+                                // If no done event was received, finalize anyway.
+                                resolve();
+                            }
+                            return;
+                        }
+
+                        buffer += decoder.decode(value, { stream: true });
+
+                        // SSE events are separated by \n\n.
+                        const parts = buffer.split('\n\n');
+                        // Keep the last (potentially incomplete) part in the buffer.
+                        buffer = parts.pop() || '';
+
+                        for (const part of parts) {
+                            if (!part.trim()) {
+                                continue;
+                            }
+
+                            const lines = part.split('\n');
+                            let eventType = '';
+                            let dataStr = '';
+
+                            for (const line of lines) {
+                                const trimmed = line.trim();
+                                if (trimmed.startsWith('event: ')) {
+                                    eventType = trimmed.substring(7).trim();
+                                } else if (trimmed.startsWith('data: ')) {
+                                    dataStr = trimmed.substring(6).trim();
+                                }
+                            }
+
+                            if (eventType === 'token' && dataStr) {
+                                try {
+                                    const payload = JSON.parse(dataStr);
+                                    const text = payload.t || payload.content || '';
+                                    if (text) {
+                                        if (!firstTokenReceived) {
+                                            firstTokenReceived = true;
+                                            that.ensureAIMessageEl();
+                                            that.hideTypingIndicator();
+                                        }
+                                        that.appendToAIMessage(text);
+                                    }
+                                } catch (e) {
+                                    // Invalid JSON in token data, skip.
+                                }
+                            } else if (eventType === 'done' || eventType === 'message_completed') {
+                                messageCompleted = true;
+                                resolve();
+                                return;
+                            } else if (eventType === 'error' && dataStr) {
+                                try {
+                                    const errorData = JSON.parse(dataStr);
+                                    that.handleStreamError(errorData, sendBtn);
+                                    reject(new Error('Stream error'));
+                                    return;
+                                } catch (e) {
+                                    // Non-JSON error, fall through.
+                                }
+                            }
+                        }
+
+                        // Continue reading.
+                        processChunk();
+                    }).catch((err) => {
+                        if (err.name === 'AbortError') {
+                            resolve(); // Cancelled, resolve cleanly.
+                        } else {
+                            reject(err);
+                        }
+                    });
+                }
+
+                processChunk();
+            });
+        }
+
+        /**
+         * Get the chatproxy.php URL.
+         *
+         * @returns {string}
+         */
+        getChatProxyUrl() {
+            // Use a data attribute on the root element if available,
+            // otherwise compute from the current Moodle wwwroot.
+            const proxyUrl = this.root.attr('data-chatproxy-url');
+            if (proxyUrl) {
+                return proxyUrl;
+            }
+            // Fallback: derive from the current page URL.
+            // This works because chatproxy.php is in the same Moodle instance.
+            const baseUrl = M.cfg.wwwroot || window.location.origin;
+            return baseUrl + '/local/dttutor/chatproxy.php';
+        }
+
+        /**
+         * Get the model name to use.
+         *
+         * The model is a placeholder — the Datacurso AI proxy decides the
+         * actual model server-side (Gemini, OpenAI, etc.).
+         *
+         * @returns {string}
+         */
+        getModelName() {
+            return 'gemini-2.5-flash';
         }
 
         /**
@@ -1002,6 +1156,10 @@ define([
                 messages.append(messageContainer);
             }
 
+            messageContainer
+                .attr('data-message-role', 'assistant')
+                .attr('data-message-content', '');
+
             const contentDiv = $('<div>')
                 .addClass('message-content');
             messageContainer.append(contentDiv);
@@ -1062,6 +1220,24 @@ define([
                 this.currentAIMessageEl.innerHTML = this.renderMarkdown(this.currentAIMessageRawText);
                 this.scrollToBottom();
             });
+        }
+
+        /**
+         * Flush any pending markdown render immediately.
+         */
+        flushPendingStreamingRender() {
+            if (this.markdownRenderFrameId) {
+                window.cancelAnimationFrame(this.markdownRenderFrameId);
+                this.markdownRenderFrameId = null;
+                this.markdownRenderScheduled = false;
+            }
+
+            if (!this.currentAIMessageEl) {
+                return;
+            }
+
+            this.currentAIMessageEl.innerHTML = this.renderMarkdown(this.currentAIMessageRawText);
+            this.scrollToBottom();
         }
 
         /**
@@ -1230,7 +1406,9 @@ define([
 
             const messageEl = $('<div></div>')
                 .addClass('tutor-ia-message')
-                .addClass(type);
+                .addClass(type)
+                .attr('data-message-role', type === 'user' ? 'user' : 'assistant')
+                .attr('data-message-content', text.substring(0, 10000));
 
             const contentDiv = $('<div>')
                 .addClass('message-content');
@@ -1249,8 +1427,258 @@ define([
             messageEl.append(contentDiv);
             messageEl.append(timestampDiv);
 
+            if (type === 'user') {
+                messageEl.append(this.createEditButton());
+            }
+
             messages.append(messageEl);
             this.scrollToBottom();
+
+            return messageEl;
+        }
+
+        /**
+         * Start inline editing of a user message.
+         *
+         * Replaces the message content with a textarea and save/cancel buttons.
+         *
+         * @param {jQuery} messageEl User message element being edited.
+         */
+        startEditingMessage(messageEl) {
+            if (!messageEl || !messageEl.length || this.streaming) {
+                return;
+            }
+
+            this.clearEditingState();
+            this.editingMessageEl = messageEl[0];
+
+            const text = messageEl.attr('data-message-content') || messageEl.find('.message-content').text();
+            const contentDiv = messageEl.find('.message-content');
+
+            // Save original HTML for cancel.
+            this.editingOriginalContent = contentDiv.html();
+
+            const editTextarea = $('<textarea class="form-control edit-inline-textarea"></textarea>')
+                .val(text)
+                .on('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.saveEditing();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.cancelEditing();
+                    }
+                })
+                .on('input', function () {
+                    this.style.height = 'auto';
+                    this.style.height = this.scrollHeight + 'px';
+                });
+
+            contentDiv.hide();
+            contentDiv.after(
+                $('<div class="edit-inline-container"></div>').append(editTextarea)
+            );
+
+            // Initial auto-resize now that the textarea is in the DOM.
+            editTextarea.each(function () {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
+
+            // Wrap message + actions in a shared container so they share the same left edge.
+            messageEl.wrap('<div class="edit-wrapper"></div>');
+            messageEl.parent('.edit-wrapper').append(
+                $('<div class="edit-inline-actions"></div>').append(
+                    $('<button type="button" class="btn btn-primary btn-sm edit-inline-save"></button>')
+                        .text(this.strings.editSave || 'Save')
+                        .on('click', () => this.saveEditing()),
+                        $('<button type="button" class="btn btn-secondary btn-sm edit-inline-cancel"></button>')
+                        .text(this.strings.editCancel || 'Cancel')
+                        .on('click', () => this.cancelEditing())
+                )
+            );
+
+            messageEl.addClass('editing');
+            messageEl.find(SELECTORS.EDIT_MESSAGE).hide();
+            messageEl.find('.edit-inline-textarea').focus();
+        }
+
+        /**
+         * Save the inline edit: truncate conversation and send a corrected message.
+         */
+        saveEditing() {
+            if (!this.editingMessageEl) {
+                return;
+            }
+
+            const textarea = $(this.editingMessageEl).find('.edit-inline-textarea');
+            const newText = textarea.val().trim();
+
+            if (!newText || this.streaming) {
+                return;
+            }
+
+            // Collect messages before the edited one.
+            const previousMessages = this.buildConversationMessages(this.editingMessageEl);
+
+            // Truncate DOM from edited message onward (remove wrapper, then subsequent messages).
+            const wrapper = $(this.editingMessageEl).parent('.edit-wrapper');
+            wrapper.nextAll('.tutor-ia-message').remove();
+            wrapper.remove();
+
+            this.clearEditingState();
+
+            // Add corrected user message.
+            this.addMessage(newText, 'user');
+            this.showTypingIndicator();
+            this.scrollToBottom();
+
+            // Build full conversation: history + new message.
+            const allMessages = previousMessages.concat([{
+                role: 'user',
+                content: this.sanitizeString(newText.substring(0, 4000)),
+            }]);
+
+            // Send with session reset.
+            this._sendConversation(allMessages);
+        }
+
+        /**
+         * Cancel the inline edit and restore the original message content.
+         */
+        cancelEditing() {
+            this.clearEditingState();
+        }
+
+        /**
+         * Clear edit state and restore any active inline editor.
+         *
+         * If a message has an inline textarea open, restores its original content
+         * before clearing the edit state. This handles the case where the user
+         * clicks edit on a different message while another is still being edited.
+         */
+        clearEditingState() {
+            if (this.editingMessageEl) {
+                const el = $(this.editingMessageEl);
+                el.removeClass('editing');
+                el.find(SELECTORS.EDIT_MESSAGE).show();
+
+                // Restore original content if inline editor is open.
+                if (el.find('.edit-inline-container').length) {
+                    el.find('.edit-inline-container').remove();
+                    el.siblings('.edit-inline-actions').remove();
+                    el.unwrap();
+                    const contentDiv = el.find('.message-content');
+                    if (this.editingOriginalContent !== undefined) {
+                        contentDiv.html(this.editingOriginalContent);
+                    }
+                    contentDiv.show();
+                }
+            }
+            this.editingMessageEl = null;
+            this.editingOriginalContent = undefined;
+        }
+
+        /**
+         * Send a full conversation array to chatproxy.php with session reset.
+         *
+         * Used by saveEditing() to resend the corrected branch.
+         *
+         * @param {Array} conversationMessages Array of {role, content} objects.
+         */
+        _sendConversation(conversationMessages) {
+            const sendBtn = this.root.find(SELECTORS.SEND_BTN);
+            sendBtn.prop('disabled', true);
+
+            const context = {
+                course_id: parseInt(this.courseId, 10) || 0,
+                activity_id: parseInt(this.cmId, 10) || 0,
+                page_url: window.location.href,
+                page_title: document.title,
+                pagetype: this.pageContext.pagetype || '',
+            };
+
+            const payload = {
+                messages: conversationMessages,
+                model: this.getModelName(),
+                sesskey: M.cfg.sesskey || '',
+                context: context,
+                reset_session: true,
+            };
+
+            const proxyUrl = this.getChatProxyUrl();
+
+            this.currentAbortController = new AbortController();
+            const signal = this.currentAbortController.signal;
+            this.streaming = true;
+            let firstTokenReceived = false;
+
+            fetch(proxyUrl, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload),
+                signal: signal,
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        return response.json().then((errData) => {
+                            throw new Error(errData.error || 'HTTP ' + response.status);
+                        });
+                    }
+                    return this._readChatProxyStream(response, sendBtn, firstTokenReceived);
+                })
+                .then(() => {
+                    this.finalizeStream(sendBtn);
+                    this.clearSelection();
+                })
+                .catch((err) => {
+                    if (err.name === 'AbortError') {
+                        return;
+                    }
+                    this.hideTypingIndicator();
+                    sendBtn.prop('disabled', false);
+                    ErrorModal.showGeneralError(this.strings.errorUnexpected);
+                });
+        }
+
+        /**
+         * Build chronological conversation messages from the visible chat.
+         *
+         * @param {HTMLElement|null} stopBefore Optional message element where collection stops.
+         * @returns {Array} Messages for chatproxy.php.
+         */
+        buildConversationMessages(stopBefore = null) {
+            const builtMessages = [];
+
+            this.root.find(SELECTORS.MESSAGES).find('.tutor-ia-message').each((index, element) => {
+                if (stopBefore && element === stopBefore) {
+                    return false;
+                }
+                if ($(element).hasClass('tutor-ia-typing')) {
+                    return;
+                }
+
+                const role = $(element).attr('data-message-role');
+                if (role !== 'user' && role !== 'assistant') {
+                    return;
+                }
+
+                let content = $(element).attr('data-message-content');
+                if (!content) {
+                    content = $(element).find('.message-content').text();
+                }
+                content = (content || '').trim();
+                if (!content || (this.welcomeMessage && content === this.welcomeMessage)) {
+                    return;
+                }
+
+                builtMessages.push({
+                    role: role,
+                    content: this.sanitizeString(content.substring(0, 10000)),
+                });
+            });
+
+            return builtMessages;
         }
 
         /**
@@ -1312,11 +1740,7 @@ define([
          * Closes the current SSE stream.
          */
         closeCurrentStream() {
-            if (this.markdownRenderFrameId) {
-                window.cancelAnimationFrame(this.markdownRenderFrameId);
-                this.markdownRenderFrameId = null;
-                this.markdownRenderScheduled = false;
-            }
+            this.flushPendingStreamingRender();
 
             if (this.currentEventSource) {
                 try {
@@ -1326,6 +1750,16 @@ define([
                 }
             }
             this.currentEventSource = null;
+
+            if (this.currentAbortController) {
+                try {
+                    this.currentAbortController.abort();
+                } catch (e) {
+                    // Ignore abort errors.
+                }
+            }
+            this.currentAbortController = null;
+
             this.streaming = false;
             this.currentAIMessageEl = null;
             this.currentAIMessageContainer = null;
@@ -1339,12 +1773,16 @@ define([
          * @param {jQuery} sendBtn - Send button element
          */
         finalizeStream(sendBtn) {
+            this.flushPendingStreamingRender();
+
             if (this.currentAIMessageContainer) {
                 const currentTimestamp = Math.floor(Date.now() / 1000);
                 const timestampDiv = $('<div>')
                     .addClass('message-timestamp')
                     .text(this.formatTimestamp(currentTimestamp));
-                $(this.currentAIMessageContainer).append(timestampDiv);
+                $(this.currentAIMessageContainer)
+                    .attr('data-message-content', this.currentAIMessageRawText || '')
+                    .append(timestampDiv);
 
                 this.currentAIMessageContainer = null;
             }
@@ -1372,12 +1810,12 @@ define([
                 if (errorMessage.toLowerCase().includes('license not allowed')) {
                     var self = this;
                     Str.get_strings([
-                        {key: 'error_license_not_allowed', component: 'local_dttutor'},
-                        {key: 'error_license_not_allowed_short', component: 'local_dttutor'}
-                    ]).then(function(strings) {
+                        { key: 'error_license_not_allowed', component: 'local_dttutor' },
+                        { key: 'error_license_not_allowed_short', component: 'local_dttutor' }
+                    ]).then(function (strings) {
                         ErrorModal.showGeneralError(strings[0], strings[1]);
                         return;
-                    }).catch(function() {
+                    }).catch(function () {
                         ErrorModal.showGeneralError(
                             self.strings.errorLicenseFallback.replace('{$a}', errorMessage),
                             self.strings.errorLicenseFallbackShort
@@ -1389,12 +1827,12 @@ define([
                 if (errorMessage.toLowerCase().includes('insufficient tokens')) {
                     var selfTokens = this;
                     Str.get_strings([
-                        {key: 'error_insufficient_tokens', component: 'local_dttutor'},
-                        {key: 'error_insufficient_tokens_short', component: 'local_dttutor'}
-                    ]).then(function(strings) {
+                        { key: 'error_insufficient_tokens', component: 'local_dttutor' },
+                        { key: 'error_insufficient_tokens_short', component: 'local_dttutor' }
+                    ]).then(function (strings) {
                         ErrorModal.showGeneralError(strings[0], strings[1]);
                         return;
-                    }).catch(function() {
+                    }).catch(function () {
                         ErrorModal.showGeneralError(
                             selfTokens.strings.errorNoCreditssFallback.replace('{$a}', errorMessage),
                             selfTokens.strings.errorInsufficientTokensShort
@@ -1434,8 +1872,8 @@ define([
             }
             const message = err.message.toLowerCase();
             return message.includes('webservice_not_configured') ||
-                   message.includes('webservice not configured') ||
-                   message.includes('error_webservice_not_configured');
+                message.includes('webservice not configured') ||
+                message.includes('error_webservice_not_configured');
         }
 
         /**
@@ -1450,9 +1888,9 @@ define([
             }
             const message = err.message.toLowerCase();
             return message.includes('notenoughtokens') ||
-                   message.includes('insufficient ai credits') ||
-                   message.includes('no credits') ||
-                   message.includes('out of credits');
+                message.includes('insufficient ai credits') ||
+                message.includes('no credits') ||
+                message.includes('out of credits');
         }
 
         /**
@@ -1519,7 +1957,7 @@ define([
     }
 
     return {
-        init: function(root, uniqueId, courseId, cmId, userId) {
+        init: function (root, uniqueId, courseId, cmId, userId) {
             return new TutorIAChat(root, uniqueId, courseId, cmId, userId);
         }
     };

@@ -30,7 +30,6 @@ $string['avatar_desc'] = 'Select the avatar to display on the Tutor-AI floating 
 $string['avatar_position'] = 'Avatar position';
 $string['avatar_position_desc'] = 'Configure where the Tutor-AI floating avatar button will be displayed. Choose a preset corner position or customize the exact X,Y coordinates. The live preview shows how it will appear.';
 $string['cachedef_sessions'] = 'Cache for Tutor-AI chat sessions';
-$string['cancel_indexing'] = 'Cancel';
 $string['char'] = 'char';
 $string['chars'] = 'chars';
 $string['choose_files'] = 'Choose Files';
@@ -41,7 +40,6 @@ $string['configure_now'] = 'Configure Now';
 $string['connection_interrupted'] = '[Connection interrupted]';
 $string['course_custom_prompt'] = 'Course-specific Custom Prompt';
 $string['course_custom_prompt_help'] = 'This custom prompt overrides the global setting for this course only. Leave empty to use the global prompt.';
-$string['course_indexing'] = 'Course Synchronization';
 $string['course_materials'] = 'Course Materials (PDFs)';
 $string['course_materials_help'] = 'Upload additional PDF files that the AI tutor should reference when answering questions.';
 $string['custom_prompt'] = 'Custom prompt';
@@ -56,10 +54,14 @@ $string['drawer_side_help'] = 'Choose from which side the chat drawer will open.
 $string['drawer_side_left'] = 'Open from left';
 $string['drawer_side_right'] = 'Open from right';
 $string['dttutor:use'] = 'Use Tutor-AI';
+$string['edit_message'] = 'Edit message';
+$string['edit_save'] = 'Save';
+$string['edit_cancel'] = 'Cancel';
 $string['enable_tutor_for_course'] = 'Enable AI Tutor for this course';
 $string['enable_tutor_for_course_help'] = 'When enabled, the AI Tutor will be available for students and teachers in this course. The global plugin setting must also be enabled.';
 $string['enabled'] = 'Enable Chat';
 $string['enabled_desc'] = 'Enable or disable the Tutor-AI chat globally';
+$string['editing_message'] = 'Editing message';
 $string['error_api_not_configured'] = 'API configuration is missing. Please check your settings.';
 $string['error_api_request_failed'] = 'API request error: {$a}';
 $string['error_attempt_later'] = 'An error occurred. Please try again later.';
@@ -91,20 +93,6 @@ $string['error_webservice_not_configured_action'] = 'Please contact your site ad
 $string['error_webservice_not_configured_admin'] = 'The Datacurso AI Provider webservice needs to be configured before using the AI Tutor. <a href="{$a}" target="_blank">Click here to configure it now</a>.';
 $string['error_webservice_not_configured_admin_inline'] = 'The Datacurso AI Provider webservice needs to be configured before using the AI Tutor.';
 $string['error_webservice_not_configured_short'] = 'Chat Service Unavailable';
-$string['indexing_cancelled'] = 'Cancelled';
-$string['indexing_completed'] = 'Synchronized';
-$string['indexing_failed'] = 'Synchronization failed';
-$string['indexing_interrupted'] = 'Interrupted';
-$string['indexing_not_indexed'] = 'Not synchronized';
-$string['indexing_phase_estimating'] = 'Estimating tokens...';
-$string['indexing_phase_fetching'] = 'Fetching course data...';
-$string['indexing_phase_finalizing'] = 'Finalizing...';
-$string['indexing_phase_initializing'] = 'Initializing...';
-$string['indexing_phase_preparing'] = 'Preparing documents...';
-$string['indexing_phase_uploading'] = 'Uploading documents...';
-$string['indexing_progress'] = 'Progress: {$a}%';
-$string['indexing_running'] = 'Synchronization in progress';
-$string['indexing_status'] = 'Synchronization Status';
 $string['last_indexed'] = 'Last synchronized: {$a}';
 $string['line'] = 'line';
 $string['lines'] = 'lines';
@@ -141,17 +129,14 @@ $string['ref_right'] = 'Right';
 $string['ref_top'] = 'Top';
 $string['reference_edge_x'] = 'Horizontal reference edge';
 $string['reference_edge_y'] = 'Vertical reference edge';
-$string['restart_indexing'] = 'Re-synchronize Course';
 $string['selected'] = 'selected';
 $string['selection_indicator'] = '{$a} lines selected';
 $string['selectionformat'] = '{$a->lines} {$a->linetext}, {$a->chars} {$a->chartext} selected';
 $string['sendmessage'] = 'Send message';
 $string['sessionnotready'] = 'The Tutor-AI session is not ready. Please try again.';
-$string['start_indexing'] = 'Start Synchronization';
 $string['student'] = 'Student';
 $string['teacher'] = 'Teacher';
 $string['tutor_disabled_notice'] = 'The AI Tutor is currently disabled for this course. Students will not see the chat interface.';
-$string['tutor_enable_requires_indexing'] = 'You must synchronize the course content before you can enable the AI Tutor.';
 $string['tutor_status'] = 'AI Tutor Status';
 $string['tutorcustomization'] = 'Tutor Customization';
 $string['tutorname_default'] = 'AI Tutor';
@@ -166,3 +151,38 @@ $string['welcomemessage_default'] = 'Hello! I\'m {teachername}, your AI assistan
 $string['welcomemessage_setting'] = 'Welcome message';
 $string['welcomemessage_setting_desc'] = 'Customize the welcome message displayed when the chat is opened. You can use placeholders: {teachername}, {coursename}, {username}, {firstname}';
 $string['yesterday'] = 'Yesterday';
+
+// Service bot user.
+$string['servicebot_firstname'] = 'Tutor';
+$string['servicebot_lastname'] = 'AI';
+
+// AI Proxy tool definitions.
+$string['tool_ws_search_desc'] = 'Search Moodle web service functions by intent or keywords. Returns function name, component, description, params, returns.';
+$string['tool_ws_search_query'] = 'Intent or keywords in ENGLISH (e.g. "create user", "enrol student", "get course grades").';
+$string['tool_ws_search_limit'] = 'Maximum results (default: 20, max: 30).';
+$string['tool_ws_describe_desc'] = 'Get full documentation for a specific Moodle web service function: description, parameters with types, and return structure.';
+$string['tool_ws_describe_wsname'] = 'Exact web service function name (e.g. core_user_create_users, core_course_get_courses).';
+$string['tool_call_webservice_desc'] = 'Call a Moodle web service function. The function will only work if the user has the required permissions in Moodle.';
+$string['tool_call_webservice_function'] = 'The web service function name (e.g. core_user_get_users, core_course_get_courses).';
+$string['tool_call_webservice_params'] = 'Parameters to pass to the function as key-value pairs.';
+
+// Context / location labels for system message.
+$string['ctx_loc_course'] = 'Location: Course';
+$string['ctx_loc_activity'] = 'Location: Activity';
+$string['ctx_loc_gradebook'] = 'Location: Gradebook';
+$string['ctx_loc_admin'] = 'Location: Administration';
+$string['ctx_loc_dashboard'] = 'Location: Dashboard';
+$string['ctx_loc_messages'] = 'Location: Messages';
+$string['ctx_loc_profile'] = 'Location: Profile';
+$string['ctx_loc_calendar'] = 'Location: Calendar';
+$string['ctx_loc_files'] = 'Location: Files';
+
+// System message builder strings.
+$string['system_message_greeting'] = 'You are an AI tutor integrated into Moodle ({$a}).';
+$string['system_message_role'] = 'User role: {$a}.';
+$string['system_message_goal'] = 'Goal: help the student with their course-related questions using available web service tools.';
+$string['dblabel_mysql'] = 'MySQL/MariaDB';
+
+// SPT/Proxy errors (retained for backward compatibility, no longer used).
+
+// Proxy settings (removed — credentials are managed server-side via aiprovider_datacurso).

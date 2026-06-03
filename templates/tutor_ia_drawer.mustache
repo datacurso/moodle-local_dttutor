@@ -63,7 +63,7 @@
             <span class="sr-only">{{#str}}close, local_dttutor{{/str}}</span>
         </button>
     </div>
-    <div class="tutor-ia-drawer-body" id="tutor-ia-drawer-content-{{uniqid}}" data-courseid="{{courseid}}" data-cmid="{{cmid}}" data-userid="{{userid}}" data-welcomemessage="{{welcomemessage}}" data-is-configured="{{is_configured}}">
+    <div class="tutor-ia-drawer-body" id="tutor-ia-drawer-content-{{uniqid}}" data-courseid="{{courseid}}" data-cmid="{{cmid}}" data-userid="{{userid}}" data-welcomemessage="{{welcomemessage}}" data-is-configured="{{is_configured}}" data-chatproxy-url="{{chatproxy_url}}">
         <h2 class="sr-only">{{tutorname}}</h2>
 
         {{! Contenedor de mensajes }}
@@ -127,7 +127,25 @@
 require(['local_dttutor/tutor_ia_chat'], function(TutorIAChat) {
     var root = document.getElementById('tutor-ia-drawer-content-{{uniqid}}');
     if (root) {
-        TutorIAChat.init(root, '{{uniqid}}', {{courseid}}, {{cmid}}, {{userid}});
+        var chat = TutorIAChat.init(root, '{{uniqid}}', {{courseid}}, {{cmid}}, {{userid}});
+
+        if (chat && typeof chat.finalizeStream === 'function' && typeof chat.renderMarkdown === 'function') {
+            var originalFinalizeStream = chat.finalizeStream.bind(chat);
+            chat.finalizeStream = function(sendBtn) {
+                if (this.markdownRenderFrameId) {
+                    window.cancelAnimationFrame(this.markdownRenderFrameId);
+                    this.markdownRenderFrameId = null;
+                    this.markdownRenderScheduled = false;
+                }
+
+                if (this.currentAIMessageEl) {
+                    this.currentAIMessageEl.innerHTML = this.renderMarkdown(this.currentAIMessageRawText || '');
+                    this.scrollToBottom();
+                }
+
+                return originalFinalizeStream(sendBtn);
+            };
+        }
     }
 });
 {{/js}}

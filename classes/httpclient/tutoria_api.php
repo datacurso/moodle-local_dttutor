@@ -149,6 +149,118 @@ class tutoria_api {
     }
 
     /**
+     * Start a new chat session using V2 endpoint (no MCP, no indexing).
+     *
+     * Used by chatproxy.php — creates a Redis session without MCP or indexing.
+     *
+     * @param int $courseid Course ID.
+     * @param int $userid User ID.
+     * @param int|null $cmid Course Module ID (optional).
+     * @return array Session data including session_id.
+     * @throws moodle_exception If session creation fails.
+     * @since Moodle 4.5
+     */
+    public function start_session_v2(int $courseid, int $userid, ?int $cmid = null): array {
+        $cachekey = self::get_session_v2_cache_key($courseid, $userid, $cmid);
+        $cached = null;
+
+        if ($this->cache !== null) {
+            $cached = $this->cache->get($cachekey);
+        }
+
+        if ($cached && $this->is_session_valid($cached)) {
+            if (!$this->should_validate_cached_session($cached)) {
+                return $cached;
+            }
+
+            if (!empty($cached['session_id']) && $this->is_backend_session_alive((string)$cached['session_id'])) {
+                $cached['backend_validated_at'] = time();
+                if ($this->cache !== null) {
+                    $this->cache->set($cachekey, $cached);
+                }
+                return $cached;
+            }
+
+            if ($this->cache !== null) {
+                $this->cache->delete($cachekey);
+            }
+        }
+
+        $requestdata = [
+            'course_id' => (string) $courseid,
+            'user_id' => (string) $userid,
+        ];
+        if ($cmid !== null) {
+            $requestdata['module_id'] = (string) $cmid;
+        }
+
+        $response = $this->aiservice->request('POST', '/chat/start/v2', $requestdata);
+
+        $response['created_at'] = time();
+        $response['backend_validated_at'] = time();
+
+        if ($this->cache !== null) {
+            $this->cache->set($cachekey, $response);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Reset a V2 chat session and create a fresh one.
+     *
+     * Used when the user edits a previous message and the conversation branch changes.
+     *
+     * @param int $courseid Course ID.
+     * @param int $userid User ID.
+     * @param int|null $cmid Course Module ID (optional).
+     * @return array Fresh session data.
+     * @throws moodle_exception If session creation fails.
+     */
+    public function reset_session_v2(int $courseid, int $userid, ?int $cmid = null): array {
+        $cachekey = self::get_session_v2_cache_key($courseid, $userid, $cmid);
+
+        if ($this->cache !== null) {
+            $cached = $this->cache->get($cachekey);
+            if (!empty($cached['session_id'])) {
+                try {
+                    $this->delete_session((string)$cached['session_id']);
+                } catch (\Throwable $e) {
+                    debugging('Failed to delete stale Tutor-IA session: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+            }
+            $this->cache->delete($cachekey);
+        }
+
+        return $this->start_session_v2($courseid, $userid, $cmid);
+    }
+
+    /**
+     * Append a message to chat history without queueing for AI processing.
+     *
+     * Used by chatproxy.php to persist messages after the PHP-side tool loop.
+     *
+     * @param string $sessionid Session ID.
+     * @param string $role Message role: user or assistant.
+     * @param string $content Message content.
+     * @param array $meta Optional metadata.
+     * @return array Response with appended status.
+     * @throws moodle_exception If the request fails.
+     * @since Moodle 4.5
+     */
+    public function append_message(string $sessionid, string $role, string $content, ?array $meta = null): array {
+        $payload = [
+            'session_id' => $sessionid,
+            'role' => $role,
+            'content' => $content,
+        ];
+        if ($meta !== null) {
+            $payload['meta'] = $meta;
+        }
+        return $this->aiservice->request('POST', '/chat/messages/append/v2', $payload);
+    }
+
+    /**
      * Build the SSE stream URL for a chat session.
      *
      * @param string $sessionid Session ID.
@@ -221,6 +333,23 @@ class tutoria_api {
     }
 
     /**
+     * Build the Moodle cache key for V2 chat sessions.
+     *
+     * @param int $courseid Course ID.
+     * @param int $userid User ID.
+     * @param int|null $cmid Course module ID, if any.
+     * @return string Cache key.
+     */
+    private static function get_session_v2_cache_key(int $courseid, int $userid, ?int $cmid = null): string {
+        $cachekey = "session_v2_{$courseid}_{$userid}";
+        if ($cmid !== null) {
+            $cachekey .= "_{$cmid}";
+        }
+
+        return $cachekey;
+    }
+
+    /**
      * Check whether a cached session still exists on backend storage.
      *
      * @param string $sessionid Session ID.
@@ -237,70 +366,4 @@ class tutoria_api {
         }
     }
 
-    /**
-     * Get site identifier for indexing requests.
-     *
-     * @return string Site identifier
-     * @since Moodle 4.5
-     */
-    private function get_site_id(): string {
-        global $CFG;
-        return $CFG->wwwroot;
-    }
-
-    /**
-     * Check indexing status for a course.
-     *
-     * @param int $courseid Course ID
-     * @return array Response with status, task_id, progress information
-     * @throws moodle_exception If the request fails
-     * @since Moodle 4.5
-     */
-    public function get_indexing_status(int $courseid): array {
-        $endpoint = '/indexing/status?site_id=' . urlencode($this->get_site_id()) .
-            '&course_id=' . urlencode((string) $courseid);
-        return $this->aiservice->request('GET', $endpoint);
-    }
-
-    /**
-     * Start indexing for a course.
-     *
-     * @param int $courseid Course ID
-     * @param bool $forcereindex Force re-indexing even if already indexed
-     * @return array Response with status, task_id, message
-     * @throws moodle_exception If the request fails
-     * @since Moodle 4.5
-     */
-    public function start_indexing(int $courseid, bool $forcereindex = false): array {
-        return $this->aiservice->request('POST', '/indexing/start', [
-            'site_id' => $this->get_site_id(),
-            'course_id' => (string) $courseid,
-            'force_reindex' => $forcereindex,
-            'lang' => current_language(),
-        ]);
-    }
-
-    /**
-     * Get indexing progress for a task.
-     *
-     * @param string $taskid Task ID from start_indexing
-     * @return array Response with current_phase, overall_percent, items_processed, items_total
-     * @throws moodle_exception If the request fails
-     * @since Moodle 4.5
-     */
-    public function get_indexing_progress(string $taskid): array {
-        return $this->aiservice->request('GET', '/indexing/progress/' . urlencode($taskid));
-    }
-
-    /**
-     * Cancel an ongoing indexing task.
-     *
-     * @param string $taskid Task ID to cancel
-     * @return array Response with cancellation status
-     * @throws moodle_exception If the request fails
-     * @since Moodle 4.5
-     */
-    public function cancel_indexing(string $taskid): array {
-        return $this->aiservice->request('POST', '/indexing/cancel/' . urlencode($taskid));
-    }
 }

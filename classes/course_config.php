@@ -64,11 +64,7 @@ class course_config {
         $record = new \stdClass();
         $record->courseid = $courseid;
         $record->custom_prompt = null;
-        $record->indexing_enabled = 0; // Disabled by default.
-        $record->indexing_status = 'not_indexed';
-        $record->indexing_task_id = null;
-        $record->indexing_error = null;
-        $record->last_indexed_at = null;
+        $record->indexing_enabled = 0; // Tutor disabled by default (column kept for schema compat).
         $record->timecreated = time();
         $record->timemodified = time();
         $record->usermodified = $USER->id;
@@ -95,10 +91,6 @@ class course_config {
         $allowedfields = [
             'custom_prompt',
             'indexing_enabled',
-            'indexing_status',
-            'indexing_task_id',
-            'indexing_error',
-            'last_indexed_at',
         ];
 
         foreach ($data as $key => $value) {
@@ -114,57 +106,15 @@ class course_config {
     }
 
     /**
-     * Update indexing status for a course.
+     * Check if the tutor is enabled for a course.
      *
      * @param int $courseid Course ID
-     * @param string $status New status (not_indexed, running, completed, failed, cancelled, interrupted)
-     * @param string|null $taskid Task ID from backend API
-     * @param string|null $error Error message if failed
-     * @return void
+     * @return bool True if tutor is enabled
      * @since Moodle 4.5
      */
-    public static function update_indexing_status(
-        int $courseid,
-        string $status,
-        ?string $taskid = null,
-        ?string $error = null
-    ): void {
-        $data = [
-            'indexing_status' => $status,
-            'indexing_task_id' => $taskid,
-            'indexing_error' => $error,
-        ];
-
-        // If status is completed, update last_indexed_at timestamp.
-        if ($status === 'completed') {
-            $data['last_indexed_at'] = time();
-        }
-
-        self::update($courseid, $data);
-    }
-
-    /**
-     * Check if course has been indexed.
-     *
-     * @param int $courseid Course ID
-     * @return bool True if course is indexed
-     * @since Moodle 4.5
-     */
-    public static function is_indexed(int $courseid): bool {
+    public static function is_enabled_for_course(int $courseid): bool {
         $config = self::get_by_course($courseid);
-        return $config->indexing_status === 'completed';
-    }
-
-    /**
-     * Check if course indexing is in progress.
-     *
-     * @param int $courseid Course ID
-     * @return bool True if indexing is running
-     * @since Moodle 4.5
-     */
-    public static function is_indexing(int $courseid): bool {
-        $config = self::get_by_course($courseid);
-        return $config->indexing_status === 'running';
+        return (bool)$config->indexing_enabled;
     }
 
     /**
