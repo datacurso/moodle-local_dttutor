@@ -30,13 +30,10 @@
 
 namespace local_dttutor\agent;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Static facade for tool dispatch.
  */
 class tool_executor {
-
     /** @var tool\agent_tool[] Cached tool instances. */
     private static array $instances = [];
 

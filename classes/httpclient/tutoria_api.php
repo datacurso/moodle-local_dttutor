@@ -243,7 +243,7 @@ class tutoria_api {
      * @param string $sessionid Session ID.
      * @param string $role Message role: user or assistant.
      * @param string $content Message content.
-     * @param array $meta Optional metadata.
+     * @param array|null $meta Optional metadata.
      * @return array Response with appended status.
      * @throws moodle_exception If the request fails.
      * @since Moodle 4.5
@@ -365,5 +365,4 @@ class tutoria_api {
             return false;
         }
     }
-
 }

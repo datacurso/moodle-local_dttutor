@@ -24,8 +24,6 @@
 
 namespace local_dttutor\agent\tool;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Contract for AI-callable tools.
  *
@@ -35,7 +33,6 @@ defined('MOODLE_INTERNAL') || die();
  * result that is fed back to the AI as a "tool" role message.
  */
 interface agent_tool {
-
     /**
      * Unique tool name used in OpenAI function_calling.
      * @return string e.g. "call_webservice"

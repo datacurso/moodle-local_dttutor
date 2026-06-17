@@ -27,13 +27,10 @@
 
 namespace local_dttutor\proxy;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Builds the system message for the AI model.
  */
 class system_message {
-
     /**
      * Build the system message.
      *
@@ -77,8 +74,10 @@ class system_message {
 
         $content .= "DECISION RULE:\n";
         $content .= "- Step 1: ws_search(query in ENGLISH). If a relevant function exists → ws_describe → call_webservice.\n";
-        $content .= "- For course/activity questions, NEVER stop after ws_search alone. You MUST execute at least one call_webservice before answering.\n";
-        $content .= "- If first ws_search looks weak or ambiguous, run a second ws_search with expanded keywords (examples: gradebook, grades, gradeitems, activity, submissions, rubric).\n";
+        $content .= "- For course/activity questions, NEVER stop after ws_search alone. You MUST execute "
+            . "at least one call_webservice before answering.\n";
+        $content .= "- If first ws_search looks weak or ambiguous, run a second ws_search with expanded "
+            . "keywords (examples: gradebook, grades, gradeitems, activity, submissions, rubric).\n";
         $content .= "- Step 2: Evaluate the result. If the data is COMPLETE and answers the question → stop and respond.\n";
         $content .= "- Step 3: If the data is INSUFFICIENT → try a different WS function.\n";
         $content .= "- Do NOT search WS and try things in parallel — always sequential.\n\n";
@@ -88,11 +87,18 @@ class system_message {
         $content .= "- ALWAYS exclude course ID 1 (site home) and guest user from any operation.\n";
         $content .= "- If a tool fails, retry once. If it fails again, tell the student.\n";
         $content .= "- If you have enough data, stop and respond.\n";
-        $content .= "- Do not say 'I cannot find information' unless you already tried at least one call_webservice and explain why it failed.\n";
+        $content .= "- Do not say 'I cannot find information' unless you already tried at least one "
+            . "call_webservice and explain why it failed.\n";
         $content .= "- For assignment rubrics, call core_grading_get_definitions with areaname=submissions.\n";
-        $content .= "- When the student asks about a specific activity (forum, book, assignment, etc.) but NO cmid is available in the context, FIRST call core_course_get_contents with the course ID to enumerate all course activities. Find the activity by name, then use its cmid or instance for subsequent calls. DO NOT guess instance IDs.\n";
-        $content .= "- When asked 'what is this course about' or similar, call core_course_get_contents FIRST. If the course summary field is empty, the section and activity names/descriptions from get_contents reveal the course topic.\n";
-        $content .= "- Prefer WS functions that accept cmid (like core_course_get_course_module) over those needing instance ID alone.\n";
+        $content .= "- When the student asks about a specific activity (forum, book, assignment, etc.) but NO "
+            . "cmid is available in the context, FIRST call core_course_get_contents with the course ID to "
+            . "enumerate all course activities. Find the activity by name, then use its cmid or instance "
+            . "for subsequent calls. DO NOT guess instance IDs.\n";
+        $content .= "- When asked 'what is this course about' or similar, call core_course_get_contents "
+            . "FIRST. If the course summary field is empty, the section and activity names/descriptions "
+            . "from get_contents reveal the course topic.\n";
+        $content .= "- Prefer WS functions that accept cmid (like core_course_get_course_module) over "
+            . "those needing instance ID alone.\n";
         $content .= "- Be concise and use the student's language.\n";
         $content .= "- Respect permissions and privacy.\n\n";
 
@@ -103,11 +109,17 @@ class system_message {
         $content .= "If the student switches language mid-conversation, switch immediately too.\n\n";
 
         $content .= "CONVERSATION CONTINUITY — CRITICAL:\n";
-        $content .= "1. When the student replies with a short confirmation word (\"sí\", \"yes\", \"ok\", \"dale\", \"adelante\", \"claro\", \"por favor\"), it is ALWAYS an answer to the question you asked in your previous message. DO NOT start a new analysis — continue what you were offering.\n";
-        $content .= "2. Before responding, read the LAST exchange (your previous response + the student's new message) as a single unit. If your last message offered something and the student agreed, EXECUTE it now.\n";
+        $content .= "1. When the student replies with a short confirmation word (\"sí\", \"yes\", \"ok\", "
+            . "\"dale\", \"adelante\", \"claro\", \"por favor\"), it is ALWAYS an answer to the question you "
+            . "asked in your previous message. DO NOT start a new analysis — continue what you were offering.\n";
+        $content .= "2. Before responding, read the LAST exchange (your previous response + the student's "
+            . "new message) as a single unit. If your last message offered something and the student "
+            . "agreed, EXECUTE it now.\n";
         $content .= "3. If the student says \"no\" or declines, drop the pending task and ask what else they need.\n";
-        $content .= "4. Never restart the ws_search → ws_describe → call_webservice workflow from scratch on a follow-up. Use the context from previous calls.\n";
-        $content .= "5. If you need more information to complete a pending task, ask a specific follow-up question. Do not change the subject.\n\n";
+        $content .= "4. Never restart the ws_search → ws_describe → call_webservice workflow from scratch "
+            . "on a follow-up. Use the context from previous calls.\n";
+        $content .= "5. If you need more information to complete a pending task, ask a specific follow-up "
+            . "question. Do not change the subject.\n\n";
 
         $content .= "Current context:\n";
         $content .= "- Moodle version: {$release}\n";

@@ -28,30 +28,44 @@
 
 namespace local_dttutor\agent\tool;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tool that calls any Moodle web service function via PHP reflection.
  */
 class ws_tool implements agent_tool {
-
     /** @var int User ID to run permission checks as. */
     private int $userid;
 
+    /**
+     * Constructor.
+     *
+     * @param int $userid User ID to run permission checks as (0 = resolve from config).
+     */
     public function __construct(int $userid = 0) {
         $this->userid = $userid;
     }
 
+    /**
+     * Get the unique tool name.
+     *
+     * @return string
+     */
     public function get_name(): string {
         return 'call_webservice';
     }
 
+    /**
+     * Get the OpenAI-compatible tool definition.
+     *
+     * @return array
+     */
     public function get_definition(): array {
         return [
             'type' => 'function',
             'function' => [
                 'name' => 'call_webservice',
-                'description' => 'Call a Moodle web service function. The function will only work if the user has the required permissions in Moodle. Returns the function result or an error message.',
+                'description' => 'Call a Moodle web service function. The function will only work if '
+                    . 'the user has the required permissions in Moodle. Returns the function result '
+                    . 'or an error message.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
@@ -70,6 +84,12 @@ class ws_tool implements agent_tool {
         ];
     }
 
+    /**
+     * Execute the tool: call a Moodle web service function via reflection.
+     *
+     * @param  \stdClass $params Decoded arguments (expects function and optional params).
+     * @return string            JSON-encoded web service result or error.
+     */
     public function execute(\stdClass $params): string {
         global $DB;
 
@@ -113,7 +133,7 @@ class ws_tool implements agent_tool {
                 $name = $param->getName();
                 if (array_key_exists($name, $callerparams)) {
                     $callargs[] = $callerparams[$name];
-                } elseif ($param->isDefaultValueAvailable()) {
+                } else if ($param->isDefaultValueAvailable()) {
                     $callargs[] = $param->getDefaultValue();
                 } else {
                     return json_encode(['error' => "Missing required parameter: {$name}"]);
@@ -146,7 +166,6 @@ class ws_tool implements agent_tool {
                 'success' => true,
                 'data' => $result,
             ], JSON_UNESCAPED_UNICODE);
-
         } catch (\Exception $e) {
             return json_encode([
                 'error' => $e->getMessage(),

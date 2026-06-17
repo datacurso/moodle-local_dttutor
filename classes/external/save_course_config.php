@@ -97,7 +97,7 @@ class save_course_config extends external_api {
         $success = course_config::update($params['courseid'], $data);
 
         // 6. When enabling the tutor, enrol the service bot as teacher in the course.
-        //    Uses enrol_manual API to create a proper user_enrolments record + role assignment.
+        // Uses enrol_manual API to create a proper user_enrolments record + role assignment.
         $enrolmessage = '';
         if ($success && $params['enabled']) {
             $serviceuserid = (int)get_config('local_dttutor', 'serviceuserid');

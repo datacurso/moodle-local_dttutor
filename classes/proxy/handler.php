@@ -28,8 +28,6 @@
 
 namespace local_dttutor\proxy;
 
-defined('MOODLE_INTERNAL') || die();
-
 use local_dttutor\agent\tool_executor;
 use aiprovider_datacurso\httpclient\ai_services_api;
 
@@ -37,7 +35,6 @@ use aiprovider_datacurso\httpclient\ai_services_api;
  * SSE tool-calling loop handler.
  */
 class handler {
-
     /**
      * Run the tool-calling loop using native OpenAI function calling.
      *
@@ -54,14 +51,18 @@ class handler {
 
         for ($i = 0; $i < 50; $i++) {
             echo ": thinking\n\n";
-            if (ob_get_level()) { ob_flush(); }
+            if (ob_get_level()) {
+                ob_flush();
+            }
             flush();
 
             $response = self::call_ai_api_buffer($model, $messages, $tools);
 
             if ($response['type'] === 'error') {
                 echo "data: {\"error\":\"ai_api_error\"}\n\n";
-                if (ob_get_level()) { ob_flush(); }
+                if (ob_get_level()) {
+                    ob_flush();
+                }
                 flush();
                 return null;
             }
@@ -75,7 +76,7 @@ class handler {
                 return $response['content'];
             }
 
-            // type === 'tool_calls': execute each one and collect results.
+            // Type 'tool_calls': execute each one and collect results.
             $toolcalls = $response['tool_calls'];
             \local_dttutor_log('AI_TOOL_CALLS', [
                 'iteration' => $i,
@@ -103,14 +104,17 @@ class handler {
                 echo "data: " . json_encode([
                     '_dttutor_tool_executing' => ['tool' => $name, 'args' => $args],
                 ], JSON_UNESCAPED_UNICODE) . "\n\n";
-                if (ob_get_level()) { ob_flush(); }
+                if (ob_get_level()) {
+                    ob_flush();
+                }
                 flush();
 
                 if ($toolrepeatcounts[$callkey] > 5) {
                     $result = json_encode([
                         'error' => 'loop_detected',
                         'tool' => $name,
-                        'detail' => 'Tool loop detected: ' . $name . ' called with same arguments ' . $toolrepeatcounts[$callkey] . ' times.',
+                        'detail' => 'Tool loop detected: ' . $name . ' called with same arguments '
+                            . $toolrepeatcounts[$callkey] . ' times.',
                     ]);
                     \local_dttutor_log('LOOP_DETECTED', ['tool' => $name, 'args' => $args, 'count' => $toolrepeatcounts[$callkey]]);
                 } else {
@@ -132,7 +136,9 @@ class handler {
                         'summary' => self::summarize_tool_result($name, $result),
                     ],
                 ], JSON_UNESCAPED_UNICODE) . "\n\n";
-                if (ob_get_level()) { ob_flush(); }
+                if (ob_get_level()) {
+                    ob_flush();
+                }
                 flush();
 
                 // Inject tool result as role=tool message (OpenAI standard format).
@@ -168,6 +174,9 @@ class handler {
 
     /**
      * Recursively sort associative arrays for stable hashing.
+     *
+     * @param  mixed $value Value to normalize (array or scalar).
+     * @return mixed        The normalized value.
      */
     private static function sort_recursive($value) {
         if (!is_array($value)) {
@@ -364,7 +373,9 @@ class handler {
     private static function stream_sse_content(string $content): void {
         if (empty($content)) {
             echo "event: done\ndata: {}\n\n";
-            if (ob_get_level()) { ob_flush(); }
+            if (ob_get_level()) {
+                ob_flush();
+            }
             flush();
             return;
         }
@@ -372,18 +383,26 @@ class handler {
         $chunks = mb_str_split($content, 15);
         foreach ($chunks as $chunk) {
             echo "event: token\ndata: " . json_encode(['t' => $chunk], JSON_UNESCAPED_UNICODE) . "\n\n";
-            if (ob_get_level()) { ob_flush(); }
+            if (ob_get_level()) {
+                ob_flush();
+            }
             flush();
             usleep(25000);
         }
 
         echo "event: done\ndata: {}\n\n";
-        if (ob_get_level()) { ob_flush(); }
+        if (ob_get_level()) {
+            ob_flush();
+        }
         flush();
     }
 
     /**
      * Summarize a tool result for the client SSE event.
+     *
+     * @param  string $name   The tool name.
+     * @param  string $result The raw JSON result returned by the tool.
+     * @return string         A short human-readable summary.
      */
     private static function summarize_tool_result(string $name, string $result): string {
         $decoded = json_decode($result, true);

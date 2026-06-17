@@ -42,11 +42,21 @@ $string['course_custom_prompt'] = 'Course-specific Custom Prompt';
 $string['course_custom_prompt_help'] = 'This custom prompt overrides the global setting for this course only. Leave empty to use the global prompt.';
 $string['course_materials'] = 'Course Materials (PDFs)';
 $string['course_materials_help'] = 'Upload additional PDF files that the AI tutor should reference when answering questions.';
+$string['ctx_loc_activity'] = 'Location: Activity';
+$string['ctx_loc_admin'] = 'Location: Administration';
+$string['ctx_loc_calendar'] = 'Location: Calendar';
+$string['ctx_loc_course'] = 'Location: Course';
+$string['ctx_loc_dashboard'] = 'Location: Dashboard';
+$string['ctx_loc_files'] = 'Location: Files';
+$string['ctx_loc_gradebook'] = 'Location: Gradebook';
+$string['ctx_loc_messages'] = 'Location: Messages';
+$string['ctx_loc_profile'] = 'Location: Profile';
 $string['custom_prompt'] = 'Custom prompt';
 $string['custom_prompt_desc'] = 'Custom instructions to control the AI tutor behavior. Use this field to provide specific guidelines, tone, or knowledge boundaries for the tutor.';
 $string['customavatar'] = 'Custom avatar';
 $string['customavatar_desc'] = 'Upload your own custom avatar image. This will override the selected predefined avatar.';
 $string['customavatar_dimensions'] = 'Recommended dimensions: 200x200 pixels. Supported formats: PNG, JPG, JPEG, SVG. Maximum file size: 512KB.';
+$string['dblabel_mysql'] = 'MySQL/MariaDB';
 $string['drag_drop_upload'] = 'Drag & Drop PDF files here';
 $string['drag_drop_upload_or_browse'] = 'or click to browse';
 $string['drawer_side'] = 'Drawer opening side';
@@ -54,14 +64,14 @@ $string['drawer_side_help'] = 'Choose from which side the chat drawer will open.
 $string['drawer_side_left'] = 'Open from left';
 $string['drawer_side_right'] = 'Open from right';
 $string['dttutor:use'] = 'Use Tutor-AI';
+$string['edit_cancel'] = 'Cancel';
 $string['edit_message'] = 'Edit message';
 $string['edit_save'] = 'Save';
-$string['edit_cancel'] = 'Cancel';
+$string['editing_message'] = 'Editing message';
 $string['enable_tutor_for_course'] = 'Enable AI Tutor for this course';
 $string['enable_tutor_for_course_help'] = 'When enabled, the AI Tutor will be available for students and teachers in this course. The global plugin setting must also be enabled.';
 $string['enabled'] = 'Enable Chat';
 $string['enabled_desc'] = 'Enable or disable the Tutor-AI chat globally';
-$string['editing_message'] = 'Editing message';
 $string['error_api_not_configured'] = 'API configuration is missing. Please check your settings.';
 $string['error_api_request_failed'] = 'API request error: {$a}';
 $string['error_attempt_later'] = 'An error occurred. Please try again later.';
@@ -133,9 +143,22 @@ $string['selected'] = 'selected';
 $string['selection_indicator'] = '{$a} lines selected';
 $string['selectionformat'] = '{$a->lines} {$a->linetext}, {$a->chars} {$a->chartext} selected';
 $string['sendmessage'] = 'Send message';
+$string['servicebot_firstname'] = 'Tutor';
+$string['servicebot_lastname'] = 'AI';
 $string['sessionnotready'] = 'The Tutor-AI session is not ready. Please try again.';
 $string['student'] = 'Student';
+$string['system_message_goal'] = 'Goal: help the student with their course-related questions using available web service tools.';
+$string['system_message_greeting'] = 'You are an AI tutor integrated into Moodle ({$a}).';
+$string['system_message_role'] = 'User role: {$a}.';
 $string['teacher'] = 'Teacher';
+$string['tool_call_webservice_desc'] = 'Call a Moodle web service function. The function will only work if the user has the required permissions in Moodle.';
+$string['tool_call_webservice_function'] = 'The web service function name (e.g. core_user_get_users, core_course_get_courses).';
+$string['tool_call_webservice_params'] = 'Parameters to pass to the function as key-value pairs.';
+$string['tool_ws_describe_desc'] = 'Get full documentation for a specific Moodle web service function: description, parameters with types, and return structure.';
+$string['tool_ws_describe_wsname'] = 'Exact web service function name (e.g. core_user_create_users, core_course_get_courses).';
+$string['tool_ws_search_desc'] = 'Search Moodle web service functions by intent or keywords. Returns function name, component, description, params, returns.';
+$string['tool_ws_search_limit'] = 'Maximum results (default: 20, max: 30).';
+$string['tool_ws_search_query'] = 'Intent or keywords in ENGLISH (e.g. "create user", "enrol student", "get course grades").';
 $string['tutor_disabled_notice'] = 'The AI Tutor is currently disabled for this course. Students will not see the chat interface.';
 $string['tutor_status'] = 'AI Tutor Status';
 $string['tutorcustomization'] = 'Tutor Customization';
@@ -151,38 +174,3 @@ $string['welcomemessage_default'] = 'Hello! I\'m {teachername}, your AI assistan
 $string['welcomemessage_setting'] = 'Welcome message';
 $string['welcomemessage_setting_desc'] = 'Customize the welcome message displayed when the chat is opened. You can use placeholders: {teachername}, {coursename}, {username}, {firstname}';
 $string['yesterday'] = 'Yesterday';
-
-// Service bot user.
-$string['servicebot_firstname'] = 'Tutor';
-$string['servicebot_lastname'] = 'AI';
-
-// AI Proxy tool definitions.
-$string['tool_ws_search_desc'] = 'Search Moodle web service functions by intent or keywords. Returns function name, component, description, params, returns.';
-$string['tool_ws_search_query'] = 'Intent or keywords in ENGLISH (e.g. "create user", "enrol student", "get course grades").';
-$string['tool_ws_search_limit'] = 'Maximum results (default: 20, max: 30).';
-$string['tool_ws_describe_desc'] = 'Get full documentation for a specific Moodle web service function: description, parameters with types, and return structure.';
-$string['tool_ws_describe_wsname'] = 'Exact web service function name (e.g. core_user_create_users, core_course_get_courses).';
-$string['tool_call_webservice_desc'] = 'Call a Moodle web service function. The function will only work if the user has the required permissions in Moodle.';
-$string['tool_call_webservice_function'] = 'The web service function name (e.g. core_user_get_users, core_course_get_courses).';
-$string['tool_call_webservice_params'] = 'Parameters to pass to the function as key-value pairs.';
-
-// Context / location labels for system message.
-$string['ctx_loc_course'] = 'Location: Course';
-$string['ctx_loc_activity'] = 'Location: Activity';
-$string['ctx_loc_gradebook'] = 'Location: Gradebook';
-$string['ctx_loc_admin'] = 'Location: Administration';
-$string['ctx_loc_dashboard'] = 'Location: Dashboard';
-$string['ctx_loc_messages'] = 'Location: Messages';
-$string['ctx_loc_profile'] = 'Location: Profile';
-$string['ctx_loc_calendar'] = 'Location: Calendar';
-$string['ctx_loc_files'] = 'Location: Files';
-
-// System message builder strings.
-$string['system_message_greeting'] = 'You are an AI tutor integrated into Moodle ({$a}).';
-$string['system_message_role'] = 'User role: {$a}.';
-$string['system_message_goal'] = 'Goal: help the student with their course-related questions using available web service tools.';
-$string['dblabel_mysql'] = 'MySQL/MariaDB';
-
-// SPT/Proxy errors (retained for backward compatibility, no longer used).
-
-// Proxy settings (removed — credentials are managed server-side via aiprovider_datacurso).

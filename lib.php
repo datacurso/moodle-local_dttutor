@@ -218,7 +218,7 @@ function local_dttutor_get_user_role_for_user(int $userid): string {
 function local_dttutor_get_tool_definitions(string $role): array {
     $tools = [];
 
-    // ws_search — all roles.
+    // Tool ws_search — available to all roles.
     $tools[] = [
         'type' => 'function',
         'function' => [
@@ -241,7 +241,7 @@ function local_dttutor_get_tool_definitions(string $role): array {
         ],
     ];
 
-    // ws_describe — all roles.
+    // Tool ws_describe — available to all roles.
     $tools[] = [
         'type' => 'function',
         'function' => [
@@ -260,7 +260,7 @@ function local_dttutor_get_tool_definitions(string $role): array {
         ],
     ];
 
-    // call_webservice — all roles (permissions enforced by Moodle WS itself).
+    // Tool call_webservice — all roles (permissions enforced by Moodle WS itself).
     $tools[] = [
         'type' => 'function',
         'function' => [
@@ -296,7 +296,7 @@ function local_dttutor_get_tool_definitions(string $role): array {
  */
 function local_dttutor_log(string $event, array $data = []): void {
     $line = '[local_dttutor] ' . $event . ' ' . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_IGNORE);
-    error_log($line);
+    debugging($line, DEBUG_DEVELOPER);
 }
 
 /**

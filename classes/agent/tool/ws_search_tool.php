@@ -27,31 +27,40 @@
 
 namespace local_dttutor\agent\tool;
 
-defined('MOODLE_INTERNAL') || die();
-
 use local_dttutor\schema\ws_indexer;
 
 /**
  * Searches Moodle WS functions by intent/keywords.
  */
 class ws_search_tool implements agent_tool {
-
+    /**
+     * Get the unique tool name.
+     *
+     * @return string
+     */
     public function get_name(): string {
         return 'ws_search';
     }
 
+    /**
+     * Get the OpenAI-compatible tool definition.
+     *
+     * @return array
+     */
     public function get_definition(): array {
         return [
             'type' => 'function',
             'function' => [
                 'name' => 'ws_search',
-                'description' => 'Search Moodle web service functions by intent or keywords. Returns function name, component, description, params, returns.',
+                'description' => 'Search Moodle web service functions by intent or keywords. '
+                    . 'Returns function name, component, description, params, returns.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
                         'query' => [
                             'type' => 'string',
-                            'description' => 'Intent or keywords in ENGLISH (e.g. "create user", "enrol student", "get course grades").',
+                            'description' => 'Intent or keywords in ENGLISH '
+                                . '(e.g. "create user", "enrol student", "get course grades").',
                         ],
                         'limit' => [
                             'type' => 'integer',
@@ -64,6 +73,12 @@ class ws_search_tool implements agent_tool {
         ];
     }
 
+    /**
+     * Execute the tool: search web service functions.
+     *
+     * @param  \stdClass $params Decoded arguments (expects query, optional limit).
+     * @return string            JSON-encoded matching functions or error.
+     */
     public function execute(\stdClass $params): string {
         $query = trim($params->query ?? '');
         if (empty($query)) {
@@ -108,7 +123,6 @@ class ws_search_tool implements agent_tool {
                 'functions' => $functions,
                 'duration_ms' => round((microtime(true) - $start) * 1000, 2),
             ], JSON_UNESCAPED_UNICODE);
-
         } catch (\Exception $e) {
             return json_encode([
                 'error' => 'ws_search failed: ' . $e->getMessage(),

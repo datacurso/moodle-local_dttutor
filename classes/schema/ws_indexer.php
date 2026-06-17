@@ -42,7 +42,6 @@ use core_external\external_value;
  * Indexes and searches Moodle web service functions.
  */
 class ws_indexer {
-
     /**
      * Get compact info for one web service function.
      * Cached 24 h in schema_cache under key "ws_{wsname}".
@@ -273,9 +272,9 @@ class ws_indexer {
     /**
      * Add or upgrade weighted token in expansion map.
      *
-     * @param array<string, array{token:string,weight:float}> $expanded
-     * @param string $token
-     * @param float $weight
+     * @param array  $expanded Expansion map, passed by reference.
+     * @param string $token    Token to add or upgrade.
+     * @param float  $weight   Weight to assign to the token.
      */
     private static function add_weighted_token(array &$expanded, string $token, float $weight): void {
         $token = \core_text::strtolower(trim($token));

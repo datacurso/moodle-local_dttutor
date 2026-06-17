@@ -29,31 +29,40 @@
 
 namespace local_dttutor\agent\tool;
 
-defined('MOODLE_INTERNAL') || die();
-
 use local_dttutor\schema\ws_indexer;
 
 /**
  * Describes a single Moodle WS function with full parameter/return info.
  */
 class ws_describe_tool implements agent_tool {
-
+    /**
+     * Get the unique tool name.
+     *
+     * @return string
+     */
     public function get_name(): string {
         return 'ws_describe';
     }
 
+    /**
+     * Get the OpenAI-compatible tool definition.
+     *
+     * @return array
+     */
     public function get_definition(): array {
         return [
             'type' => 'function',
             'function' => [
                 'name' => 'ws_describe',
-                'description' => 'Get full documentation for a specific Moodle web service function: description, parameters with types, and return structure.',
+                'description' => 'Get full documentation for a specific Moodle web service function: '
+                    . 'description, parameters with types, and return structure.',
                 'parameters' => [
                     'type' => 'object',
                     'properties' => [
                         'wsname' => [
                             'type' => 'string',
-                            'description' => 'Exact web service function name (e.g. core_user_create_users, core_course_get_courses).',
+                            'description' => 'Exact web service function name '
+                                . '(e.g. core_user_create_users, core_course_get_courses).',
                         ],
                     ],
                     'required' => ['wsname'],
@@ -62,6 +71,12 @@ class ws_describe_tool implements agent_tool {
         ];
     }
 
+    /**
+     * Execute the tool: describe a single web service function.
+     *
+     * @param  \stdClass $params Decoded arguments (expects wsname).
+     * @return string            JSON-encoded function documentation or error.
+     */
     public function execute(\stdClass $params): string {
         $wsname = trim($params->wsname ?? '');
         if (empty($wsname)) {
@@ -86,7 +101,6 @@ class ws_describe_tool implements agent_tool {
                 'function' => $info,
                 'duration_ms' => round((microtime(true) - $start) * 1000, 2),
             ], JSON_UNESCAPED_UNICODE);
-
         } catch (\Exception $e) {
             return json_encode([
                 'error' => 'ws_describe failed: ' . $e->getMessage(),

@@ -26,13 +26,10 @@
 
 namespace local_dttutor\proxy;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Validates Signed Permission Tokens from the AI gateway.
  */
 class spt_validator {
-
     /**
      * Validate an SPT payload.
      *

@@ -143,5 +143,4 @@ if ($hassiteconfig) {
             PARAM_TEXT
         )
     );
-
 }
