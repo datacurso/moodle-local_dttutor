@@ -125,6 +125,19 @@
 </div>
 {{#js}}
 require(['local_dttutor/tutor_ia_chat'], function(TutorIAChat) {
+    // Never show the widget inside an iframe: prevents duplicated bubbles
+    // when the page is embedded (e.g. H5P content served via /h5p/embed.php).
+    if (window.self !== window.top) {
+        var toggleEl = document.getElementById('tutor-ia-toggle-{{uniqid}}');
+        var drawerEl = document.getElementById('tutor-ia-drawer-{{uniqid}}');
+        if (toggleEl) {
+            toggleEl.remove();
+        }
+        if (drawerEl) {
+            drawerEl.remove();
+        }
+        return;
+    }
     var root = document.getElementById('tutor-ia-drawer-content-{{uniqid}}');
     if (root) {
         var chat = TutorIAChat.init(root, '{{uniqid}}', {{courseid}}, {{cmid}}, {{userid}});

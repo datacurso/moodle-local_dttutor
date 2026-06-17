@@ -112,6 +112,12 @@ class chat_hook {
             return;
         }
 
+        // Don't render inside embedded/iframe/popup pages (e.g. H5P content served via
+        // /h5p/embed.php), otherwise the floating widget is duplicated inside the iframe.
+        if (in_array($PAGE->pagelayout, ['embedded', 'popup', 'frametop'], true)) {
+            return;
+        }
+
         if (!self::is_course_context()) {
             return;
         }
