@@ -131,8 +131,19 @@ if ($courseid > 0 && class_exists('\\local_dttutor\\httpclient\\tutoria_api')) {
     }
 }
 
+// Pre-load deterministic course knowledge (structure, activities, dates, grades) so the model
+// can answer most questions in a single LLM call instead of the expensive tool-discovery loop.
+$preloaded = '';
+if ($courseid > 0) {
+    try {
+        $preloaded = \local_dttutor\proxy\context_preloader::build($courseid, (int)$USER->id, $context);
+    } catch (\Throwable $e) {
+        debugging('Failed to pre-load course knowledge: ' . $e->getMessage(), DEBUG_DEVELOPER);
+    }
+}
+
 // Build system message.
-$system = system_message::build($role, $context);
+$system = system_message::build($role, $context, $preloaded);
 $messages = array_merge([$system], $messages);
 
 // SSE headers.

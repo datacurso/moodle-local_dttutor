@@ -34,11 +34,12 @@ class system_message {
     /**
      * Build the system message.
      *
-     * @param  string $role    The user's resolved role.
-     * @param  array  $context The current page/activity context.
-     * @return array           ['role' => 'system', 'content' => '...']
+     * @param  string $role      The user's resolved role.
+     * @param  array  $context   The current page/activity context.
+     * @param  string $preloaded Pre-fetched course knowledge to inject (may be empty).
+     * @return array             ['role' => 'system', 'content' => '...']
      */
-    public static function build(string $role, array $context = []): array {
+    public static function build(string $role, array $context = [], string $preloaded = ''): array {
         global $CFG;
 
         $sitename   = get_config('core', 'sitename') ?: 'Moodle';
@@ -67,36 +68,36 @@ class system_message {
 
         $content .= "WORKFLOW:\n";
         $content .= "1. Understand the student's question.\n";
-        $content .= "2. Use ws_search to find relevant web service functions.\n";
-        $content .= "3. Use ws_describe to check function parameters.\n";
+        $content .= "2. If the answer is already in the COURSE KNOWLEDGE provided below, answer directly "
+            . "WITHOUT calling any tool.\n";
+        $content .= "3. Otherwise, use ws_search to find the relevant web service function. ws_search "
+            . "already returns each function's params and returns, so you normally do NOT need ws_describe.\n";
         $content .= "4. Use call_webservice to execute the function.\n";
         $content .= "5. Answer the student with the real data you retrieved.\n\n";
 
         $content .= "DECISION RULE:\n";
-        $content .= "- Step 1: ws_search(query in ENGLISH). If a relevant function exists → ws_describe → call_webservice.\n";
-        $content .= "- For course/activity questions, NEVER stop after ws_search alone. You MUST execute "
-            . "at least one call_webservice before answering.\n";
+        $content .= "- FIRST check the COURSE KNOWLEDGE block. If it contains the answer (course info, "
+            . "activities, dates, max grades, your grades), respond immediately with no tool calls.\n";
+        $content .= "- Only when the needed data is NOT in COURSE KNOWLEDGE: ws_search(query in ENGLISH), "
+            . "then call_webservice. Use ws_describe only if a function's parameters are unclear from ws_search.\n";
         $content .= "- If first ws_search looks weak or ambiguous, run a second ws_search with expanded "
             . "keywords (examples: gradebook, grades, gradeitems, activity, submissions, rubric).\n";
-        $content .= "- Step 2: Evaluate the result. If the data is COMPLETE and answers the question → stop and respond.\n";
-        $content .= "- Step 3: If the data is INSUFFICIENT → try a different WS function.\n";
+        $content .= "- Evaluate the result. If the data is COMPLETE and answers the question → stop and respond.\n";
+        $content .= "- If the data is INSUFFICIENT → try a different WS function.\n";
         $content .= "- Do NOT search WS and try things in parallel — always sequential.\n\n";
 
         $content .= "RULES:\n";
-        $content .= "- Never invent data. Always use call_webservice to get real data.\n";
+        $content .= "- Never invent data. Use the COURSE KNOWLEDGE block as your source of truth; only call "
+            . "call_webservice when the answer is NOT already there.\n";
         $content .= "- ALWAYS exclude course ID 1 (site home) and guest user from any operation.\n";
         $content .= "- If a tool fails, retry once. If it fails again, tell the student.\n";
-        $content .= "- If you have enough data, stop and respond.\n";
-        $content .= "- Do not say 'I cannot find information' unless you already tried at least one "
-            . "call_webservice and explain why it failed.\n";
+        $content .= "- If you have enough data (from COURSE KNOWLEDGE or a tool), stop and respond.\n";
+        $content .= "- Do not say 'I cannot find information' about course/activity data that is absent from "
+            . "COURSE KNOWLEDGE unless you already tried at least one call_webservice and explain why it failed.\n";
         $content .= "- For assignment rubrics, call core_grading_get_definitions with areaname=submissions.\n";
-        $content .= "- When the student asks about a specific activity (forum, book, assignment, etc.) but NO "
-            . "cmid is available in the context, FIRST call core_course_get_contents with the course ID to "
-            . "enumerate all course activities. Find the activity by name, then use its cmid or instance "
-            . "for subsequent calls. DO NOT guess instance IDs.\n";
-        $content .= "- When asked 'what is this course about' or similar, call core_course_get_contents "
-            . "FIRST. If the course summary field is empty, the section and activity names/descriptions "
-            . "from get_contents reveal the course topic.\n";
+        $content .= "- The COURSE KNOWLEDGE block already lists every activity with its cmid and instance. Reuse "
+            . "those IDs directly for any call_webservice. DO NOT guess instance IDs, and do NOT call "
+            . "core_course_get_contents just to enumerate activities — they are already listed below.\n";
         $content .= "- Prefer WS functions that accept cmid (like core_course_get_course_module) over "
             . "those needing instance ID alone.\n";
         $content .= "- Be concise and use the student's language.\n";
@@ -146,6 +147,11 @@ class system_message {
         }
 
         $content .= "- User role: {$role}\n";
+
+        // Inject the pre-loaded course knowledge so the model can answer without the tool loop.
+        if ($preloaded !== '') {
+            $content .= "\n" . $preloaded;
+        }
 
         // Add institutional custom prompt if configured.
         $customprompt = get_config('local_dttutor', 'custom_prompt');

@@ -30,4 +30,12 @@ $definitions = [
         'ttl' => 86400, // 24 hours.
         'simpletest' => true,
     ],
+    // Pre-loaded course knowledge (structure, activities, dates, max grades) for the chat proxy.
+    // Keyed by course id; the stored payload carries the course cacherev so stale entries are
+    // rebuilt automatically when the course is edited.
+    'course_knowledge' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'ttl' => 86400, // 24 hours; also invalidated by course cacherev mismatch.
+        'simpletest' => true,
+    ],
 ];
