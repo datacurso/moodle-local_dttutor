@@ -15,19 +15,27 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Cache definitions for the Tutor-IA plugin.
+ * Cache definitions for local_dttutor.
  *
  * @package    local_dttutor
- * @copyright  2025 Datacurso
+ * @copyright  2026 Datacurso
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 $definitions = [
-    'sessions' => [
+    'schema_cache' => [
         'mode' => cache_store::MODE_APPLICATION,
-        'simplekeys' => true,
-        'simpledata' => true,
+        'ttl' => 86400, // 24 hours.
+        'simpletest' => true,
+    ],
+    // Pre-loaded course knowledge (structure, activities, dates, max grades) for the chat proxy.
+    // Keyed by course id; the stored payload carries the course cacherev so stale entries are
+    // rebuilt automatically when the course is edited.
+    'course_knowledge' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'ttl' => 86400, // 24 hours; also invalidated by course cacherev mismatch.
+        'simpletest' => true,
     ],
 ];

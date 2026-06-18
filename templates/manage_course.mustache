@@ -5,43 +5,12 @@
 
     Context variables required for this template:
     * courseid - Course ID
-    * custom_prompt - Course-specific custom prompt
-    * indexing_enabled - Boolean for indexing enabled status
-    * materials - Array of uploaded PDF materials
-    * has_materials - Boolean if materials exist
-    * indexing_status - Current indexing status string
-    * indexing_status_string - Localized status string
-    * indexing_status_badge_class - CSS class for status badge
-    * last_indexed - Formatted date string
-    * has_last_indexed - Boolean if last indexed date exists
-    * indexing_task_id - Current task ID
-    * show_progress - Boolean to show progress bar
-    * wwwroot - Moodle root URL
-    * draftitemid - Draft item ID for file manager
-    * sesskey - Session key for form submission
-    * filemanagerhtml - Rendered file manager HTML
-    * can_enable_tutor - Boolean if tutor can be enabled (indexing completed)
+    * tutor_enabled - Boolean for tutor enabled status
 
     Example context (json):
     {
         "courseid": 123,
-        "custom_prompt": "Custom instructions",
-        "indexing_enabled": true,
-        "materials": [
-            {"filename": "syllabus.pdf", "filesize": "1.2 MB", "timemodified": "Dec 11, 2025", "download_url": "http://..."}
-        ],
-        "has_materials": true,
-        "indexing_status": "completed",
-        "indexing_status_string": "Indexed",
-        "indexing_status_badge_class": "badge-success",
-        "last_indexed": "Dec 11, 2025",
-        "has_last_indexed": true,
-        "indexing_task_id": "",
-        "show_progress": false,
-        "wwwroot": "http://localhost:8000",
-        "draftitemid": 123456789,
-        "sesskey": "abc123",
-        "filemanagerhtml": "<div>File Manager HTML</div>"
+        "tutor_enabled": true
     }
 }}
 
@@ -63,8 +32,7 @@
                                id="tutor-enabled"
                                data-action="toggle-tutor"
                                data-courseid="{{courseid}}"
-                               {{#indexing_enabled}}checked{{/indexing_enabled}}
-                               {{^can_enable_tutor}}disabled{{/can_enable_tutor}}>
+                               {{#tutor_enabled}}checked{{/tutor_enabled}}>
                         <label class="custom-control-label" for="tutor-enabled">
                             <strong>{{#str}}enable_tutor_for_course, local_dttutor{{/str}}</strong>
                         </label>
@@ -72,90 +40,17 @@
                     <p class="text-muted small mb-2">
                         {{#str}}enable_tutor_for_course_help, local_dttutor{{/str}}
                     </p>
-                    {{^indexing_enabled}}
+                    {{^tutor_enabled}}
                     <div class="alert alert-warning mb-0 mt-3">
                         <i class="fa fa-exclamation-triangle mr-1"></i>
                         {{#str}}tutor_disabled_notice, local_dttutor{{/str}}
                     </div>
-                    {{/indexing_enabled}}
-                    
-                    {{^can_enable_tutor}}
-                    <div class="alert alert-info mb-0 mt-3">
-                        <i class="fa fa-info-circle mr-1"></i>
-                        {{#str}}tutor_enable_requires_indexing, local_dttutor{{/str}}
-                    </div>
-                    {{/can_enable_tutor}}
-                </div>
-            </div>
-
-            {{! Indexing Status Card }}
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-info text-white">
-                    <h4 class="mb-0">
-                        <i class="fa fa-sync mr-2"></i>
-                        {{#str}}course_indexing, local_dttutor{{/str}}
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex align-items-center mb-3">
-                        <strong class="mr-2">{{#str}}indexing_status, local_dttutor{{/str}}:</strong>
-                        <span class="badge {{indexing_status_badge_class}} badge-pill px-3 py-2">
-                            {{indexing_status_string}}
-                        </span>
-                    </div>
-
-                    {{#has_last_indexed}}
-                    <div class="mb-3">
-                        <i class="fa fa-clock text-muted mr-1"></i>
-                        <small class="text-muted">
-                            {{#str}}last_indexed, local_dttutor{{/str}} {{last_indexed}}
-                        </small>
-                    </div>
-                    {{/has_last_indexed}}
-
-                    <div class="progress mb-3" style="height: 25px; {{^show_progress}}display: none;{{/show_progress}}" data-region="indexing-progress-container">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated"
-                             role="progressbar"
-                             data-region="indexing-progress-bar"
-                             style="width: 0%"
-                             aria-valuenow="0"
-                             aria-valuemin="0"
-                             aria-valuemax="100">
-                            <span data-region="indexing-progress-percent" class="font-weight-bold">0%</span>
-                        </div>
-                    </div>
-                    <div data-region="indexing-phase-info" class="mb-3" style="{{^show_progress}}display: none;{{/show_progress}}">
-                        <div class="mb-2">
-                            <i class="fa fa-spinner fa-spin mr-1"></i>
-                            <small data-region="indexing-phase-name" class="text-info font-weight-bold"></small>
-                        </div>
-                        <div data-region="indexing-phase-details" class="text-muted small ml-4" style="display: none;"></div>
-                        <div data-region="indexing-items" class="text-muted small ml-4" style="display: none;"></div>
-                    </div>
-
-                    <div class="mt-3">
-                        <button type="button"
-                                class="btn btn-primary"
-                                data-action="start-indexing"
-                                data-courseid="{{courseid}}"
-                                {{#show_progress}}style="display: none;"{{/show_progress}}>
-                            <i class="fa fa-play mr-1"></i>
-                            {{#str}}start_indexing, local_dttutor{{/str}}
-                        </button>
-                        <button type="button"
-                                class="btn btn-secondary ml-2"
-                                data-action="cancel-indexing"
-                                data-taskid="{{indexing_task_id}}"
-                                {{^show_progress}}style="display: none;"{{/show_progress}}>
-                            <i class="fa fa-stop mr-1"></i>
-                            {{#str}}cancel_indexing, local_dttutor{{/str}}
-                        </button>
-                    </div>
+                    {{/tutor_enabled}}
                 </div>
             </div>
         </div>
 
-        {{! Sidebar (can be used for help or additional info) }}
+        {{! Sidebar }}
         <div class="col-lg-4">
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
@@ -169,13 +64,13 @@
                     <p class="small text-muted">
                         {{#str}}enable_tutor_for_course_help, local_dttutor{{/str}}
                     </p>
-
-                    <h6 class="mt-3"><i class="fa fa-sync mr-1 text-info"></i>{{#str}}course_indexing, local_dttutor{{/str}}</h6>
-                    <p class="small text-muted mb-0">
-                        {{#str}}course_indexing, local_dttutor{{/str}}
-                    </p>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{{#js}}
+require(['local_dttutor/course_materials'], function(CourseMaterials) {
+    CourseMaterials.init({{courseid}});
+});
+{{/js}}

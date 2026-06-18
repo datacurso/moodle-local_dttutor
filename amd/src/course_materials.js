@@ -21,22 +21,22 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-define(['jquery', 'core/ajax', 'core/notification'], function($, Ajax, Notification) {
+define(['jquery', 'core/ajax', 'core/notification'], function ($, Ajax, Notification) {
     'use strict';
 
-    var CourseMaterials = function(courseid) {
+    var CourseMaterials = function (courseid) {
         this.courseid = courseid;
     };
 
-    CourseMaterials.prototype.init = function() {
+    CourseMaterials.prototype.init = function () {
         this.attachEventHandlers();
     };
 
-    CourseMaterials.prototype.attachEventHandlers = function() {
+    CourseMaterials.prototype.attachEventHandlers = function () {
         var self = this;
 
         // Toggle tutor enabled/disabled.
-        $('[data-action="toggle-tutor"]').on('change', function() {
+        $('[data-action="toggle-tutor"]').on('change', function () {
             var enabled = $(this).is(':checked');
             self.toggleTutor(enabled);
         });
@@ -45,22 +45,26 @@ define(['jquery', 'core/ajax', 'core/notification'], function($, Ajax, Notificat
         // See REMOVED_FEATURES.md for restoration.
     };
 
-    CourseMaterials.prototype.toggleTutor = function(enabled) {
+    CourseMaterials.prototype.toggleTutor = function (enabled) {
         Ajax.call([{
             methodname: 'local_dttutor_save_course_config',
             args: {
                 courseid: this.courseid,
                 custom_prompt: '',
-                indexing_enabled: enabled
+                enabled: enabled
             }
-        }])[0].done(function(response) {
+        }])[0].done(function (response) {
             if (response.success) {
+                var msg = response.message;
+                if (response.enrol_status) {
+                    msg += ' (enrol: ' + response.enrol_status + ')';
+                }
                 Notification.addNotification({
-                    message: response.message,
+                    message: msg,
                     type: 'success'
                 });
                 // Reload page to update UI state (show/hide warning alert).
-                setTimeout(function() {
+                setTimeout(function () {
                     window.location.reload();
                 }, 1000);
             } else {
@@ -73,7 +77,7 @@ define(['jquery', 'core/ajax', 'core/notification'], function($, Ajax, Notificat
     };
 
     return {
-        init: function(courseid) {
+        init: function (courseid) {
             var materials = new CourseMaterials(courseid);
             materials.init();
         }

@@ -231,6 +231,79 @@ body.tutor-ia-drawer-open-left .popover-process-monitor {
     color: #fff;
     margin-left: auto;
     align-self: flex-end;
+    position: relative;
+}
+
+.tutor-ia-message.user.editing {
+    outline: 2px solid rgba(255, 193, 7, 0.95);
+    outline-offset: 2px;
+}
+
+.tutor-ia-edit-message {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    border: 0;
+    border-radius: 50%;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out, background 0.15s ease-in-out;
+}
+
+.tutor-ia-message.user:hover .tutor-ia-edit-message,
+.tutor-ia-message.user:focus-within .tutor-ia-edit-message,
+.tutor-ia-message.user.editing .tutor-ia-edit-message {
+    opacity: 1;
+}
+
+.tutor-ia-edit-message:hover,
+.tutor-ia-edit-message:focus {
+    background: rgba(255, 255, 255, 0.32);
+}
+
+/* Inline Edit Container */
+.edit-wrapper {
+    margin-left: auto;
+    max-width: 85%;
+}
+
+.edit-wrapper .tutor-ia-message {
+    max-width: 100%;
+}
+
+.edit-inline-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.25rem 0;
+}
+
+.edit-inline-textarea {
+    resize: none;
+    overflow: hidden;
+    min-height: 3rem;
+    font-size: 0.875rem;
+    color: #1d2125;
+}
+
+.edit-inline-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-start;
+    padding-top: 0.25rem;
+    padding-left: 0.75rem;
+    padding-bottom: 0.5rem;
+}
+
+.edit-inline-save,
+.edit-inline-cancel {
+    font-size: 0.8125rem;
+    line-height: 1.2;
 }
 
 /* Warning Message */

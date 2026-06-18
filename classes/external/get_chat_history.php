@@ -54,6 +54,7 @@ class get_chat_history extends external_api {
     public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
             'courseid' => new external_value(PARAM_INT, 'Course ID', VALUE_REQUIRED),
+            'cmid' => new external_value(PARAM_INT, 'Course module ID for activity context', VALUE_DEFAULT, null),
             'limit' => new external_value(PARAM_INT, 'Maximum messages to return', VALUE_DEFAULT, 20),
             'offset' => new external_value(PARAM_INT, 'Messages to skip for pagination', VALUE_DEFAULT, 0),
         ]);
@@ -63,6 +64,7 @@ class get_chat_history extends external_api {
      * Get chat history for a session.
      *
      * @param int $courseid Course ID.
+     * @param int|null $cmid Course module ID for activity context.
      * @param int $limit Maximum number of messages to return.
      * @param int $offset Number of messages to skip for pagination.
      * @return array History data with messages and pagination info.
@@ -72,13 +74,14 @@ class get_chat_history extends external_api {
      * @throws \required_capability_exception
      * @since Moodle 4.5
      */
-    public static function execute($courseid, $limit = 20, $offset = 0): array {
+    public static function execute($courseid, $cmid = null, $limit = 20, $offset = 0): array {
         global $USER;
         // Validate parameters.
         $params = self::validate_parameters(self::execute_parameters(), [
+            'courseid' => $courseid,
+            'cmid' => $cmid,
             'limit' => $limit,
             'offset' => $offset,
-            'courseid' => $courseid,
         ]);
 
         // Check if user is logged in.
@@ -128,7 +131,8 @@ class get_chat_history extends external_api {
 
         $tutoriaapi = new tutoria_api();
 
-        $session = $tutoriaapi->start_session($params['courseid'], $USER->id);
+        $cmid = $params['cmid'] ?? null;
+        $session = $tutoriaapi->start_session_v2($params['courseid'], $USER->id, $cmid);
 
         $response = $tutoriaapi->get_history(
             $session['session_id'],
