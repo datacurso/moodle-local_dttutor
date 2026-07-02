@@ -67,6 +67,12 @@ class handler {
                 return null;
             }
 
+            // Friendly notice (e.g. rate limit reached): stream it as a normal assistant bubble.
+            if ($response['type'] === 'notice') {
+                self::stream_sse_content($response['message']);
+                return $response['message'];
+            }
+
             if ($response['type'] === 'text') {
                 \local_dttutor_log('AI_RESPONSE_TEXT', [
                     'iteration' => $i,
@@ -220,7 +226,8 @@ class handler {
             'messages'   => $messages,
             'stream'     => true,
             'max_tokens' => 16384,
-            'userid'     => (int)$USER->id,
+            'userid'     => (string)$USER->id,
+            'site_id'    => \aiprovider_datacurso\httpclient\datacurso_api_base::get_site_uuid(),
             'stream_options' => ['include_usage' => true],
         ];
         if (!empty($tools)) {
@@ -248,6 +255,14 @@ class handler {
         if ($licensekey !== '') {
             $headers[] = 'License-Key: ' . $licensekey;
         }
+        // Declare the real service so the AI service applies the per-plugin rate limit for
+        // dttutor (the path /provider/chat/completions would otherwise resolve to
+        // aiprovider_datacurso), and forward the configured limit/window for local_dttutor.
+        $headers[] = 'X-Service-Id: local_dttutor';
+        $ratelimiter = new \aiprovider_datacurso\local\ratelimiter();
+        foreach ($ratelimiter->get_rate_limit_headers('local_dttutor') as $rlheader) {
+            $headers[] = $rlheader;
+        }
 
         $buffer = '';
         $ch = curl_init($apiurl);
@@ -268,6 +283,20 @@ class handler {
         $httpcode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlerror = curl_error($ch);
         curl_close($ch);
+
+        // Rate limit reached: show the student a clear, friendly message (not a generic error).
+        if ($httpcode === 403) {
+            $err = json_decode($buffer, true);
+            if (is_array($err) && ($err['detail'] ?? '') === 'rate_limit_exceeded') {
+                $resetat = (int)($err['reset_at'] ?? 0);
+                $retryat = $resetat > 0
+                    ? userdate($resetat, get_string('strftimedatetime', 'langconfig'))
+                    : '';
+                $message = get_string('error_ratelimit_exceeded', 'aiprovider_datacurso', $retryat);
+                \local_dttutor_log('AI_API_RATE_LIMITED', ['reset_at' => $resetat]);
+                return ['type' => 'notice', 'message' => $message];
+            }
+        }
 
         if ($httpcode !== 200 || empty($buffer)) {
             $bufpreview = substr($buffer, 0, 500);
