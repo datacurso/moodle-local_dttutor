@@ -29,9 +29,6 @@
     * welcomemessage - Welcome message with processed placeholders
     * avatarurl - Selected avatar URL
     * position - Drawer side (right/left, auto-determined for custom positions)
-    * is_configured - Whether the Datacurso AI Provider is configured
-    * is_admin - Whether the current user is an admin (for config errors)
-    * config_url - Configuration URL for admins (empty if not admin)
 
     Example context (json):
     {
@@ -43,10 +40,7 @@
         "tutorname": "John Doe",
         "welcomemessage": "Hello! I'm John Doe, your AI assistant. How can I help you today?",
         "avatarurl": "/local/dttutor/pix/avatars/avatar_profesor_01.png",
-        "position": "right",
-        "is_configured": true,
-        "is_admin": false,
-        "config_url": ""
+        "position": "right"
     }
 }}
 <div class="tutor-ia-drawer tutor-ia-drawer-{{position}}" id="tutor-ia-drawer-{{uniqid}}" data-position="{{position}}" aria-label="{{tutorname}}" tabindex="-1" role="region">
@@ -63,34 +57,12 @@
             <span class="sr-only">{{#str}}close, local_dttutor{{/str}}</span>
         </button>
     </div>
-    <div class="tutor-ia-drawer-body" id="tutor-ia-drawer-content-{{uniqid}}" data-courseid="{{courseid}}" data-cmid="{{cmid}}" data-userid="{{userid}}" data-welcomemessage="{{welcomemessage}}" data-is-configured="{{is_configured}}" data-chatproxy-url="{{chatproxy_url}}">
+    <div class="tutor-ia-drawer-body" id="tutor-ia-drawer-content-{{uniqid}}" data-courseid="{{courseid}}" data-cmid="{{cmid}}" data-userid="{{userid}}" data-welcomemessage="{{welcomemessage}}" data-chatproxy-url="{{chatproxy_url}}">
         <h2 class="sr-only">{{tutorname}}</h2>
 
         {{! Contenedor de mensajes }}
         <div class="tutor-ia-messages-container" data-region="tutor-ia-messages">
-            {{^is_configured}}
-            <div class="tutor-ia-warning-message">
-                <div class="alert alert-warning">
-                    <i class="fa fa-exclamation-triangle"></i>
-                    <div class="warning-content">
-                        <strong>{{#str}}error_webservice_not_configured_short, local_dttutor{{/str}}</strong>
-                        {{#is_admin}}
-                            <p>{{#str}}error_webservice_not_configured_admin_inline, local_dttutor{{/str}}</p>
-                            <a href="{{config_url}}" target="_blank" class="btn btn-sm btn-primary mt-2">
-                                <i class="fa fa-cog"></i> {{#str}}configure_now, local_dttutor{{/str}}
-                            </a>
-                        {{/is_admin}}
-                        {{^is_admin}}
-                            <p>{{#str}}error_webservice_not_configured, local_dttutor{{/str}}</p>
-                            <p class="mb-0"><strong>{{#str}}error_webservice_not_configured_action, local_dttutor{{/str}}</strong></p>
-                        {{/is_admin}}
-                    </div>
-                </div>
-            </div>
-            {{/is_configured}}
-            {{#is_configured}}
             <div class="tutor-ia-message ai">{{welcomemessage}}</div>
-            {{/is_configured}}
         </div>
 
         {{! Footer con input }}
@@ -111,9 +83,8 @@
                     data-region="tutor-ia-input"
                     placeholder="{{#str}}typemessage, local_dttutor{{/str}}"
                     rows="1"
-                    aria-label="{{#str}}typemessage, local_dttutor{{/str}}"
-                    {{^is_configured}}disabled{{/is_configured}}></textarea>
-                <button class="btn btn-primary tutor-ia-send" data-action="send-message" aria-label="{{#str}}sendmessage, local_dttutor{{/str}}" {{^is_configured}}disabled{{/is_configured}}>
+                    aria-label="{{#str}}typemessage, local_dttutor{{/str}}"></textarea>
+                <button class="btn btn-primary tutor-ia-send" data-action="send-message" aria-label="{{#str}}sendmessage, local_dttutor{{/str}}">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="22" y1="2" x2="11" y2="13"></line>
                         <polygon points="22,2 15,22 11,13 2,9"></polygon>

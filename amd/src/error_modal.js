@@ -29,27 +29,17 @@ import * as Templates from 'core/templates';
      * Show error modal with friendly message
      *
      * @param {string} message Error message to display
-     * @param {boolean} isConfigError Whether this is a configuration error
-     * @param {string} configUrl Optional configuration URL for admins
      * @returns {Promise} Promise that resolves when modal is created
      */
-    const showError = async(message, isConfigError, configUrl) => {
+    const showError = async(message) => {
         try {
             const strings = await Str.get_strings([
-                {key: 'error_webservice_not_configured_short', component: 'local_dttutor'},
-                {key: 'pluginname', component: 'local_dttutor'},
-                {key: 'configure_now', component: 'local_dttutor'}
+                {key: 'pluginname', component: 'local_dttutor'}
             ]);
-
-            const modalTitle = isConfigError ? strings[0] : strings[1];
-            const configureNowStr = strings[2];
 
             // Prepare template context.
             const context = {
-                message: message,
-                has_config_url: !!configUrl,
-                config_url: configUrl || '',
-                str_configure_now: configureNowStr
+                message: message
             };
 
             // Render template.
@@ -57,18 +47,16 @@ import * as Templates from 'core/templates';
 
             // Create modal using new API.
             const modal = await Modal.create({
-                title: modalTitle,
+                title: strings[0],
                 body: html,
                 show: true,
                 removeOnClose: true
             });
 
-            // Auto-hide after 10 seconds if not a config error.
-            if (!isConfigError) {
-                setTimeout(() => {
-                    modal.hide();
-                }, 10000);
-            }
+            // Auto-hide after 10 seconds.
+            setTimeout(() => {
+                modal.hide();
+            }, 10000);
 
             return modal;
         } catch (error) {
@@ -79,28 +67,16 @@ import * as Templates from 'core/templates';
     };
 
     /**
-     * Show configuration error modal
-     *
-     * @param {string} message Error message
-     * @param {string} configUrl Optional configuration URL
-     * @returns {Promise} Promise that resolves when modal is created
-     */
-    export const showConfigError = (message, configUrl) => {
-        return showError(message, true, configUrl);
-    };
-
-    /**
      * Show general error modal
      *
      * @param {string} message Error message
      * @returns {Promise} Promise that resolves when modal is created
      */
     export const showGeneralError = (message) => {
-        return showError(message, false, null);
+        return showError(message);
     };
 
     export default {
         showError,
-        showConfigError,
         showGeneralError
     };

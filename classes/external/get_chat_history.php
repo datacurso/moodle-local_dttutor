@@ -92,24 +92,6 @@ class get_chat_history extends external_api {
             throw new \moodle_exception('error_api_not_configured', 'local_dttutor');
         }
 
-        // Verify Datacurso AI Provider webservice is configured.
-        if (!class_exists('\aiprovider_datacurso\webservice_config')) {
-            throw new \moodle_exception('error_api_not_configured', 'local_dttutor');
-        }
-
-        if (!\aiprovider_datacurso\webservice_config::is_configured()) {
-            // Check if user is admin to show different message.
-            $syscontext = \context_system::instance();
-            if (has_capability('moodle/site:config', $syscontext)) {
-                // Admin user - show message with configuration link.
-                $configurl = new \moodle_url('/ai/provider/datacurso/admin/webservice_config.php');
-                throw new \moodle_exception('error_webservice_not_configured_admin', 'local_dttutor', '', $configurl->out());
-            } else {
-                // Regular user - show friendly message.
-                throw new \moodle_exception('error_webservice_not_configured', 'local_dttutor');
-            }
-        }
-
         // Validate course context and permissions.
         $context = \context_course::instance($params['courseid']);
         self::validate_context($context);

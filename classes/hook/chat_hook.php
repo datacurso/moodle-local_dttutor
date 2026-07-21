@@ -163,25 +163,6 @@ class chat_hook {
         }
         $welcomemessage = self::replace_placeholders($welcomemessage, $courseid);
 
-        $isconfigured = false;
-        $isadmin = false;
-        $configurl = '';
-
-        if (class_exists('\aiprovider_datacurso\webservice_config')) {
-            if (method_exists('\aiprovider_datacurso\webservice_config', 'is_configured')) {
-                $isconfigured = \aiprovider_datacurso\webservice_config::is_configured();
-            }
-
-            if (!$isconfigured) {
-                $syscontext = \context_system::instance();
-                $isadmin = has_capability('moodle/site:config', $syscontext);
-
-                if ($isadmin) {
-                    $configurl = (new \moodle_url('/ai/provider/datacurso/admin/webservice_config.php'))->out(false);
-                }
-            }
-        }
-
         $uniqid = uniqid('tia_');
         $positionstyle = self::calculate_position_style($positiondata);
         $drawerside = $positiondata['drawerside'] ?? 'right';
@@ -205,9 +186,6 @@ class chat_hook {
             'welcomemessage' => $welcomemessage,
             'avatarurl' => $avatarurl->out(false),
             'position' => $drawerside,
-            'is_configured' => $isconfigured,
-            'is_admin' => $isadmin,
-            'config_url' => $configurl,
             'chatproxy_url' => $chatproxyurl->out(false),
         ];
 
