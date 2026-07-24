@@ -85,22 +85,6 @@ class create_chat_message extends external_api {
             throw new \moodle_exception('error_api_not_configured', 'local_dttutor');
         }
 
-        if (!class_exists('\aiprovider_datacurso\webservice_config')) {
-            throw new \moodle_exception('error_api_not_configured', 'local_dttutor');
-        }
-
-        if (method_exists('\aiprovider_datacurso\webservice_config', 'is_configured')) {
-            if (!\aiprovider_datacurso\webservice_config::is_configured()) {
-                $syscontext = \context_system::instance();
-                if (has_capability('moodle/site:config', $syscontext)) {
-                    $configurl = new \moodle_url('/ai/provider/datacurso/admin/webservice_config.php');
-                    throw new \moodle_exception('error_webservice_not_configured_admin', 'local_dttutor', '', $configurl->out());
-                } else {
-                    throw new \moodle_exception('error_webservice_not_configured', 'local_dttutor');
-                }
-            }
-        }
-
         // Validate course context and permissions.
         $context = \context_course::instance($params['courseid']);
         self::validate_context($context);

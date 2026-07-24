@@ -67,15 +67,9 @@ Before installing AI Tutor Chat, ensure your system meets these requirements:
 2. **Datacurso AI Provider plugin** - Must be installed and configured
    - Download the free AI Provider plugin from [Moodle Plugins Directory](https://moodle.org/plugins/aiprovider_datacurso)
    - Install the AI Provider plugin
-   - **Configure the webservice** (CRITICAL STEP):
-     - Go to: **Site administration > AI > AI Providers > Datacurso**
-     - Or access: `http://your-moodle/ai/provider/datacurso/admin/webservice_config.php`
-     - Follow on-screen instructions to create webservice and generate token
    - Configure your license key
-   - **This plugin will not function unless the Datacurso AI Provider plugin is installed, licensed, AND has its webservice configured**
+   - **This plugin will not function unless the Datacurso AI Provider plugin is installed and licensed**
 3. **Valid License Key** - Configure your license in the Datacurso AI Provider settings
-
-**Common Error**: If you see `error_webservice_not_configured`, it means the AI Provider webservice is not configured. See [Installation Guide](INSTALL.md#problema-error-error_webservice_not_configured) for detailed solution.
 
 ## Installation
 

@@ -110,8 +110,6 @@ define([
             this.stringsLoaded = false;
 
             this.welcomeMessage = root.getAttribute('data-welcomemessage') || '';
-            this.isConfigured = root.getAttribute('data-is-configured') === '1' ||
-                root.getAttribute('data-is-configured') === 'true';
 
             this.drawerElement = document.querySelector(SELECTORS.DRAWER);
             this.pageElement = document.querySelector(SELECTORS.PAGE);
@@ -252,7 +250,6 @@ define([
                 { key: 'error_establish_sse_connection', component: 'local_dttutor' },
                 { key: 'error_unexpected', component: 'local_dttutor' },
                 { key: 'error_unknown', component: 'local_dttutor' },
-                { key: 'configuration_error', component: 'local_dttutor' },
                 { key: 'error_attempt_later', component: 'local_dttutor' },
                 { key: 'error_license_fallback', component: 'local_dttutor' },
                 { key: 'error_license_fallback_short', component: 'local_dttutor' },
@@ -280,16 +277,15 @@ define([
                     errorEstablishSse: strings[13],
                     errorUnexpected: strings[14],
                     errorUnknown: strings[15],
-                    configurationError: strings[16],
-                    errorAttemptLater: strings[17],
-                    errorLicenseFallback: strings[18],
-                    errorLicenseFallbackShort: strings[19],
-                    errorNoCreditssFallback: strings[20],
-                    errorInsufficientTokensShort: strings[21],
-                    editMessage: strings[22],
-                    editingMessage: strings[23],
-                    editSave: strings[24],
-                    editCancel: strings[25]
+                    errorAttemptLater: strings[16],
+                    errorLicenseFallback: strings[17],
+                    errorLicenseFallbackShort: strings[18],
+                    errorNoCreditssFallback: strings[19],
+                    errorInsufficientTokensShort: strings[20],
+                    editMessage: strings[21],
+                    editingMessage: strings[22],
+                    editSave: strings[23],
+                    editCancel: strings[24]
                 };
                 this.stringsLoaded = true;
                 return;
@@ -312,7 +308,6 @@ define([
                     errorEstablishSse: '[Error] Could not establish SSE connection',
                     errorUnexpected: 'An unexpected error occurred. Please try again.',
                     errorUnknown: 'An unknown error occurred. Please try again.',
-                    configurationError: 'Configuration error',
                     errorAttemptLater: 'An error occurred. Please try again later.',
                     errorLicenseFallback: 'License error: {$a}',
                     errorLicenseFallbackShort: 'License Error',
@@ -568,9 +563,7 @@ define([
                 this.jumpTo.focus();
             }
 
-            if (this.isConfigured) {
-                this.loadChatHistory();
-            }
+            this.loadChatHistory();
 
             this.attachTextSelectionListeners();
             this.cacheSelectionIndicatorElements();
@@ -677,15 +670,7 @@ define([
                     this.hideHistoryLoading();
                     this.isLoadingHistory = false;
 
-                    const errorMessage = this.getFriendlyErrorMessage(err);
-                    const isConfigError = this.isWebserviceConfigError(err);
-                    const configUrl = this.extractConfigUrl(err);
-
-                    if (isConfigError) {
-                        ErrorModal.showConfigError(errorMessage, configUrl);
-                    } else {
-                        ErrorModal.showGeneralError(errorMessage);
-                    }
+                    ErrorModal.showGeneralError(this.getFriendlyErrorMessage(err));
                 });
         }
 
@@ -837,10 +822,6 @@ define([
          * Send a message to the AI tutor.
          */
         sendMessage() {
-            if (!this.isConfigured) {
-                return;
-            }
-
             const input = this.root.find(SELECTORS.INPUT);
             const sendBtn = this.root.find(SELECTORS.SEND_BTN);
             const messageText = input.val().trim();
@@ -1861,22 +1842,6 @@ define([
         }
 
         /**
-         * Check if error is related to webservice configuration.
-         *
-         * @param {Object} err - Error object
-         * @returns {boolean} True if webservice config error
-         */
-        isWebserviceConfigError(err) {
-            if (!err || !err.message) {
-                return false;
-            }
-            const message = err.message.toLowerCase();
-            return message.includes('webservice_not_configured') ||
-                message.includes('webservice not configured') ||
-                message.includes('error_webservice_not_configured');
-        }
-
-        /**
          * Check if error is related to insufficient AI credits.
          *
          * @param {Object} err - Error object
@@ -1904,10 +1869,6 @@ define([
                 return this.strings.errorUnknown;
             }
 
-            if (this.isWebserviceConfigError(err)) {
-                return err.message || err.error || this.strings.configurationError;
-            }
-
             if (err.message) {
                 return err.message;
             }
@@ -1917,25 +1878,6 @@ define([
             }
 
             return this.strings.errorAttemptLater;
-        }
-
-        /**
-         * Extract configuration URL from error message (for admin users).
-         *
-         * @param {Object} err - Error object
-         * @returns {string|null} Configuration URL or null
-         */
-        extractConfigUrl(err) {
-            if (!err || !err.message) {
-                return null;
-            }
-
-            const hrefMatch = err.message.match(/href="([^"]+)"/);
-            if (hrefMatch && hrefMatch[1]) {
-                return hrefMatch[1];
-            }
-
-            return null;
         }
 
         /**
