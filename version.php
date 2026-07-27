@@ -31,5 +31,5 @@ $plugin->maturity = MATURITY_STABLE;
 $plugin->release = '2.0.8';
 // Plugin dependencies.
 $plugin->dependencies = [
-    'aiprovider_datacurso' => 2024100100,
+    'aiprovider_datacurso' => 2026072300,
 ];
