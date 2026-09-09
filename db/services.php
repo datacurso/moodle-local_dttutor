@@ -25,14 +25,6 @@
 defined('MOODLE_INTERNAL') || die();
 
 $functions = [
-    'local_dttutor_create_chat_message' => [
-        'classname'   => 'local_dttutor\external\create_chat_message',
-        'methodname'  => 'execute',
-        'description' => 'Create a chat message and get stream URL for Tutor-AI responses',
-        'type'        => 'write',
-        'ajax'        => true,
-        'capabilities' => 'local/dttutor:use',
-    ],
     'local_dttutor_get_chat_history' => [
         'classname'   => 'local_dttutor\external\get_chat_history',
         'methodname'  => 'execute',
@@ -56,30 +48,5 @@ $functions = [
         'type'        => 'write',
         'ajax'        => true,
         'capabilities' => 'moodle/course:update',
-    ],
-    'local_dttutor_upload_course_material' => [
-        'classname'   => 'local_dttutor\external\upload_course_material',
-        'methodname'  => 'execute',
-        'description' => 'Upload PDF course material',
-        'type'        => 'write',
-        'ajax'        => true,
-        'capabilities' => 'moodle/course:update',
-    ],
-    'local_dttutor_delete_course_material' => [
-        'classname'   => 'local_dttutor\external\delete_course_material',
-        'methodname'  => 'execute',
-        'description' => 'Delete PDF course material',
-        'type'        => 'write',
-        'ajax'        => true,
-        'capabilities' => 'moodle/course:update',
-    ],
-    'local_dttutor_get_course_materials' => [
-        'classname'   => 'local_dttutor\external\get_course_materials',
-        'methodname'  => 'execute',
-        'description' => 'Get course materials for backend API consumption',
-        'type'        => 'read',
-        'ajax'        => true,
-        'capabilities' => '',
-        'services'    => [MOODLE_OFFICIAL_MOBILE_SERVICE],
     ],
 ];

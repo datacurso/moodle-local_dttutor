@@ -26,6 +26,7 @@ namespace local_dttutor\httpclient;
 
 use aiprovider_datacurso\httpclient\ai_services_api;
 use cache;
+use local_dttutor\session_store;
 use moodle_exception;
 
 /**
@@ -52,100 +53,19 @@ class tutoria_api {
     /**
      * Constructor to initialize the Tutor-IA API client.
      *
+     * @param ai_services_api|null $aiservice HTTP client to use; defaults to a new ai_services_api.
+     *                                        Tests inject a double here to avoid network access.
      * @since Moodle 4.5
      */
-    public function __construct() {
-        $this->aiservice = new ai_services_api();
+    public function __construct(?ai_services_api $aiservice = null) {
+        $this->aiservice = $aiservice ?? new ai_services_api();
 
         try {
             $this->cache = cache::make('local_dttutor', 'sessions');
         } catch (\Exception $e) {
-            debugging('Cache initialization failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            debugging('Cache initialization failed: ' . get_class($e), DEBUG_DEVELOPER);
             $this->cache = null;
         }
-    }
-
-    /**
-     * Start a new chat session or retrieve an existing one from cache.
-     *
-     * @param int $courseid Course ID.
-     * @param int $userid User ID.
-     * @param int|null $cmid Course Module ID (optional, for module context).
-     * @return array Session data including session_id, ready status, and TTL.
-     * @throws moodle_exception If the session creation fails.
-     * @since Moodle 4.5
-     */
-    public function start_session(int $courseid, int $userid, ?int $cmid = null): array {
-        $cachekey = "session_{$courseid}_{$userid}";
-        if ($cmid !== null) {
-            $cachekey .= "_{$cmid}";
-        }
-        $cached = null;
-
-        if ($this->cache !== null) {
-            $cached = $this->cache->get($cachekey);
-        }
-
-        if ($cached && $this->is_session_valid($cached)) {
-            // Validate cached session against backend only at intervals.
-            // This avoids an extra backend round-trip on every cache hit while still
-            // recovering from stale sessions after backend/Redis restarts.
-            if (!$this->should_validate_cached_session($cached)) {
-                return $cached;
-            }
-
-            if (!empty($cached['session_id']) && $this->is_backend_session_alive((string)$cached['session_id'])) {
-                $cached['backend_validated_at'] = time();
-                if ($this->cache !== null) {
-                    $this->cache->set($cachekey, $cached);
-                }
-                return $cached;
-            }
-
-            // Cached session is stale; clear it and create a new one.
-            if ($this->cache !== null) {
-                $this->cache->delete($cachekey);
-            }
-        }
-
-        $requestdata = [
-            'course_id' => (string) $courseid,
-            'user_id' => (string) $userid,
-        ];
-        if ($cmid !== null) {
-            $requestdata['module_id'] = (string) $cmid;
-        }
-
-        $response = $this->aiservice->request('POST', '/chat/start', $requestdata);
-
-        $response['created_at'] = time();
-        $response['backend_validated_at'] = time();
-
-        if ($this->cache !== null) {
-            $this->cache->set($cachekey, $response);
-        }
-
-        return $response;
-    }
-
-    /**
-     * Send a message to an existing chat session.
-     *
-     * @param string $sessionid Session ID.
-     * @param string $content Message content.
-     * @param array $meta Optional metadata (includes cmid if in module context).
-     * @return array Response indicating if message was enqueued.
-     * @throws moodle_exception If sending fails.
-     * @since Moodle 4.5
-     */
-    public function send_message(string $sessionid, string $content, array $meta = []): array {
-        global $USER;
-        return $this->aiservice->request('POST', '/chat/message', [
-            'session_id' => $sessionid,
-            'content' => $content,
-            'meta' => $meta,
-            'user_id' => $USER->id,
-        ]);
     }
 
     /**
@@ -196,14 +116,7 @@ class tutoria_api {
 
         $response = $this->aiservice->request('POST', '/chat/start/v2', $requestdata);
 
-        $response['created_at'] = time();
-        $response['backend_validated_at'] = time();
-
-        if ($this->cache !== null) {
-            $this->cache->set($cachekey, $response);
-        }
-
-        return $response;
+        return $this->remember_session($cachekey, $response, $courseid, $userid, $cmid);
     }
 
     /**
@@ -226,7 +139,7 @@ class tutoria_api {
                 try {
                     $this->delete_session((string)$cached['session_id']);
                 } catch (\Throwable $e) {
-                    debugging('Failed to delete stale Tutor-IA session: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                    debugging('Failed to delete stale Tutor-IA session: ' . get_class($e), DEBUG_DEVELOPER);
                 }
             }
             $this->cache->delete($cachekey);
@@ -261,17 +174,6 @@ class tutoria_api {
     }
 
     /**
-     * Build the SSE stream URL for a chat session.
-     *
-     * @param string $sessionid Session ID.
-     * @return string Full stream URL with session parameter.
-     * @since Moodle 4.5
-     */
-    public function get_stream_url(string $sessionid): string {
-        return $this->aiservice->get_streaming_url_for_session($sessionid);
-    }
-
-    /**
      * Get chat history for a session.
      *
      * @param string $sessionid Session ID.
@@ -297,7 +199,56 @@ class tutoria_api {
      * @since Moodle 4.5
      */
     public function delete_session(string $sessionid): array {
-        return $this->aiservice->request('DELETE', '/chat/session/' . $sessionid);
+        try {
+            return $this->aiservice->request('DELETE', '/chat/session/' . $sessionid);
+        } finally {
+            // The handle is dropped even when the remote call fails: the session is either gone
+            // already or will expire on its own, and keeping a dead pointer would only mislead
+            // later deletions.
+            session_store::forget($sessionid);
+        }
+    }
+
+    /**
+     * Drop the cached session handle of a user in a course (or module).
+     *
+     * The V2 key is cleared so that the next request opens a fresh remote session instead of
+     * reusing a handle that was deleted on purpose.
+     *
+     * @param int $courseid Course ID.
+     * @param int $userid User ID.
+     * @param int|null $cmid Course module ID, if any.
+     */
+    public function forget_cached_session(int $courseid, int $userid, ?int $cmid = null): void {
+        if ($this->cache === null) {
+            return;
+        }
+        $this->cache->delete(self::get_session_v2_cache_key($courseid, $userid, $cmid));
+    }
+
+    /**
+     * Cache a freshly created session and record its handle durably.
+     *
+     * @param string $cachekey Cache key for this course/user/module.
+     * @param array $response Decoded response of the session creation call.
+     * @param int $courseid Course ID.
+     * @param int $userid User ID.
+     * @param int|null $cmid Course module ID, if any.
+     * @return array The response enriched with the local timestamps.
+     */
+    private function remember_session(string $cachekey, array $response, int $courseid, int $userid, ?int $cmid): array {
+        $response['created_at'] = time();
+        $response['backend_validated_at'] = time();
+
+        if ($this->cache !== null) {
+            $this->cache->set($cachekey, $response);
+        }
+
+        if (!empty($response['session_id'])) {
+            session_store::upsert($userid, $courseid, $cmid, (string)$response['session_id']);
+        }
+
+        return $response;
     }
 
     /**
@@ -361,7 +312,7 @@ class tutoria_api {
             $this->get_history($sessionid, 1, 0);
             return true;
         } catch (\Throwable $e) {
-            debugging('Cached Tutor-IA session is stale: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            debugging('Cached Tutor-IA session is stale: ' . get_class($e), DEBUG_DEVELOPER);
             return false;
         }
     }

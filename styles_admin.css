@@ -27,6 +27,10 @@
     border-right: 1px solid #dee2e6;
 }
 
+.position-control-right {
+    padding-left: 20px;
+}
+
 .position-preset-group {
     margin-bottom: 20px;
 }

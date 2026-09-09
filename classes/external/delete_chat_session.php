@@ -24,19 +24,21 @@
 
 namespace local_dttutor\external;
 
-use external_api;
+use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_value;
 use local_dttutor\httpclient\tutoria_api;
+use local_dttutor\proxy\request_guard;
+use local_dttutor\session_store;
 
-defined('MOODLE_INTERNAL') || die();
-
-require_once($CFG->libdir . '/externallib.php');
 /**
  * Class delete_chat_session
  *
- * Deletes a Tutor-IA chat session to free up resources.
+ * Deletes the stored Tutor-IA chat session of the current user, if any.
+ *
+ * No UI in this plugin calls it (the chat resets sessions through chatproxy.php); it is kept
+ * as a public AJAX API so that integrators can delete a user's session on demand.
  *
  * @package    local_dttutor
  * @category   external
@@ -59,6 +61,9 @@ class delete_chat_session extends external_api {
 
     /**
      * Delete a Tutor-IA chat session for the current user.
+     *
+     * Only a session already recorded in local_dttutor_session is deleted: no remote
+     * session is ever opened just to close it.
      *
      * @param int $courseid Course ID where the session was created.
      * @param int|null $cmid Course Module ID (optional).
@@ -90,36 +95,39 @@ class delete_chat_session extends external_api {
         $context = \context_course::instance($params['courseid']);
         self::validate_context($context);
 
-        // Verify user has permission to use Tutor-IA.
+        // Verify user has permission to use Tutor-IA and that the tutor is enabled for this course.
         require_capability('local/dttutor:use', $context);
+        request_guard::assert_course_enabled((int)$params['courseid']);
 
-        $tutoriaapi = new tutoria_api();
+        $cmid = null;
+        if (!empty($params['cmid'])) {
+            $cmid = (int)request_guard::resolve_cm((int)$params['cmid'], (int)$params['courseid'], (int)$USER->id)->id;
+        }
+        $remotesessionid = session_store::get_remote_session_id((int)$USER->id, (int)$params['courseid'], $cmid);
+        if ($remotesessionid === null) {
+            return ['deleted' => false];
+        }
 
         try {
-            // Get current session for this user and course.
-            $session = $tutoriaapi->start_session($params['courseid'], $USER->id, $params['cmid']);
+            $tutoriaapi = \core\di::get(tutoria_api::class);
+        } catch (\Throwable $e) {
+            // The provider client cannot be built (unconfigured or unreachable). Drop the stored
+            // handle anyway so a later deletion does not chase a dead pointer; a stale cache entry
+            // is detected by the liveness probe the next time a session is started.
+            \local_dttutor_log('SESSION_DELETE_REMOTE_UNAVAILABLE', ['exception' => get_class($e)], true);
+            session_store::forget($remotesessionid);
+            return ['deleted' => false];
+        }
+        $tutoriaapi->forget_cached_session((int)$params['courseid'], (int)$USER->id, $cmid);
 
-            if (isset($session['session_id'])) {
-                $result = $tutoriaapi->delete_session($session['session_id']);
-
-                // Note: Cache handling for the specific user session is done
-                // implicitly if we purge or the token expires.
-                // But we should ideally have a way to clear the cache key here.
-                return [
-                    'deleted' => $result['deleted'] ?? false,
-                ];
-            }
-
-            return [
-                'deleted' => false,
-            ];
-        } catch (\Exception $e) {
-            // If deletion fails, log but don't throw (session might already be expired).
-            debugging('Failed to delete Tutor-IA session: ' . $e->getMessage(), DEBUG_DEVELOPER);
-
-            return [
-                'deleted' => false,
-            ];
+        try {
+            // The stored handle is dropped by delete_session() even when the remote call fails.
+            $result = $tutoriaapi->delete_session($remotesessionid);
+            return ['deleted' => (bool)($result['deleted'] ?? false)];
+        } catch (\Throwable $e) {
+            // The session may already have expired remotely; never fail the client for that.
+            debugging('Failed to delete Tutor-IA session: ' . get_class($e), DEBUG_DEVELOPER);
+            return ['deleted' => false];
         }
     }
 

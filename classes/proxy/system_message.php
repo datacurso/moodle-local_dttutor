@@ -17,8 +17,8 @@
 /**
  * System message builder for the AI chat proxy.
  *
- * Builds a system prompt based on user role, course context, and institutional
- * custom prompts — ported from the Python context_builder.py.
+ * Builds a system prompt based on user role, course context, pre-loaded course
+ * knowledge and institutional custom prompts.
  *
  * @package    local_dttutor
  * @copyright  2026 Datacurso
@@ -64,46 +64,29 @@ class system_message {
 
         $content = "You are an AI tutor integrated into Moodle ({$sitename}).\n";
         $content .= "Role: {$role}.\n";
-        $content .= "Goal: help the student with their course-related questions using available web service tools.\n\n";
+        $content .= "Goal: help the student with their course-related questions using ONLY the COURSE KNOWLEDGE "
+            . "block below.\n\n";
 
         $content .= "WORKFLOW:\n";
         $content .= "1. Understand the student's question.\n";
-        $content .= "2. If the answer is already in the COURSE KNOWLEDGE provided below, answer directly "
-            . "WITHOUT calling any tool.\n";
-        $content .= "3. Otherwise, use ws_search to find the relevant web service function. ws_search "
-            . "already returns each function's params and returns, so you normally do NOT need ws_describe.\n";
-        $content .= "4. Use call_webservice to execute the function.\n";
-        $content .= "5. Answer the student with the real data you retrieved.\n\n";
-
-        $content .= "DECISION RULE:\n";
-        $content .= "- FIRST check the COURSE KNOWLEDGE block. If it contains the answer (course info, "
-            . "activities, dates, max grades, your grades), respond immediately with no tool calls.\n";
-        $content .= "- Only when the needed data is NOT in COURSE KNOWLEDGE: ws_search(query in ENGLISH), "
-            . "then call_webservice. Use ws_describe only if a function's parameters are unclear from ws_search.\n";
-        $content .= "- If first ws_search looks weak or ambiguous, run a second ws_search with expanded "
-            . "keywords (examples: gradebook, grades, gradeitems, activity, submissions, rubric).\n";
-        $content .= "- Evaluate the result. If the data is COMPLETE and answers the question → stop and respond.\n";
-        $content .= "- If the data is INSUFFICIENT → try a different WS function.\n";
-        $content .= "- Do NOT search WS and try things in parallel — always sequential.\n\n";
+        $content .= "2. Look for the answer in the COURSE KNOWLEDGE block (course info, activities, dates, "
+            . "max grades, the student's own grades when provided).\n";
+        $content .= "3. Answer with the real data you found, citing the activity it comes from.\n";
+        $content .= "4. If the information is not available to you, say so clearly and suggest where the "
+            . "student can find it in the course or whom to ask (their teacher).\n\n";
 
         $content .= "RULES:\n";
-        $content .= "- Never invent data. Use the COURSE KNOWLEDGE block as your source of truth; only call "
-            . "call_webservice when the answer is NOT already there.\n";
-        $content .= "- ALWAYS exclude course ID 1 (site home) and guest user from any operation.\n";
-        $content .= "- If a tool fails, retry once. If it fails again, tell the student.\n";
-        $content .= "- If you have enough data (from COURSE KNOWLEDGE or a tool), stop and respond.\n";
-        $content .= "- Do not say 'I cannot find information' about course/activity data that is absent from "
-            . "COURSE KNOWLEDGE unless you already tried at least one call_webservice and explain why it failed.\n";
-        $content .= "- For assignment rubrics, call core_grading_get_definitions with areaname=submissions.\n";
-        $content .= "- The COURSE KNOWLEDGE block already lists every activity with its cmid and instance. Reuse "
-            . "those IDs directly for any call_webservice. DO NOT guess instance IDs, and do NOT call "
-            . "core_course_get_contents just to enumerate activities — they are already listed below.\n";
-        $content .= "- Prefer WS functions that accept cmid (like core_course_get_course_module) over "
-            . "those needing instance ID alone.\n";
+        $content .= "- Never invent data. The COURSE KNOWLEDGE block is your only source of truth about "
+            . "this course.\n";
+        $content .= "- You cannot access Moodle beyond what is provided here: do not claim to have looked "
+            . "anything up, and do not pretend to perform actions in the platform.\n";
+        $content .= "- When something is not available, say \"That information is not available to me\" "
+            . "(in the student's language) instead of guessing.\n";
+        $content .= "- Only discuss this course. Do not reveal information about other users.\n";
         $content .= "- Be concise and use the student's language.\n";
         $content .= "- Respect permissions and privacy.\n\n";
 
-        // Language rule (ported from Python context_builder).
+        // Language rule.
         $content .= "⚠️ LANGUAGE RULE — ABSOLUTE PRIORITY: ";
         $content .= "Always detect the language of the student's latest message and reply ";
         $content .= "in EXACTLY THAT LANGUAGE, without exception. ";
@@ -117,9 +100,7 @@ class system_message {
             . "new message) as a single unit. If your last message offered something and the student "
             . "agreed, EXECUTE it now.\n";
         $content .= "3. If the student says \"no\" or declines, drop the pending task and ask what else they need.\n";
-        $content .= "4. Never restart the ws_search → ws_describe → call_webservice workflow from scratch "
-            . "on a follow-up. Use the context from previous calls.\n";
-        $content .= "5. If you need more information to complete a pending task, ask a specific follow-up "
+        $content .= "4. If you need more information to complete a pending task, ask a specific follow-up "
             . "question. Do not change the subject.\n\n";
 
         $content .= "Current context:\n";
@@ -148,12 +129,12 @@ class system_message {
 
         $content .= "- User role: {$role}\n";
 
-        // Inject the pre-loaded course knowledge so the model can answer without the tool loop.
+        // Inject the pre-loaded course knowledge (already filtered to what this user may see).
         if ($preloaded !== '') {
             $content .= "\n" . $preloaded;
         }
 
-        // Add institutional custom prompt if configured.
+        // Add the institutional (site-level) custom prompt if configured; it is the only custom prompt.
         $customprompt = get_config('local_dttutor', 'custom_prompt');
         if (!empty($customprompt)) {
             $content .= "\n---\nInstitutional custom instructions:\n{$customprompt}\n---\n";

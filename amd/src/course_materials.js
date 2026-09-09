@@ -40,9 +40,6 @@ define(['jquery', 'core/ajax', 'core/notification'], function ($, Ajax, Notifica
             var enabled = $(this).is(':checked');
             self.toggleTutor(enabled);
         });
-
-        // Note: Save config form and delete material handlers removed.
-        // See REMOVED_FEATURES.md for restoration.
     };
 
     CourseMaterials.prototype.toggleTutor = function (enabled) {
@@ -50,15 +47,11 @@ define(['jquery', 'core/ajax', 'core/notification'], function ($, Ajax, Notifica
             methodname: 'local_dttutor_save_course_config',
             args: {
                 courseid: this.courseid,
-                custom_prompt: '',
                 enabled: enabled
             }
         }])[0].done(function (response) {
             if (response.success) {
                 var msg = response.message;
-                if (response.enrol_status) {
-                    msg += ' (enrol: ' + response.enrol_status + ')';
-                }
                 Notification.addNotification({
                     message: msg,
                     type: 'success'

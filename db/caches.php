@@ -25,17 +25,20 @@
 defined('MOODLE_INTERNAL') || die();
 
 $definitions = [
-    'schema_cache' => [
-        'mode' => cache_store::MODE_APPLICATION,
-        'ttl' => 86400, // 24 hours.
-        'simpletest' => true,
-    ],
     // Pre-loaded course knowledge (structure, activities, dates, max grades) for the chat proxy.
-    // Keyed by course id; the stored payload carries the course cacherev so stale entries are
-    // rebuilt automatically when the course is edited.
+    // Keyed by "{courseid}_{userid}" because it only lists modules visible to that user; the stored
+    // payload carries the course cacherev so stale entries are rebuilt automatically on course edits.
     'course_knowledge' => [
         'mode' => cache_store::MODE_APPLICATION,
         'ttl' => 86400, // 24 hours; also invalidated by course cacherev mismatch.
         'simpletest' => true,
+    ],
+    // Remote chat session handles (session id, TTL, validation timestamps) keyed by
+    // "session_v2_{courseid}_{userid}[_{cmid}]", so a session is reused instead of being
+    // re-created on every request. The durable copy lives in local_dttutor_session.
+    'sessions' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => true,
     ],
 ];

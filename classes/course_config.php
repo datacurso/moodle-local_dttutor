@@ -25,7 +25,7 @@
 namespace local_dttutor;
 
 /**
- * Model class for managing course-specific configuration
+ * Model class for the per-course enablement of the AI tutor
  *
  * @package    local_dttutor
  * @copyright  2025 Datacurso
@@ -63,7 +63,6 @@ class course_config {
 
         $record = new \stdClass();
         $record->courseid = $courseid;
-        $record->custom_prompt = null;
         $record->indexing_enabled = 0; // Tutor disabled by default (column kept for schema compat).
         $record->timecreated = time();
         $record->timemodified = time();
@@ -89,7 +88,6 @@ class course_config {
 
         // Only update allowed fields.
         $allowedfields = [
-            'custom_prompt',
             'indexing_enabled',
         ];
 
@@ -115,25 +113,6 @@ class course_config {
     public static function is_enabled_for_course(int $courseid): bool {
         $config = self::get_by_course($courseid);
         return (bool)$config->indexing_enabled;
-    }
-
-    /**
-     * Get custom prompt for course (returns global prompt if course-specific is empty).
-     *
-     * @param int $courseid Course ID
-     * @return string Custom prompt text
-     * @since Moodle 4.5
-     */
-    public static function get_custom_prompt(int $courseid): string {
-        $config = self::get_by_course($courseid);
-
-        // Return course-specific prompt if set, otherwise use global prompt.
-        if (!empty($config->custom_prompt)) {
-            return $config->custom_prompt;
-        }
-
-        $globalprompt = get_config('local_dttutor', 'custom_prompt');
-        return $globalprompt ?: '';
     }
 
     /**

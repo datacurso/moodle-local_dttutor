@@ -99,6 +99,21 @@ class chat_hook {
     }
 
     /**
+     * Whether a user may use the tutor in a course.
+     *
+     * This is the same capability check the chat proxy enforces, so the widget is only
+     * rendered for users whose requests will actually be accepted.
+     *
+     * @param int $courseid The course id.
+     * @param int|null $userid The user id, or null for the current user.
+     * @return bool
+     */
+    public static function can_use_tutor(int $courseid, ?int $userid = null): bool {
+        $context = \context_course::instance($courseid);
+        return has_capability('local/dttutor:use', $context, $userid);
+    }
+
+    /**
      * Adds the Tutor-IA drawer to course pages for all users.
      *
      * @param before_footer_html_generation $hook The hook event.
@@ -128,9 +143,14 @@ class chat_hook {
         }
 
         // Check 2: Course-specific enabled (double enablement).
-        $courseconfig = \local_dttutor\course_config::get_by_course($courseid);
         if (!\local_dttutor\course_config::is_enabled_for_course($courseid)) {
             return; // Tutor not enabled for this course.
+        }
+
+        // Check 3: The user must hold local/dttutor:use in this course, mirroring chatproxy.php.
+        // Otherwise the widget would be shown to visitors whose requests the proxy then refuses.
+        if (!self::can_use_tutor($courseid)) {
+            return;
         }
 
         if (self::is_quiz_module()) {
@@ -180,7 +200,6 @@ class chat_hook {
             'uniqid' => $uniqid,
             'courseid' => $courseid,
             'cmid' => $cmid,
-            'userid' => $USER->id,
             'userrole' => $userroledisplay,
             'tutorname' => $tutorname,
             'welcomemessage' => $welcomemessage,
@@ -237,7 +256,6 @@ class chat_hook {
      * Gets the position data from configuration with fallback support.
      *
      * Returns array with 'preset', 'x', 'y', and 'drawerside' keys.
-     * Provides backward compatibility with old 'avatar_position' config.
      *
      * @return array Position data array
      * @since Moodle 4.5
@@ -254,17 +272,6 @@ class chat_hook {
                 }
                 return $decoded;
             }
-        }
-
-        // Fallback to old format for backward compatibility.
-        $oldposition = get_config('local_dttutor', 'avatar_position');
-        if ($oldposition === 'left') {
-            return [
-                'preset' => 'left',
-                'x' => '2rem',
-                'y' => '6rem',
-                'drawerside' => 'left',
-            ];
         }
 
         return [
