@@ -5,6 +5,82 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.9] - 2026-09-08
+
+Remediation of the MindFree security assessment of 2.0.7 (findings SEC-001 to SEC-005) plus the defects it left out.
+
+### Security
+
+#### SEC-001 — Web service bridge executed as the service bot / admin
+- **Web service bridge removed**: The AI model can no longer call Moodle web services. The `ws_search`, `ws_describe` and `call_webservice` tools, the tool loop, the `external_functions` indexer and the `schema_cache` cache are gone; the tutor answers only from the pre-loaded course knowledge.
+- **Service bot retired**: The `tutoriabot_datacurso` user is no longer created or enrolled. The upgrade step unenrols it from every course, suspends it and removes the `serviceuserid` setting (the account is kept so that existing logs still resolve; an administrator may delete it).
+- **System-level grants revoked**: The upgrade step removes `moodle/course:view` from the teacher archetypes at system context and the system-level `local/dttutor:use` assignment that previous upgrades had added; the capability is now checked only in the course context.
+
+#### SEC-002 — Chat proxy trusted the client-supplied course
+- **Course-level authorisation in `chatproxy.php`**: The requested course is resolved server-side (`request_guard`): login and enrolment in that course, `local/dttutor:use` in the course context, the site and per-course enablement toggles, and a course module that belongs to the course and is visible to the user. Any mismatch is refused before anything is pre-loaded or persisted.
+- **Prompt input hardening**: Only `user`/`assistant` messages with string content are accepted, with limits on message count, message length and request body size; the client can no longer inject `system` or `tool` messages.
+- **Course knowledge filtered per user**: The pre-loaded structure honours `uservisible` and is cached per course and user.
+- **Widget only for authorised users**: The floating chat is rendered only for users holding `local/dttutor:use` in the course, the same check the proxy enforces; visitors without a course role no longer see a widget whose requests would be refused.
+
+#### SEC-003 — No Privacy API
+- **Privacy API implemented**: Metadata for `local_dttutor_course_config`, `local_dttutor_session` and every field transferred to the Datacurso AI service; per-user export and deletion; user and course deletion observers.
+
+#### SEC-004 — Debug logging of conversation content
+- **Metadata-only logging**: Log lines carry event names, counts, lengths, HTTP status and cURL error codes only. Message previews, provider response bodies and answer previews are no longer logged, and exception messages are logged by class name only.
+- **No debug output in the SSE stream**: `chatproxy.php` declares `NO_DEBUG_DISPLAY`.
+
+#### SEC-005 — Default HMAC secret
+- **SPT validator removed**: The unused `spt_validator` class and its default `dttutor-spt-secret` are deleted.
+
+### Added
+
+- **Privacy API provider** (`classes/privacy/provider.php`) with `privacy:metadata:*` strings in the seven language packs.
+- **Session table** `local_dttutor_session`: one handle per user, course and module of the remote chat session, so that sessions can be enumerated and deleted from Moodle.
+- **Event observers** (`db/events.php`): `course_deleted` removes the course configuration and its sessions; `user_deleted` removes the user's sessions locally and remotely.
+- **Setting `include_grades`** (disabled by default): the student's own grades are sent to the AI tutor only when the administrator opts in.
+- **Cache `sessions`** declared in `db/caches.php`.
+- **PHPUnit suite** (`tests/`): request guard, context pre-loader, system message, handler payload and logging, HTTP client session bookkeeping, privacy provider, observers, upgrade steps and `delete_chat_session`.
+
+### Changed
+
+- **System prompt**: Instructs the model to answer only from the COURSE KNOWLEDGE block, to admit when information is not available, and no longer describes web service tools.
+- **Client metadata**: the user's full name is no longer sent by the client nor placed in the prompt; the chat proxy builds the context server-side.
+- **HTTP client**: `tutoria_api` accepts an injected `ai_services_api` and is resolved through `\core\di`; `delete_chat_session` now extends `core_external\external_api`.
+- **README**: New *Data processed and transferred* section.
+- **Legacy external API include removed**: `save_course_config` no longer `require_once`s the legacy `externallib` (it already extended `core_external\external_api`) and is now covered by PHPUnit tests.
+
+### Fixed
+
+- **`$role` clobbered** in `chatproxy.php` while replaying messages after a session reset.
+- **`delete_chat_session`** opened a new remote session (`/chat/start`) before deleting it and never cleared the cache key; it now deletes the stored session only, or returns `deleted: false` without any network call; when the provider client cannot be built (unconfigured or unreachable) it also returns `deleted: false` and drops the stored handle instead of throwing.
+- **`sessions` cache** was used but never declared, so a new remote session was created on every request.
+- **Exception messages** (including SQL from DML errors) are no longer sent to the browser or to the model.
+- **SSE error framing**: a provider failure is now streamed as an explicit `event: error` frame; the previous bare `data:` line was ignored by the chat client, so the student saw nothing.
+- **Provider failures are logged in production**: `AI_API_ERROR`, `AI_API_RATE_LIMITED`, `AI_API_RESPONSE_EMPTY`, session persistence and remote-deletion failures are written (metadata only) to the PHP error log in addition to `debugging()`, which is silent on production sites.
+- **Per-course gate on the AJAX functions**: `get_chat_history` and `delete_chat_session` now apply the same checks as the chat proxy (tutor enabled for the course, course module belonging to the course and visible to the user). `get_chat_history` extends `core_external\external_api`, reads only sessions already stored (no remote session is opened by a read) and returns an empty history with a `notice` when the service is unavailable.
+- **`course_materials.js`** read an `enrol_status` field that `save_course_config` no longer returns; the dead branch is removed and the AMD build regenerated.
+- **`session_store::upsert()`** could throw a `dml_write_exception` when two concurrent requests opened the first session for the same user, course and module; the loser of the unique-index race now updates the winner's row (last writer wins).
+- **Enablement toggle wiped the stored per-course prompt** (`course_materials.js` sent `custom_prompt: ''` on every toggle, so any prompt saved through the web service was silently erased). Resolved by removing the per-course prompt altogether (see *Removed*); the site-level prompt is the only custom prompt.
+- **Location hint never reached the model**: the chat client sends the Moodle `pagetype` while the system message read a `location` key nobody set, so the "Location: …" hint (the `ctx_loc_*` strings) was unreachable. The chat proxy now derives the location server-side from the sanitised page type (`request_guard::location_from_pagetype()`); a client-supplied `location` is ignored.
+- **Double initialisation on the course management page**: `manage.php` called `js_call_amd('local_dttutor/course_materials')` while `manage_course.mustache` also required the module, so each toggle triggered two `save_course_config` calls and two notifications. The template's `{{#js}}` block is now the only initialiser.
+- **Error modal title**: `ErrorModal.showGeneralError()` accepted a single argument, so the short title passed by the chat (license and credit errors) was silently dropped; it now accepts an optional title.
+
+### Removed
+
+- `classes/agent/tool/*`, `classes/agent/tool_executor.php`, `classes/schema/ws_indexer.php`, `classes/proxy/spt_validator.php`, `db/install.php`.
+- `local_dttutor_get_tool_definitions()`, `local_dttutor_resolve_ws_classname()` and `local_dttutor_get_page_context()` from `lib.php`.
+- The `tool_*` and `servicebot_*` language strings.
+- **Course materials feature** (dead since the removal of the indexing backend): the `local_dttutor_upload_course_material`, `local_dttutor_delete_course_material` and `local_dttutor_get_course_materials` web services, the `course_materials` file area served by `local_dttutor_pluginfile()`, its privacy `core_files` link and the `course_materials`, `material_uploaded`, `material_deleted` strings. The tutor uses only the pre-loaded course knowledge.
+- **`local_dttutor_create_chat_message` web service**: the chat posts to `chatproxy.php`; the v1 `/chat/start` and `/chat/message` client methods (`start_session()`, `send_message()`, `get_stream_url()`), the legacy session cache key and the `error_empty_message`, `error_metadata_too_large`, `error_selected_text_too_large`, `sessionnotready` strings go with it.
+- **Off-topic detection settings** (`off_topic_detection_enabled`, `off_topic_strictness`): their only reader was `create_chat_message`, so they had no effect on the chat.
+- **Dead schema columns** `last_indexed_at`, `indexing_status`, `indexing_task_id`, `indexing_error` and the `indexing_status` index of `local_dttutor_course_config` (upgrade step 2026090900). `indexing_enabled` remains as the per-course enablement flag.
+- **Per-course `custom_prompt`**: the `local_dttutor_course_config.custom_prompt` column, the `custom_prompt` parameter of `local_dttutor_save_course_config`, `course_config::get_custom_prompt()` and the course section of the system message. No UI exposed it and the enablement toggle wiped it; the prompt is configured site-wide only.
+- **Legacy EventSource path and unused client code** in `tutor_ia_chat.js`: `startSSE()`, `currentEventSource`, the `message_completed` event and `payload.content` fallback (the proxy only emits `token`, `done` and `error` with `{"t": …}`), `showNoCreditsWarning()`, `isNoCreditsError()`, `destroy()`, `getModelName()` and the client-side `model` payload key (the proxy decides the model), the unused `core/notification` dependency, the `userId` constructor argument, the forum/quiz/assign/wiki URL parameters that were detected but never sent, and the `data-courseid`/`data-cmid`/`data-userid` attributes of the drawer (the module receives course and module ids as init arguments).
+- `js/avatar_selector_admin.js` (non-AMD duplicate of `amd/src/avatar_selector.js`, never loaded).
+- Dead CSS: `.tutor-ia-warning-message`, `.tutor-ia-no-credits-warning` and `.tutor-ia-debug-*` blocks in `styles.css`.
+- The legacy `avatar_position` setting fallback in `chat_hook::get_position_data()` (only `avatar_position_data` exists).
+- Orphan language strings (all seven packs): `configuration_error`, `connection_interrupted`, `editing_message`, `error_establish_sse_connection`, `error_no_credits`, `error_no_credits_short`, `welcomemessage`.
+
 ## [2.0.4] - 2026-02-02
 
 ### Changed

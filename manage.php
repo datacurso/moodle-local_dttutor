@@ -51,9 +51,6 @@ $PAGE->set_heading($course->fullname);
 // Get course configuration.
 $config = course_config::get_by_course($courseid);
 
-// Course materials module for tutor toggle functionality.
-$PAGE->requires->js_call_amd('local_dttutor/course_materials', 'init', [$courseid]);
-
 // Prepare template context.
 $templatecontext = [
     'courseid' => $courseid,

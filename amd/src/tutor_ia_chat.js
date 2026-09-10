@@ -24,14 +24,12 @@
 define([
     'jquery',
     'core/ajax',
-    'core/notification',
     'core/pubsub',
     'core/str',
     'local_dttutor/error_modal'
 ], function (
     $,
     Ajax,
-    Notification,
     PubSub,
     Str,
     ErrorModal
@@ -64,16 +62,13 @@ define([
          * @param {string} uniqueId - Unique identifier for the instance
          * @param {number} courseId - Course ID
          * @param {number} cmId - Course module ID
-         * @param {number} userId - User ID
          */
-        constructor(root, uniqueId, courseId, cmId, userId) {
+        constructor(root, uniqueId, courseId, cmId) {
             this.root = $(root);
             this.uniqueId = uniqueId;
             this.courseId = courseId;
             this.cmId = cmId;
-            this.userId = userId;
             this.streaming = false;
-            this.currentEventSource = null;
             this.currentAbortController = null;
             this.currentSessionId = null;
             this.currentAIMessageEl = null;
@@ -169,9 +164,9 @@ define([
         }
 
         /**
-         * Detects the current page context (page type and relevant parameters).
+         * Detects the current page type (e.g. "mod-forum-discuss"); the proxy maps it to a location hint.
          *
-         * @returns {Object} Object with page contextual information
+         * @returns {Object} Object with a 'pagetype' key when it could be detected
          */
         detectPageContext() {
             const context = {};
@@ -194,29 +189,6 @@ define([
                 const pathMatch = bodyClasses.match(/path-([\w-]+)/);
                 if (pathMatch) {
                     context.pagetype = pathMatch[1];
-                }
-            }
-
-            const urlParams = new URLSearchParams(window.location.search);
-
-            if (context.pagetype && context.pagetype.includes('forum')) {
-                if (urlParams.has('d')) {
-                    context.discussionid = parseInt(urlParams.get('d'), 10);
-                }
-                if (urlParams.has('f')) {
-                    context.forumid = parseInt(urlParams.get('f'), 10);
-                }
-            } else if (context.pagetype && context.pagetype.includes('quiz')) {
-                if (urlParams.has('attempt')) {
-                    context.attemptid = parseInt(urlParams.get('attempt'), 10);
-                }
-            } else if (context.pagetype && context.pagetype.includes('assign')) {
-                if (urlParams.has('id')) {
-                    context.assignid = parseInt(urlParams.get('id'), 10);
-                }
-            } else if (context.pagetype && context.pagetype.includes('wiki')) {
-                if (urlParams.has('pageid')) {
-                    context.pageid = parseInt(urlParams.get('pageid'), 10);
                 }
             }
 
@@ -243,11 +215,7 @@ define([
                 { key: 'loading', component: 'local_dttutor' },
                 { key: 'error_invalid_message', component: 'local_dttutor' },
                 { key: 'error_message_too_long', component: 'local_dttutor' },
-                { key: 'error_no_credits', component: 'local_dttutor' },
-                { key: 'error_no_credits_short', component: 'local_dttutor' },
                 { key: 'error_internal', component: 'local_dttutor' },
-                { key: 'connection_interrupted', component: 'local_dttutor' },
-                { key: 'error_establish_sse_connection', component: 'local_dttutor' },
                 { key: 'error_unexpected', component: 'local_dttutor' },
                 { key: 'error_unknown', component: 'local_dttutor' },
                 { key: 'error_attempt_later', component: 'local_dttutor' },
@@ -256,7 +224,6 @@ define([
                 { key: 'error_no_credits_fallback', component: 'local_dttutor' },
                 { key: 'error_insufficient_tokens_short', component: 'local_dttutor' },
                 { key: 'edit_message', component: 'local_dttutor' },
-                { key: 'editing_message', component: 'local_dttutor' },
                 { key: 'edit_save', component: 'local_dttutor' },
                 { key: 'edit_cancel', component: 'local_dttutor' }
             ]).then((strings) => {
@@ -270,22 +237,17 @@ define([
                     loading: strings[6],
                     errorInvalidMessage: strings[7],
                     errorMessageTooLong: strings[8],
-                    errorNoCredits: strings[9],
-                    errorNoCreditsShort: strings[10],
-                    errorInternal: strings[11],
-                    connectionInterrupted: strings[12],
-                    errorEstablishSse: strings[13],
-                    errorUnexpected: strings[14],
-                    errorUnknown: strings[15],
-                    errorAttemptLater: strings[16],
-                    errorLicenseFallback: strings[17],
-                    errorLicenseFallbackShort: strings[18],
-                    errorNoCreditssFallback: strings[19],
-                    errorInsufficientTokensShort: strings[20],
-                    editMessage: strings[21],
-                    editingMessage: strings[22],
-                    editSave: strings[23],
-                    editCancel: strings[24]
+                    errorInternal: strings[9],
+                    errorUnexpected: strings[10],
+                    errorUnknown: strings[11],
+                    errorAttemptLater: strings[12],
+                    errorLicenseFallback: strings[13],
+                    errorLicenseFallbackShort: strings[14],
+                    errorNoCreditssFallback: strings[15],
+                    errorInsufficientTokensShort: strings[16],
+                    editMessage: strings[17],
+                    editSave: strings[18],
+                    editCancel: strings[19]
                 };
                 this.stringsLoaded = true;
                 return;
@@ -301,11 +263,7 @@ define([
                     loading: 'Loading...',
                     errorInvalidMessage: 'Please enter a valid message',
                     errorMessageTooLong: '[Error] Message is too long. Maximum 4000 characters.',
-                    errorNoCredits: 'Insufficient AI credits available.',
-                    errorNoCreditsShort: 'No Credits Available',
                     errorInternal: 'Internal error: {$a}',
-                    connectionInterrupted: '[Connection interrupted]',
-                    errorEstablishSse: '[Error] Could not establish SSE connection',
                     errorUnexpected: 'An unexpected error occurred. Please try again.',
                     errorUnknown: 'An unknown error occurred. Please try again.',
                     errorAttemptLater: 'An error occurred. Please try again later.',
@@ -314,7 +272,6 @@ define([
                     errorNoCreditssFallback: 'Insufficient credits: {$a}',
                     errorInsufficientTokensShort: 'Insufficient Credits',
                     editMessage: 'Edit message',
-                    editingMessage: 'Editing message',
                     editSave: 'Save',
                     editCancel: 'Cancel'
                 };
@@ -867,7 +824,6 @@ define([
                 // Build payload for chatproxy.php.
                 const payload = {
                     messages: payloadMessages,
-                    model: this.getModelName(),
                     sesskey: M.cfg.sesskey || '',
                     context: context,
                 };
@@ -917,9 +873,9 @@ define([
         /**
          * Read and parse SSE events from the chatproxy.php response stream.
          *
-         * The proxy emits 'token' events with {"t":"..."} and a 'done' event
-         * when complete. This replicates the EventSource handling from startSSE()
-         * but uses fetch() + ReadableStream for POST support.
+         * The proxy emits 'token' events with {"t":"..."}, a 'done' event when
+         * complete and an 'error' event on failure. fetch() + ReadableStream is
+         * used instead of EventSource because the request is a POST.
          *
          * @param {Response} response - The fetch Response object.
          * @param {jQuery} sendBtn - Send button element.
@@ -976,7 +932,7 @@ define([
                             if (eventType === 'token' && dataStr) {
                                 try {
                                     const payload = JSON.parse(dataStr);
-                                    const text = payload.t || payload.content || '';
+                                    const text = payload.t || '';
                                     if (text) {
                                         if (!firstTokenReceived) {
                                             firstTokenReceived = true;
@@ -988,7 +944,7 @@ define([
                                 } catch (e) {
                                     // Invalid JSON in token data, skip.
                                 }
-                            } else if (eventType === 'done' || eventType === 'message_completed') {
+                            } else if (eventType === 'done') {
                                 messageCompleted = true;
                                 resolve();
                                 return;
@@ -1035,82 +991,6 @@ define([
             // This works because chatproxy.php is in the same Moodle instance.
             const baseUrl = M.cfg.wwwroot || window.location.origin;
             return baseUrl + '/local/dttutor/chatproxy.php';
-        }
-
-        /**
-         * Get the model name to use.
-         *
-         * The model is a placeholder — the Datacurso AI proxy decides the
-         * actual model server-side (Gemini, OpenAI, etc.).
-         *
-         * @returns {string}
-         */
-        getModelName() {
-            return 'gemini-2.5-flash';
-        }
-
-        /**
-         * Start Server-Sent Events stream for AI response.
-         *
-         * @param {string} streamUrl - URL for the SSE stream
-         * @param {jQuery} sendBtn - Send button element to re-enable on completion
-         */
-        startSSE(streamUrl, sendBtn) {
-            try {
-                const es = new EventSource(streamUrl);
-                this.currentEventSource = es;
-                this.streaming = true;
-                let firstToken = true;
-                let messageCompleted = false;
-
-                es.addEventListener('token', (ev) => {
-                    try {
-                        const payload = JSON.parse(ev.data);
-                        const text = payload.t || payload.content || '';
-
-                        if (firstToken) {
-                            firstToken = false;
-                            this.ensureAIMessageEl();
-                            this.hideTypingIndicator();
-                        }
-                        this.appendToAIMessage(text);
-                    } catch (e) {
-                        // Invalid token data, skip.
-                    }
-                });
-
-                es.addEventListener('done', () => {
-                    messageCompleted = true;
-                    this.finalizeStream(sendBtn);
-                });
-
-                // Backward compatibility with 'message_completed' event.
-                es.addEventListener('message_completed', () => {
-                    messageCompleted = true;
-                    this.finalizeStream(sendBtn);
-                });
-
-                es.addEventListener('error', (ev) => {
-                    if (ev.data) {
-                        try {
-                            const errorData = JSON.parse(ev.data);
-                            this.handleStreamError(errorData, sendBtn);
-                            return;
-                        } catch (e) {
-                            // Not JSON, continue with generic error handling.
-                        }
-                    }
-
-                    // Only show error if message did NOT complete (error after 'done' is expected).
-                    if (!messageCompleted) {
-                        this.appendToAIMessage('\n' + this.strings.connectionInterrupted);
-                        this.finalizeStream(sendBtn);
-                    }
-                });
-            } catch (error) {
-                this.addMessage(this.strings.errorEstablishSse, 'ai');
-                this.finalizeStream(sendBtn);
-            }
         }
 
         /**
@@ -1581,7 +1461,6 @@ define([
 
             const payload = {
                 messages: conversationMessages,
-                model: this.getModelName(),
                 sesskey: M.cfg.sesskey || '',
                 context: context,
                 reset_session: true,
@@ -1685,31 +1564,6 @@ define([
         }
 
         /**
-         * Show no credits warning in chat.
-         *
-         * @param {string} errorHtml - HTML error message from provider
-         */
-        showNoCreditsWarning(errorHtml) {
-            const messages = this.root.find(SELECTORS.MESSAGES);
-
-            messages.find('.tutor-ia-no-credits-warning').remove();
-
-            const warningDiv = $('<div class="tutor-ia-no-credits-warning"></div>');
-            const alertDiv = $('<div class="alert alert-danger"></div>');
-            alertDiv.html(
-                '<i class="fa fa-exclamation-circle"></i> ' +
-                '<div class="warning-content">' +
-                '<strong>' + this.strings.errorNoCreditsShort + '</strong>' +
-                '<p>' + errorHtml + '</p>' +
-                '</div>'
-            );
-
-            warningDiv.append(alertDiv);
-            messages.append(warningDiv);
-            this.scrollToBottom();
-        }
-
-        /**
          * Scrolls the messages container to the bottom.
          */
         scrollToBottom() {
@@ -1718,19 +1572,10 @@ define([
         }
 
         /**
-         * Closes the current SSE stream.
+         * Aborts the in-flight chat proxy request, if any, and resets the streaming state.
          */
         closeCurrentStream() {
             this.flushPendingStreamingRender();
-
-            if (this.currentEventSource) {
-                try {
-                    this.currentEventSource.close();
-                } catch (e) {
-                    // Ignore close errors.
-                }
-            }
-            this.currentEventSource = null;
 
             if (this.currentAbortController) {
                 try {
@@ -1842,23 +1687,6 @@ define([
         }
 
         /**
-         * Check if error is related to insufficient AI credits.
-         *
-         * @param {Object} err - Error object
-         * @returns {boolean} True if no credits error
-         */
-        isNoCreditsError(err) {
-            if (!err || !err.message) {
-                return false;
-            }
-            const message = err.message.toLowerCase();
-            return message.includes('notenoughtokens') ||
-                message.includes('insufficient ai credits') ||
-                message.includes('no credits') ||
-                message.includes('out of credits');
-        }
-
-        /**
          * Get friendly error message from exception.
          *
          * @param {Object} err - Error object
@@ -1887,20 +1715,11 @@ define([
             this.closeCurrentStream();
             this.detachTextSelectionListeners();
         }
-
-        /**
-         * Destroys the chat instance and releases all resources.
-         */
-        destroy() {
-            this.cleanup();
-            this.cachedSelectionIndicator = null;
-            this.cachedSelectionCount = null;
-        }
     }
 
     return {
-        init: function (root, uniqueId, courseId, cmId, userId) {
-            return new TutorIAChat(root, uniqueId, courseId, cmId, userId);
+        init: function (root, uniqueId, courseId, cmId) {
+            return new TutorIAChat(root, uniqueId, courseId, cmId);
         }
     };
 });

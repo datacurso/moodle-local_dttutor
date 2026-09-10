@@ -25,58 +25,55 @@ import Modal from 'core/modal';
 import * as Str from 'core/str';
 import * as Templates from 'core/templates';
 
-    /**
-     * Show error modal with friendly message
-     *
-     * @param {string} message Error message to display
-     * @returns {Promise} Promise that resolves when modal is created
-     */
-    const showError = async(message) => {
-        try {
-            const strings = await Str.get_strings([
-                {key: 'pluginname', component: 'local_dttutor'}
-            ]);
+/**
+ * Show error modal with friendly message
+ *
+ * @param {string} message Error message to display
+ * @param {string|null} title Optional modal title; defaults to the plugin name
+ * @returns {Promise} Promise that resolves when modal is created
+ */
+export const showError = async(message, title = null) => {
+    try {
+        const strings = await Str.get_strings([
+            {key: 'pluginname', component: 'local_dttutor'}
+        ]);
 
-            // Prepare template context.
-            const context = {
-                message: message
-            };
+        // Prepare template context.
+        const context = {
+            message: message
+        };
 
-            // Render template.
-            const html = await Templates.render('local_dttutor/error_modal_body', context);
+        // Render template.
+        const html = await Templates.render('local_dttutor/error_modal_body', context);
 
-            // Create modal using new API.
-            const modal = await Modal.create({
-                title: strings[0],
-                body: html,
-                show: true,
-                removeOnClose: true
-            });
+        // Create modal using new API.
+        const modal = await Modal.create({
+            title: title || strings[0],
+            body: html,
+            show: true,
+            removeOnClose: true
+        });
 
-            // Auto-hide after 10 seconds.
-            setTimeout(() => {
-                modal.hide();
-            }, 10000);
+        // Auto-hide after 10 seconds.
+        setTimeout(() => {
+            modal.hide();
+        }, 10000);
 
-            return modal;
-        } catch (error) {
-            // Fallback to alert if modal/template fails.
-            window.alert(message);
-            throw error;
-        }
-    };
+        return modal;
+    } catch (error) {
+        // Fallback to alert if modal/template fails.
+        window.alert(message);
+        throw error;
+    }
+};
 
-    /**
-     * Show general error modal
-     *
-     * @param {string} message Error message
-     * @returns {Promise} Promise that resolves when modal is created
-     */
-    export const showGeneralError = (message) => {
-        return showError(message);
-    };
-
-    export default {
-        showError,
-        showGeneralError
-    };
+/**
+ * Show general error modal
+ *
+ * @param {string} message Error message
+ * @param {string|null} title Optional short title shown in the modal header
+ * @returns {Promise} Promise that resolves when modal is created
+ */
+export const showGeneralError = (message, title = null) => {
+    return showError(message, title);
+};

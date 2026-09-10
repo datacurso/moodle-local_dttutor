@@ -24,20 +24,23 @@
 
 namespace local_dttutor\external;
 
-use external_api;
+use core_external\external_api;
 use core_external\external_function_parameters;
-use core_external\external_single_structure;
 use core_external\external_multiple_structure;
+use core_external\external_single_structure;
 use core_external\external_value;
 use local_dttutor\httpclient\tutoria_api;
+use local_dttutor\proxy\request_guard;
+use local_dttutor\session_store;
 
-defined('MOODLE_INTERNAL') || die();
-
-require_once($CFG->libdir . '/externallib.php');
 /**
  * Class get_chat_history
  *
  * Retrieves chat history for a Tutor-IA session.
+ *
+ * Reading never opens a remote session: only a session already recorded in
+ * local_dttutor_session is queried, and a remote failure yields an empty history
+ * with a notice instead of an error.
  *
  * @package    local_dttutor
  * @category   external
@@ -96,8 +99,14 @@ class get_chat_history extends external_api {
         $context = \context_course::instance($params['courseid']);
         self::validate_context($context);
 
-        // Verify user has permission to use Tutor-IA.
+        // Verify user has permission to use Tutor-IA and that the tutor is enabled for this course.
         require_capability('local/dttutor:use', $context);
+        request_guard::assert_course_enabled((int)$params['courseid']);
+
+        $cmid = null;
+        if (!empty($params['cmid'])) {
+            $cmid = (int)request_guard::resolve_cm((int)$params['cmid'], (int)$params['courseid'], (int)$USER->id)->id;
+        }
 
         // Sanitize pagination parameters.
         if ($params['limit'] < 1) {
@@ -111,18 +120,40 @@ class get_chat_history extends external_api {
             $params['offset'] = 0;
         }
 
-        $tutoriaapi = new tutoria_api();
+        $remotesessionid = session_store::get_remote_session_id((int)$USER->id, (int)$params['courseid'], $cmid);
+        if ($remotesessionid === null) {
+            return self::empty_history('', $params['limit'], $params['offset']);
+        }
 
-        $cmid = $params['cmid'] ?? null;
-        $session = $tutoriaapi->start_session_v2($params['courseid'], $USER->id, $cmid);
+        try {
+            $tutoriaapi = \core\di::get(tutoria_api::class);
+            return $tutoriaapi->get_history($remotesessionid, $params['limit'], $params['offset']);
+        } catch (\Throwable $e) {
+            // The remote session may have expired or the service may be down: the chat stays usable.
+            debugging('Failed to load Tutor-IA history: ' . get_class($e), DEBUG_DEVELOPER);
+            $history = self::empty_history($remotesessionid, $params['limit'], $params['offset']);
+            $history['success'] = false;
+            $history['notice'] = get_string('error_history_unavailable', 'local_dttutor');
+            return $history;
+        }
+    }
 
-        $response = $tutoriaapi->get_history(
-            $session['session_id'],
-            $params['limit'],
-            $params['offset']
-        );
-
-        return $response;
+    /**
+     * Build an empty history response.
+     *
+     * @param string $sessionid Remote session id, or '' when none is stored.
+     * @param int $limit Requested page size.
+     * @param int $offset Requested offset.
+     * @return array
+     */
+    private static function empty_history(string $sessionid, int $limit, int $offset): array {
+        return [
+            'success' => true,
+            'session_id' => $sessionid,
+            'total_messages' => 0,
+            'messages' => [],
+            'pagination' => ['limit' => $limit, 'offset' => $offset, 'has_more' => false],
+        ];
     }
 
     /**
@@ -151,6 +182,7 @@ class get_chat_history extends external_api {
                 'offset' => new external_value(PARAM_INT, 'Current offset'),
                 'has_more' => new external_value(PARAM_BOOL, 'Whether more messages exist'),
             ]),
+            'notice' => new external_value(PARAM_TEXT, 'Why the history could not be loaded', VALUE_OPTIONAL),
         ]);
     }
 }

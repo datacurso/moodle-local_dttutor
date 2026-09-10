@@ -17,11 +17,11 @@
 /**
  * Course knowledge pre-loader for the AI chat proxy.
  *
- * Builds a compact, deterministic snapshot of the course and ALL its activities
- * (structure, dates, max grades) plus the current student's own grades, so the
- * model can answer most course/activity questions in a SINGLE LLM call instead
- * of rediscovering everything through the expensive ws_search → ws_describe →
- * call_webservice tool loop. Gathering this in PHP costs zero tokens.
+ * Builds a compact, deterministic snapshot of the course and the activities the
+ * requesting user can see (structure, dates, max grades) and, only when the
+ * administrator enables local_dttutor/include_grades, that user's own grades, so
+ * the model can answer course/activity questions from a single, pre-authorised
+ * context block. Gathering this in PHP costs zero tokens.
  *
  * @package    local_dttutor
  * @copyright  2026 Datacurso
@@ -47,11 +47,11 @@ class context_preloader {
     ];
 
     /**
-     * Build the full course-knowledge block (static course data + this student's grades).
+     * Build the full course-knowledge block (static course data + this student's grades when enabled).
      *
      * @param  int   $courseid The current course ID.
      * @param  int   $userid   The current user ID (for personal grades).
-     * @param  array $context  The page context (unused for now, reserved for activity focus).
+     * @param  array $context  The page context. Not used yet: kept so callers can pass it when activity focus is added.
      * @return string          A compact text block, or '' when there is nothing to add.
      */
     public static function build(int $courseid, int $userid, array $context = []): string {
@@ -65,49 +65,59 @@ class context_preloader {
             return '';
         }
 
-        $static = self::get_static_block($course);
+        $static = self::get_static_block($course, $userid);
         if ($static === '') {
             return '';
         }
 
-        $student = self::get_student_block($course, $userid);
+        // Personal grades are sent to the AI provider only when the site opted in.
+        $student = '';
+        if (get_config('local_dttutor', 'include_grades')) {
+            $student = self::get_student_block($course, $userid);
+        }
 
         return $static . $student;
     }
 
     /**
-     * Get the static (course-wide) knowledge block, cached by course revision.
+     * Get the static knowledge block for one user, cached per course, user and course revision.
+     *
+     * The block only lists modules visible to the given user, so it must never be
+     * shared across users.
      *
      * @param  \stdClass $course The course record.
+     * @param  int       $userid The user the block is built for.
      * @return string
      */
-    private static function get_static_block(\stdClass $course): string {
-        $cache  = \cache::make('local_dttutor', 'course_knowledge');
-        $cached = $cache->get($course->id);
+    private static function get_static_block(\stdClass $course, int $userid): string {
+        $cache    = \cache::make('local_dttutor', 'course_knowledge');
+        $cachekey = $course->id . '_' . $userid;
+        $cached   = $cache->get($cachekey);
         if (is_array($cached) && (int)($cached['cacherev'] ?? -1) === (int)$course->cacherev) {
             return (string)$cached['text'];
         }
 
-        $text = self::build_static_block($course);
-        $cache->set($course->id, ['cacherev' => (int)$course->cacherev, 'text' => $text]);
+        $text = self::build_static_block($course, $userid);
+        $cache->set($cachekey, ['cacherev' => (int)$course->cacherev, 'text' => $text]);
         return $text;
     }
 
     /**
-     * Build the static course knowledge: course info + every visible activity.
+     * Build the static course knowledge: course info + every activity visible to the user.
      *
      * @param  \stdClass $course The course record.
+     * @param  int       $userid The user whose visibility applies.
      * @return string
      */
-    private static function build_static_block(\stdClass $course): string {
+    private static function build_static_block(\stdClass $course, int $userid): string {
         global $DB, $CFG;
         require_once($CFG->libdir . '/gradelib.php');
 
-        $modinfo = get_fast_modinfo($course);
+        $modinfo = get_fast_modinfo($course, $userid);
 
         $lines = [];
-        $lines[] = 'COURSE KNOWLEDGE (already retrieved for you — use it to answer directly, '
-            . 'WITHOUT calling any tool, whenever it contains the answer):';
+        $lines[] = 'COURSE KNOWLEDGE (already retrieved for you — use it to answer directly '
+            . 'whenever it contains the answer):';
         $lines[] = '- Course: ' . format_string($course->fullname) . ' (id ' . (int)$course->id . ')';
 
         $summary = trim(html_to_text((string)$course->summary, 0, false));
@@ -117,8 +127,8 @@ class context_preloader {
 
         $activitylines = [];
         foreach ($modinfo->get_cms() as $cm) {
-            // Skip teacher-hidden, label-type and deleted modules.
-            if (!$cm->visible || $cm->deletioninprogress || $cm->modname === 'label') {
+            // Skip modules this user cannot see (hidden or restricted), labels and deleted modules.
+            if (!$cm->uservisible || $cm->deletioninprogress || $cm->modname === 'label') {
                 continue;
             }
 

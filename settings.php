@@ -43,31 +43,6 @@ if ($hassiteconfig) {
         )
     );
 
-    // Off-topic Detection.
-    $settings->add(
-        new admin_setting_configcheckbox(
-            'local_dttutor/off_topic_detection_enabled',
-            get_string('off_topic_detection_enabled', 'local_dttutor'),
-            get_string('off_topic_detection_enabled_desc', 'local_dttutor'),
-            '1'
-        )
-    );
-
-    // Off-topic Strictness.
-    $settings->add(
-        new admin_setting_configselect(
-            'local_dttutor/off_topic_strictness',
-            get_string('off_topic_strictness', 'local_dttutor'),
-            get_string('off_topic_strictness_desc', 'local_dttutor'),
-            'permissive',
-            [
-                'permissive' => get_string('off_topic_strictness_permissive', 'local_dttutor'),
-                'moderate' => get_string('off_topic_strictness_moderate', 'local_dttutor'),
-                'strict' => get_string('off_topic_strictness_strict', 'local_dttutor'),
-            ]
-        )
-    );
-
     // Avatar Selection.
     $settings->add(new admin_setting_heading(
         'local_dttutor/avatarsettings',
@@ -141,6 +116,16 @@ if ($hassiteconfig) {
             get_string('custom_prompt_desc', 'local_dttutor'),
             '',
             PARAM_TEXT
+        )
+    );
+
+    // Send the student's own grades to the AI service (opt-in, data minimisation).
+    $settings->add(
+        new admin_setting_configcheckbox(
+            'local_dttutor/include_grades',
+            get_string('include_grades', 'local_dttutor'),
+            get_string('include_grades_desc', 'local_dttutor'),
+            '0'
         )
     );
 }

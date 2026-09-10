@@ -25,7 +25,7 @@ The chat interface features:
 
 ![Admin Settings - Chat Configuration](pix/screenshots/1.png)
 
-**Configuration panel** showing global chat enable toggle, off-topic detection settings, and avatar selection with 10 built-in avatar options.
+**Configuration panel** showing the global chat enable toggle and the avatar selection with 10 built-in avatar options.
 
 ---
 
@@ -107,10 +107,17 @@ After installation, configure the plugin:
    - Check "Enable Chat" to activate the floating chat globally
 
 3. **Customize Appearance**:
-   - **Avatar**: Choose from 10 available avatars (01-10)
-   - **Avatar Position**: Select bottom-right or bottom-left corner
+   - **Avatar**: Choose from 10 available avatars (01-10) or upload a custom image
+   - **Avatar Position**: Pick the bottom-right or bottom-left corner, or the *Custom position* preset and drag the avatar in the live preview to the exact spot; the drawer side (left/right) is configured independently
 
-4. The plugin automatically uses your Datacurso AI Provider configuration for API connectivity
+4. **Tutor Customization**:
+   - **Welcome message**: The first message shown when the chat opens; supports the `{teachername}`, `{coursename}`, `{username}` and `{firstname}` placeholders
+   - **Tutor name**: The name shown in the chat header (`{teachername}` shows the course teacher's name)
+   - **Custom prompt**: Institutional instructions appended to the tutor's system prompt
+
+5. **Send the student's grades to the AI tutor** (`include_grades`, disabled by default): when enabled, the student's own grades for the course are added to the context sent to the Datacurso AI service so the tutor can answer questions about them
+
+6. The plugin automatically uses your Datacurso AI Provider configuration for API connectivity
 
 ### Supported Languages
 
@@ -148,6 +155,39 @@ AI Tutor Chat is available in 7 languages:
 - **Error handling**: Clear messages if connection issues occur
 - **Role-aware**: AI adapts responses based on whether you're a student or teacher
 - **Context-aware**: AI knows which course and activity you're viewing
+
+## Data processed and transferred
+
+AI Tutor Chat processes personal data both inside Moodle and in the external Datacurso AI service. Privacy officers can review and act on it through the standard Moodle Privacy API (**Site administration > Users > Privacy and policies**).
+
+### Stored in Moodle
+
+| Where | What | Why |
+|---|---|---|
+| `local_dttutor_course_config` | The per-course enablement flag and the ID of the user who last edited it | Enable the tutor per course |
+| `local_dttutor_session` | One handle per user, course and activity of the chat session opened in the Datacurso AI service (no message content) | Reuse the remote session and be able to delete it later |
+| Cache `local_dttutor/sessions` | The same session handles, for fast lookup | Avoid creating a new remote session on every request |
+
+### Sent to the Datacurso AI service
+
+Every request made through the Datacurso AI Provider carries the site URL, an anonymous site identifier, the user ID, the user's language and timezone. On top of that, the tutor sends:
+
+- the chat messages written by the user and the tutor's previous answers;
+- the course structure visible to that user (activities, sections, dates, maximum grades) and the URL of the page the message was sent from;
+- the ID of the activity being viewed and any text the user selected on the page to ask about;
+- the institutional custom prompt configured by the administrator;
+- the student's own grades in the course, **only** when the administrator enables *Send the student's grades to the AI tutor* (disabled by default).
+
+Nothing else from the client (for example the user's name or arbitrary page metadata) is forwarded: the plugin builds the context server-side and only accepts an allowlisted set of keys from the browser.
+
+### Export and deletion
+
+- **Privacy API export** returns, per course, the user's stored session handles and the course configuration entries they edited.
+- **Privacy API deletion** (per user, per course, or for a set of users in a course) deletes the stored session rows and requests the deletion of each remote session from the Datacurso AI service by its stored identifier. The reference to the last editor of the course configuration is cleared; the course configuration itself is kept because it belongs to the course, not to a person.
+- **Course deletion** removes the course configuration and the course's sessions (locally and remotely).
+- **User deletion** removes the user's sessions (locally and remotely).
+
+Remote deletion is best effort: a failure on the Datacurso side is logged and never blocks the Moodle deletion. Because remote sessions are deleted one by one using the stored identifiers, sessions created before this version (which were never recorded) cannot be enumerated from Moodle. A per-user bulk deletion endpoint on the Datacurso AI backend is a pending dependency that would make erasure exhaustive; until it is available, requests concerning such sessions are handled through Datacurso support.
 
 ## Troubleshooting
 
