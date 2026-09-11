@@ -75,6 +75,7 @@ $string['error_license_not_allowed'] = 'Sua licença não permite acesso ao serv
 $string['error_license_not_allowed_short'] = 'Erro de licença';
 $string['error_message_too_long'] = '[Erro] A mensagem é muito longa. Máximo 4000 caracteres.';
 $string['error_no_credits_fallback'] = 'Créditos insuficientes: {$a}';
+$string['error_ratelimit_exceeded'] = 'O limite de consumo permitido foi excedido. Por favor, tente novamente em {$a}.';
 $string['error_tutor_not_available'] = 'O Tutor IA não está disponível para este curso.';
 $string['error_unexpected'] = 'Ocorreu um erro inesperado. Por favor, tente novamente.';
 $string['error_unknown'] = 'Ocorreu um erro desconhecido. Por favor, tente novamente.';

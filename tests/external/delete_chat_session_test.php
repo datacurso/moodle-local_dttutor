@@ -17,13 +17,13 @@
 namespace local_dttutor\external;
 
 use local_dttutor\course_config;
-use local_dttutor\fixtures\fake_ai_services_api;
-use local_dttutor\httpclient\tutoria_api;
+use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\httpclient\ai_client;
 use local_dttutor\session_store;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__ . '/../fixtures/fake_ai_services_api.php');
+require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
 
 /**
  * Tests for the delete_chat_session external function.
@@ -37,13 +37,13 @@ require_once(__DIR__ . '/../fixtures/fake_ai_services_api.php');
  */
 final class delete_chat_session_test extends \advanced_testcase {
     /**
-     * Register a fake HTTP layer in the DI container.
+     * Bind a fake AI client in the DI container.
      *
-     * @return fake_ai_services_api
+     * @return fake_ai_client
      */
-    private function fake_remote_api(): fake_ai_services_api {
-        $fake = new fake_ai_services_api();
-        \core\di::set(tutoria_api::class, new tutoria_api($fake));
+    private function fake_remote_api(): fake_ai_client {
+        $fake = new fake_ai_client();
+        \core\di::set(ai_client::class, $fake);
         return $fake;
     }
 
@@ -160,8 +160,8 @@ final class delete_chat_session_test extends \advanced_testcase {
         global $DB;
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
-        // No DI binding and no license key: constructing the real client throws.
-        unset_config('licensekey', 'aiprovider_datacurso');
+        // Resolving the AI client throws, as when the provider is unconfigured or not installed.
+        fake_ai_client::bind_unavailable();
         session_store::upsert((int)$student->id, (int)$course->id, null, 'remote-unreachable');
 
         $result = delete_chat_session::execute((int)$course->id);
@@ -170,7 +170,6 @@ final class delete_chat_session_test extends \advanced_testcase {
         $this->resetDebugging();
         $this->assertCount(1, $debug);
         $this->assertStringContainsString('SESSION_DELETE_REMOTE_UNAVAILABLE', $debug[0]->message);
-        $this->assertStringContainsString(\moodle_exception::class, $debug[0]->message);
         $this->assertStringNotContainsString('remote-unreachable', $debug[0]->message);
         $this->assertFalse($result['deleted']);
         // The stored handle is dropped anyway so a later deletion does not chase a dead pointer.

@@ -16,11 +16,11 @@
 
 namespace local_dttutor\httpclient;
 
-use local_dttutor\fixtures\fake_ai_services_api;
+use local_dttutor\fixtures\fake_ai_client;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__ . '/../fixtures/fake_ai_services_api.php');
+require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
 
 /**
  * Tests for the Tutor-IA HTTP client session bookkeeping.
@@ -57,7 +57,7 @@ final class tutoria_api_test extends \advanced_testcase {
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();
         $user = $this->getDataGenerator()->create_user();
-        $fake = new fake_ai_services_api();
+        $fake = new fake_ai_client();
         $fake->enqueue($this->session_response('remote-1'));
         $api = new tutoria_api($fake);
 
@@ -79,7 +79,7 @@ final class tutoria_api_test extends \advanced_testcase {
         $course = $this->getDataGenerator()->create_course();
         $page = $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
         $user = $this->getDataGenerator()->create_user();
-        $fake = new fake_ai_services_api();
+        $fake = new fake_ai_client();
         $fake->enqueue($this->session_response('remote-cm'));
         $api = new tutoria_api($fake);
 
@@ -93,7 +93,7 @@ final class tutoria_api_test extends \advanced_testcase {
 
     public function test_forget_cached_session_clears_the_v2_key(): void {
         $this->resetAfterTest();
-        $fake = new fake_ai_services_api();
+        $fake = new fake_ai_client();
         $fake->enqueue($this->session_response('remote-forget'));
         $api = new tutoria_api($fake);
         $api->start_session_v2(2, 3, 7);
@@ -110,7 +110,7 @@ final class tutoria_api_test extends \advanced_testcase {
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();
         $user = $this->getDataGenerator()->create_user();
-        $fake = new fake_ai_services_api();
+        $fake = new fake_ai_client();
         $fake->enqueue($this->session_response('remote-old'));
         $fake->enqueue(['deleted' => true]);
         $fake->enqueue($this->session_response('remote-new'));
@@ -134,7 +134,7 @@ final class tutoria_api_test extends \advanced_testcase {
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();
         $user = $this->getDataGenerator()->create_user();
-        $fake = new fake_ai_services_api();
+        $fake = new fake_ai_client();
         $fake->enqueue($this->session_response('remote-del'));
         $fake->enqueue(['deleted' => true]);
         $api = new tutoria_api($fake);
@@ -148,7 +148,7 @@ final class tutoria_api_test extends \advanced_testcase {
     public function test_session_without_id_is_not_stored(): void {
         global $DB;
         $this->resetAfterTest();
-        $fake = new fake_ai_services_api();
+        $fake = new fake_ai_client();
         $fake->enqueue(['ready' => false]);
         $api = new tutoria_api($fake);
 

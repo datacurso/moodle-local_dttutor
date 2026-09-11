@@ -75,6 +75,7 @@ $string['error_license_not_allowed'] = 'Ваша лицензия не позв�
 $string['error_license_not_allowed_short'] = 'Ошибка лицензии';
 $string['error_message_too_long'] = '[Ошибка] Сообщение слишком длинное. Максимум 4000 символов.';
 $string['error_no_credits_fallback'] = 'Недостаточно кредитов: {$a}';
+$string['error_ratelimit_exceeded'] = 'Превышен допустимый лимит использования. Пожалуйста, попробуйте снова {$a}.';
 $string['error_tutor_not_available'] = 'ИИ-тьютор недоступен для этого курса.';
 $string['error_unexpected'] = 'Произошла непредвиденная ошибка. Пожалуйста, попробуйте снова.';
 $string['error_unknown'] = 'Произошла неизвестная ошибка. Пожалуйста, попробуйте снова.';

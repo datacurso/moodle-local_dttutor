@@ -45,9 +45,11 @@ Remediation of the MindFree security assessment of 2.0.7 (findings SEC-001 to SE
 
 - **System prompt**: Instructs the model to answer only from the COURSE KNOWLEDGE block, to admit when information is not available, and no longer describes web service tools.
 - **Client metadata**: the user's full name is no longer sent by the client nor placed in the prompt; the chat proxy builds the context server-side.
-- **HTTP client**: `tutoria_api` accepts an injected `ai_services_api` and is resolved through `\core\di`; `delete_chat_session` now extends `core_external\external_api`.
+- **HTTP client**: `tutoria_api` accepts an injected AI client and is resolved through `\core\di`; `delete_chat_session` now extends `core_external\external_api`.
+- **Provider integration isolated**: the AI provider is reached only through the `ai_client` port and the `datacurso_ai_client` adapter (`client_factory` resolves the DI binding or the adapter); the test suite no longer requires `aiprovider_datacurso` to be installed. The rate limit notice now uses the plugin's own `error_ratelimit_exceeded` string.
 - **README**: New *Data processed and transferred* section.
 - **Legacy external API include removed**: `save_course_config` no longer `require_once`s the legacy `externallib` (it already extended `core_external\external_api`) and is now covered by PHPUnit tests.
+- **Chat proxy testable seams**: `handler::build_request_headers()` and `handler::classify_response()` are extracted from `call_ai_api_buffer()` (pure extraction, the outgoing request is unchanged) so that the request headers and the rate-limit notice / error / SSE-text classification of the AI response are covered by PHPUnit without a network call.
 
 ### Fixed
 

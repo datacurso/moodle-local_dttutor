@@ -26,12 +26,12 @@ use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
 use core_privacy\tests\provider_testcase;
 use local_dttutor\course_config;
-use local_dttutor\fixtures\fake_ai_services_api;
-use local_dttutor\httpclient\tutoria_api;
+use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\httpclient\ai_client;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__ . '/../fixtures/fake_ai_services_api.php');
+require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
 
 /**
  * Privacy provider tests for local_dttutor.
@@ -54,11 +54,11 @@ final class provider_test extends provider_testcase {
     /**
      * Register a fake HTTP layer for every code path that resolves the tutor API from the DI container.
      *
-     * @return fake_ai_services_api
+     * @return fake_ai_client
      */
-    private function fake_remote_api(): fake_ai_services_api {
-        $fake = new fake_ai_services_api();
-        \core\di::set(tutoria_api::class, new tutoria_api($fake));
+    private function fake_remote_api(): fake_ai_client {
+        $fake = new fake_ai_client();
+        \core\di::set(ai_client::class, $fake);
         return $fake;
     }
 
@@ -332,8 +332,8 @@ final class provider_test extends provider_testcase {
         $course = $generator->create_course();
         $student = $generator->create_and_enrol($course, 'student');
         $this->add_session((int)$student->id, (int)$course->id, 'sess-unreachable');
-        // No DI binding and no license key: constructing the real client throws.
-        unset_config('licensekey', 'aiprovider_datacurso');
+        // Resolving the AI client throws, as when the provider is unconfigured or not installed.
+        fake_ai_client::bind_unavailable();
 
         $contextlist = new approved_contextlist($student, self::COMPONENT, [\context_course::instance($course->id)->id]);
         provider::delete_data_for_user($contextlist);

@@ -75,6 +75,7 @@ $string['error_license_not_allowed'] = 'Lisensi Anda tidak mengizinkan akses ke 
 $string['error_license_not_allowed_short'] = 'Kesalahan Lisensi';
 $string['error_message_too_long'] = '[Kesalahan] Pesan terlalu panjang. Maksimal 4000 karakter.';
 $string['error_no_credits_fallback'] = 'Kredit tidak cukup: {$a}';
+$string['error_ratelimit_exceeded'] = 'Batas penggunaan yang diizinkan telah terlampaui. Silakan coba lagi pada {$a}.';
 $string['error_tutor_not_available'] = 'Tutor AI tidak tersedia untuk kursus ini.';
 $string['error_unexpected'] = 'Terjadi kesalahan yang tidak terduga. Silakan coba lagi.';
 $string['error_unknown'] = 'Terjadi kesalahan yang tidak diketahui. Silakan coba lagi.';
