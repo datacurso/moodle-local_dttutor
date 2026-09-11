@@ -24,7 +24,6 @@
 
 namespace local_dttutor\httpclient;
 
-use aiprovider_datacurso\httpclient\ai_services_api;
 use cache;
 use local_dttutor\session_store;
 use moodle_exception;
@@ -44,8 +43,8 @@ class tutoria_api {
      */
     private const SESSION_BACKEND_VALIDATION_INTERVAL = 300;
 
-    /** @var ai_services_api AI services API client instance. */
-    private ai_services_api $aiservice;
+    /** @var ai_client AI service client (port). */
+    private ai_client $client;
 
     /** @var cache|null Cache instance for storing sessions. */
     private ?cache $cache;
@@ -53,12 +52,12 @@ class tutoria_api {
     /**
      * Constructor to initialize the Tutor-IA API client.
      *
-     * @param ai_services_api|null $aiservice HTTP client to use; defaults to a new ai_services_api.
-     *                                        Tests inject a double here to avoid network access.
+     * @param ai_client|null $client AI service client to use; defaults to {@see client_factory::get()}.
+     *                               Tests inject a double here to avoid network access.
      * @since Moodle 4.5
      */
-    public function __construct(?ai_services_api $aiservice = null) {
-        $this->aiservice = $aiservice ?? new ai_services_api();
+    public function __construct(?ai_client $client = null) {
+        $this->client = $client ?? client_factory::get();
 
         try {
             $this->cache = cache::make('local_dttutor', 'sessions');
@@ -114,7 +113,7 @@ class tutoria_api {
             $requestdata['module_id'] = (string) $cmid;
         }
 
-        $response = $this->aiservice->request('POST', '/chat/start/v2', $requestdata);
+        $response = $this->client->request('POST', '/chat/start/v2', $requestdata);
 
         return $this->remember_session($cachekey, $response, $courseid, $userid, $cmid);
     }
@@ -170,7 +169,7 @@ class tutoria_api {
         if ($meta !== null) {
             $payload['meta'] = $meta;
         }
-        return $this->aiservice->request('POST', '/chat/messages/append/v2', $payload);
+        return $this->client->request('POST', '/chat/messages/append/v2', $payload);
     }
 
     /**
@@ -187,7 +186,7 @@ class tutoria_api {
         $endpoint = '/chat/history?session_id=' . urlencode($sessionid) .
             '&limit=' . $limit .
             '&offset=' . $offset;
-        return $this->aiservice->request('GET', $endpoint);
+        return $this->client->request('GET', $endpoint);
     }
 
     /**
@@ -200,7 +199,7 @@ class tutoria_api {
      */
     public function delete_session(string $sessionid): array {
         try {
-            return $this->aiservice->request('DELETE', '/chat/session/' . $sessionid);
+            return $this->client->request('DELETE', '/chat/session/' . $sessionid);
         } finally {
             // The handle is dropped even when the remote call fails: the session is either gone
             // already or will expire on its own, and keeping a dead pointer would only mislead

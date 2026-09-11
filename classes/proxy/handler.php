@@ -28,8 +28,8 @@
 
 namespace local_dttutor\proxy;
 
-use aiprovider_datacurso\httpclient\ai_services_api;
-use aiprovider_datacurso\httpclient\datacurso_api_base;
+use local_dttutor\httpclient\ai_client;
+use local_dttutor\httpclient\client_factory;
 
 /**
  * SSE streaming handler.
@@ -113,16 +113,17 @@ class handler {
      * @param  string $model    Model name.
      * @param  array  $messages Conversation messages.
      * @param  int    $userid   The requesting user's id.
+     * @param  string $siteid   Anonymous site identifier, as reported by the AI client.
      * @return array
      */
-    public static function build_payload(string $model, array $messages, int $userid): array {
+    public static function build_payload(string $model, array $messages, int $userid, string $siteid): array {
         return [
             'model'          => $model,
             'messages'       => $messages,
             'stream'         => true,
             'max_tokens'     => 16384,
             'userid'         => (string)$userid,
-            'site_id'        => datacurso_api_base::get_site_uuid(),
+            'site_id'        => $siteid,
             'stream_options' => ['include_usage' => true],
         ];
     }
@@ -131,7 +132,7 @@ class handler {
      * Call the AI API with streaming (buffered).
      *
      * Sends the request to the Datacurso AI proxy which holds the actual
-     * API key server-side. The client's License-Key (from aiprovider_datacurso)
+     * API key server-side. The client's License-Key (configured in the AI provider)
      * is used for authentication.
      *
      * @param  string $model    Model name.
@@ -139,33 +140,18 @@ class handler {
      * @return array            ['type'=>'text', ...], ['type'=>'notice', ...] or ['type'=>'error', ...]
      */
     private static function call_ai_api_buffer(string $model, array $messages): array {
-        // Use ai_services_api to get the base URL and License-Key.
-        // The base URL is configured in aiprovider_datacurso — no hardcoded URLs here.
+        // The base URL, site id and rate limit come from the AI client port — no hardcoded URLs here.
         global $USER;
 
-        $aiservice  = new ai_services_api();
-        $baseurl    = rtrim($aiservice->get_base_url(), '/');
-        $apiurl     = $baseurl . '/provider/chat/completions';
-        $licensekey = get_config('aiprovider_datacurso', 'licensekey') ?: '';
+        $client  = client_factory::get();
+        $baseurl = rtrim($client->get_base_url(), '/');
+        $apiurl  = $baseurl . '/provider/chat/completions';
 
-        $payload = self::build_payload($model, $messages, (int)$USER->id);
+        $payload = self::build_payload($model, $messages, (int)$USER->id, $client->get_site_id());
 
         \local_dttutor_log('AI_API_REQUEST', self::summarize_request_for_log($model, $messages));
 
-        $headers = [
-            'Content-Type: application/json',
-        ];
-        if ($licensekey !== '') {
-            $headers[] = 'License-Key: ' . $licensekey;
-        }
-        // Declare the real service so the AI service applies the per-plugin rate limit for
-        // dttutor (the path /provider/chat/completions would otherwise resolve to
-        // aiprovider_datacurso), and forward the configured limit/window for local_dttutor.
-        $headers[] = 'X-Service-Id: local_dttutor';
-        $ratelimiter = new \aiprovider_datacurso\local\ratelimiter();
-        foreach ($ratelimiter->get_rate_limit_headers('local_dttutor') as $rlheader) {
-            $headers[] = $rlheader;
-        }
+        $headers = self::build_request_headers($client);
 
         $buffer = '';
         $ch = curl_init($apiurl);
@@ -187,6 +173,47 @@ class handler {
         $curlerrno = curl_errno($ch);
         curl_close($ch);
 
+        return self::classify_response((int)$httpcode, $curlerrno, $buffer);
+    }
+
+    /**
+     * Build the HTTP header lines sent with the chat completion request.
+     *
+     * @param  ai_client $client The AI client port providing the license key and rate limit.
+     * @return string[] "Name: value" lines, in the order they are sent.
+     */
+    public static function build_request_headers(ai_client $client): array {
+        $licensekey = $client->get_license_key();
+
+        $headers = [
+            'Content-Type: application/json',
+        ];
+        if ($licensekey !== '') {
+            $headers[] = 'License-Key: ' . $licensekey;
+        }
+        // Declare the real service so the AI service applies the per-plugin rate limit for
+        // dttutor (the path /provider/chat/completions would otherwise resolve to the
+        // provider itself), and forward the configured limit/window for local_dttutor.
+        $headers[] = 'X-Service-Id: local_dttutor';
+        foreach ($client->get_rate_limit_headers() as $rlheader) {
+            $headers[] = $rlheader;
+        }
+
+        return $headers;
+    }
+
+    /**
+     * Turn the raw outcome of the chat completion request into the handler response.
+     *
+     * Logs the same metadata-only events as before the extraction: AI_API_RATE_LIMITED,
+     * AI_API_ERROR, AI_API_RESPONSE_EMPTY and AI_API_RESPONSE_TEXT.
+     *
+     * @param  int    $httpcode  HTTP status code (0 when the transport failed).
+     * @param  int    $curlerrno cURL error number (0 on success).
+     * @param  string $buffer    Raw response body.
+     * @return array            ['type'=>'text', ...], ['type'=>'notice', ...] or ['type'=>'error', ...]
+     */
+    public static function classify_response(int $httpcode, int $curlerrno, string $buffer): array {
         // Rate limit reached: show the student a clear, friendly message (not a generic error).
         if ($httpcode === 403) {
             $err = json_decode($buffer, true);
@@ -195,7 +222,7 @@ class handler {
                 $retryat = $resetat > 0
                     ? userdate($resetat, get_string('strftimedatetime', 'langconfig'))
                     : '';
-                $message = get_string('error_ratelimit_exceeded', 'aiprovider_datacurso', $retryat);
+                $message = get_string('error_ratelimit_exceeded', 'local_dttutor', $retryat);
                 \local_dttutor_log('AI_API_RATE_LIMITED', ['reset_at' => $resetat], true);
                 return ['type' => 'notice', 'message' => $message];
             }
@@ -210,6 +237,27 @@ class handler {
             return ['type' => 'error', 'error' => 'ai_api_error'];
         }
 
+        $textbuf = self::parse_sse_buffer($buffer);
+
+        if (empty($textbuf) && !empty($buffer)) {
+            \local_dttutor_log('AI_API_RESPONSE_EMPTY', ['http_code' => $httpcode, 'body_length' => strlen($buffer)], true);
+        }
+
+        \local_dttutor_log('AI_API_RESPONSE_TEXT', self::summarize_response_for_log($textbuf));
+
+        return ['type' => 'text', 'content' => $textbuf];
+    }
+
+    /**
+     * Concatenate the content deltas of a buffered OpenAI-style SSE body.
+     *
+     * Only "data:" lines are read; frames that are not JSON are skipped and parsing stops
+     * at the "[DONE]" sentinel.
+     *
+     * @param  string $buffer Raw SSE body.
+     * @return string The answer text (empty when no delta carried content).
+     */
+    private static function parse_sse_buffer(string $buffer): string {
         $textbuf = '';
         $lines = explode("\n", $buffer);
         foreach ($lines as $line) {
@@ -231,13 +279,7 @@ class handler {
             }
         }
 
-        if (empty($textbuf) && !empty($buffer)) {
-            \local_dttutor_log('AI_API_RESPONSE_EMPTY', ['http_code' => $httpcode, 'body_length' => strlen($buffer)], true);
-        }
-
-        \local_dttutor_log('AI_API_RESPONSE_TEXT', self::summarize_response_for_log($textbuf));
-
-        return ['type' => 'text', 'content' => $textbuf];
+        return $textbuf;
     }
 
     /**

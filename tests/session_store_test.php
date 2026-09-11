@@ -16,10 +16,12 @@
 
 namespace local_dttutor;
 
+use local_dttutor\fixtures\fake_ai_client;
 use local_dttutor\fixtures\racing_session_store;
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once(__DIR__ . '/fixtures/fake_ai_client.php');
 require_once(__DIR__ . '/fixtures/racing_session_store.php');
 
 /**
@@ -35,8 +37,8 @@ final class session_store_test extends \advanced_testcase {
     public function test_purge_removes_local_rows_when_the_remote_client_cannot_be_built(): void {
         global $DB;
         $this->resetAfterTest();
-        // No DI binding and no license key: constructing the real client throws.
-        unset_config('licensekey', 'aiprovider_datacurso');
+        // Resolving the AI client throws, as when the provider is unconfigured or not installed.
+        fake_ai_client::bind_unavailable();
         session_store::upsert(3, 7, null, 'remote-a');
         session_store::upsert(4, 7, null, 'remote-b');
         session_store::upsert(3, 8, null, 'remote-other-course');
@@ -47,7 +49,6 @@ final class session_store_test extends \advanced_testcase {
         $this->resetDebugging();
         $this->assertCount(1, $debug);
         $this->assertStringContainsString('SESSION_PURGE_REMOTE_UNAVAILABLE', $debug[0]->message);
-        $this->assertStringContainsString(\moodle_exception::class, $debug[0]->message);
         $this->assertStringNotContainsString('remote-a', $debug[0]->message);
         $this->assertSame(0, $DB->count_records(session_store::TABLE, ['courseid' => 7]));
         $this->assertSame(1, $DB->count_records(session_store::TABLE, ['courseid' => 8]));
@@ -55,7 +56,7 @@ final class session_store_test extends \advanced_testcase {
 
     public function test_purge_without_matching_rows_never_resolves_the_remote_client(): void {
         $this->resetAfterTest();
-        unset_config('licensekey', 'aiprovider_datacurso');
+        fake_ai_client::bind_unavailable();
 
         session_store::purge('courseid = :courseid', ['courseid' => 99]);
 

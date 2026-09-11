@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Test double for the Datacurso AI services HTTP client.
+ * Test double for the AI service client port.
  *
  * @package    local_dttutor
  * @category   test
@@ -25,31 +25,43 @@
 
 namespace local_dttutor\fixtures;
 
-use aiprovider_datacurso\httpclient\ai_services_api;
+use local_dttutor\httpclient\ai_client;
 
 /**
  * Records every request and hands out queued responses instead of touching the network.
  *
- * Inject it through the tutoria_api constructor and, for code that resolves the client
- * from the DI container, register the wrapper with \core\di::set(tutoria_api::class, ...).
+ * Inject it through the tutoria_api constructor or bind it for the whole plugin with
+ * \core\di::set(ai_client::class, $fake); client_factory then hands it out everywhere.
+ * It implements the port directly, so the AI provider plugin need not be installed.
  *
  * @package    local_dttutor
  * @copyright  2026 Datacurso
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class fake_ai_services_api extends ai_services_api {
+final class fake_ai_client implements ai_client {
     /** @var array<int, array|\Throwable> Responses (or exceptions to throw) handed out one per request. */
     public array $responses = [];
 
     /** @var array<int, array{method: string, path: string, body: array}> Requests received, in order. */
     public array $calls = [];
 
+    /** @var string License key handed out by get_license_key(). */
+    private string $licensekey = 'fake-license';
+
+    /** @var string[] Headers handed out by get_rate_limit_headers(). */
+    private array $ratelimitheaders = [];
+
     /**
-     * Build the double without a license key, region lookup or network access.
+     * Bind a client that cannot be resolved: every resolution of the port throws.
+     *
+     * Mirrors the production failure when the provider is unconfigured or not installed, without
+     * depending on the provider itself. The exception class is deliberately not part of the
+     * contract callers should assert on.
      */
-    public function __construct() {
-        // Deliberately does not call the parent constructor: it queries the shop for the region.
-        $this->baseurl = 'https://ai.example.test';
+    public static function bind_unavailable(): void {
+        \core\di::set(ai_client::class, static function (): ai_client {
+            throw new \RuntimeException('AI client unavailable');
+        });
     }
 
     /**
@@ -77,6 +89,60 @@ class fake_ai_services_api extends ai_services_api {
             throw $response;
         }
         return $response;
+    }
+
+    /**
+     * Fixed base URL; never contacted.
+     *
+     * @return string
+     */
+    public function get_base_url(): string {
+        return 'https://fake.invalid';
+    }
+
+    /**
+     * Override the license key (an empty string mimics an unconfigured site).
+     *
+     * @param string $licensekey
+     */
+    public function set_license_key(string $licensekey): void {
+        $this->licensekey = $licensekey;
+    }
+
+    /**
+     * Override the rate limit headers the double forwards.
+     *
+     * @param string[] $headers "Name: value" lines.
+     */
+    public function set_rate_limit_headers(array $headers): void {
+        $this->ratelimitheaders = $headers;
+    }
+
+    /**
+     * License key; 'fake-license' unless overridden.
+     *
+     * @return string
+     */
+    public function get_license_key(): string {
+        return $this->licensekey;
+    }
+
+    /**
+     * Fixed site identifier.
+     *
+     * @return string
+     */
+    public function get_site_id(): string {
+        return 'fake-site';
+    }
+
+    /**
+     * Rate limit headers; none unless overridden.
+     *
+     * @return string[]
+     */
+    public function get_rate_limit_headers(): array {
+        return $this->ratelimitheaders;
     }
 
     /**

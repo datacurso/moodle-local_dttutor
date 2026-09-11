@@ -14,22 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace local_dttutor\httpclient;
+
 /**
- * Version details for the Tutor-IA plugin.
+ * Resolves the {@see ai_client} implementation in use.
  *
  * @package    local_dttutor
- * @copyright  2025 Datacurso
+ * @copyright  2026 Datacurso
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->component = 'local_dttutor';
-$plugin->version = 2026091106;
-$plugin->requires = 2024042200;
-$plugin->maturity = MATURITY_STABLE;
-$plugin->release = '2.0.5';
-// Plugin dependencies.
-$plugin->dependencies = [
-    'aiprovider_datacurso' => 2026072300,
-];
+final class client_factory {
+    /**
+     * Return the bound client, or the production adapter when nothing is bound.
+     *
+     * An interface has no autowiring, so the container only knows the port when something
+     * registered it explicitly (tests do so with \core\di::set(ai_client::class, ...)).
+     *
+     * @return ai_client
+     * @throws \Throwable When the production adapter cannot be built.
+     */
+    public static function get(): ai_client {
+        $container = \core\di::get_container();
+        if ($container->has(ai_client::class)) {
+            return $container->get(ai_client::class);
+        }
+        return new datacurso_ai_client();
+    }
+}
