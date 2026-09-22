@@ -74,6 +74,9 @@ final class get_chat_history_test extends \advanced_testcase {
         return \core_external\external_api::clean_returnvalue(get_chat_history::execute_returns(), $result);
     }
 
+    /**
+     * MDL-INT-020: paginated retrieval of the history.
+     */
     public function test_tutor_disabled_for_the_course_is_refused(): void {
         $this->resetAfterTest();
         [$course] = $this->enrolled_student_in_course(false);
@@ -88,6 +91,9 @@ final class get_chat_history_test extends \advanced_testcase {
         }
     }
 
+    /**
+     * MDL-INT-020: paginated retrieval of the history.
+     */
     public function test_module_from_another_course_is_refused(): void {
         $this->resetAfterTest();
         [$course] = $this->enrolled_student_in_course(true);
@@ -99,6 +105,9 @@ final class get_chat_history_test extends \advanced_testcase {
         get_chat_history::execute((int)$course->id, (int)$foreignpage->cmid);
     }
 
+    /**
+     * MDL-INT-020: paginated retrieval of the history.
+     */
     public function test_without_a_stored_session_returns_an_empty_history_and_makes_no_remote_call(): void {
         $this->resetAfterTest();
         [$course] = $this->enrolled_student_in_course(true);
@@ -114,6 +123,9 @@ final class get_chat_history_test extends \advanced_testcase {
         $this->assertSame([], $fake->get_call_signatures(), 'A read must not open a remote session');
     }
 
+    /**
+     * MDL-INT-020: paginated retrieval of the history.
+     */
     public function test_with_a_stored_session_returns_the_remote_history(): void {
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_course(true);
@@ -137,6 +149,9 @@ final class get_chat_history_test extends \advanced_testcase {
         $this->assertSame(['GET /chat/history?session_id=remote-42&limit=20&offset=0'], $fake->get_call_signatures());
     }
 
+    /**
+     * MDL-INT-021: history unavailable in the AI service.
+     */
     public function test_remote_failure_returns_an_empty_history_with_a_notice(): void {
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_course(true);

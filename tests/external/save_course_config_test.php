@@ -53,6 +53,9 @@ final class save_course_config_test extends \advanced_testcase {
         return \core_external\external_api::clean_returnvalue(save_course_config::execute_returns(), $result);
     }
 
+    /**
+     * MDL-INT-023: saving the course switch.
+     */
     public function test_teacher_enables_the_tutor(): void {
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();
@@ -64,6 +67,9 @@ final class save_course_config_test extends \advanced_testcase {
         $this->assertTrue(course_config::is_enabled_for_course((int)$course->id));
     }
 
+    /**
+     * MDL-INT-023: saving the course switch.
+     */
     public function test_teacher_disables_the_tutor(): void {
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();
@@ -75,10 +81,16 @@ final class save_course_config_test extends \advanced_testcase {
         $this->assertFalse(course_config::is_enabled_for_course((int)$course->id));
     }
 
+    /**
+     * MDL-INT-023: saving the course switch.
+     */
     public function test_parameters_are_only_the_course_and_the_toggle(): void {
         $this->assertSame(['courseid', 'enabled'], array_keys(save_course_config::execute_parameters()->keys));
     }
 
+    /**
+     * MDL-INT-023: saving the course switch.
+     */
     public function test_return_structure_has_no_enrol_status(): void {
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();
@@ -89,6 +101,9 @@ final class save_course_config_test extends \advanced_testcase {
         $this->assertSame(['success', 'message'], array_keys(save_course_config::execute_returns()->keys));
     }
 
+    /**
+     * MDL-INT-023: saving the course switch.
+     */
     public function test_student_without_course_update_is_refused(): void {
         $this->resetAfterTest();
         set_config('enabled', 1, 'local_dttutor');
@@ -100,6 +115,9 @@ final class save_course_config_test extends \advanced_testcase {
         save_course_config::execute((int)$course->id, true);
     }
 
+    /**
+     * MDL-INT-023: saving the course switch.
+     */
     public function test_plugin_disabled_site_wide_is_refused(): void {
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();

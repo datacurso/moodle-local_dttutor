@@ -27,6 +27,9 @@ use local_dttutor\course_config;
  * @covers     \local_dttutor\proxy\system_message
  */
 final class system_message_test extends \advanced_testcase {
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_system_message_does_not_reference_web_service_tools(): void {
         $this->resetAfterTest();
         $context = ['course_id' => 5, 'course_name' => 'Algebra', 'location' => 'course', 'page_url' => 'x'];
@@ -40,6 +43,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringContainsString('COURSE KNOWLEDGE', $message['content']);
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_system_message_instructs_to_admit_missing_information(): void {
         $this->resetAfterTest();
 
@@ -48,6 +54,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringContainsStringIgnoringCase('not available', $message['content']);
     }
 
+    /**
+     * MDL-UNIT-007, MDL-INT-033: headers and payload of the request to the AI service.
+     */
     public function test_system_message_never_contains_the_users_fullname(): void {
         $this->resetAfterTest();
         $user = $this->getDataGenerator()->create_user(['firstname' => 'Ximena', 'lastname' => 'Quintanilla']);
@@ -70,6 +79,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringNotContainsString('Quintanilla', $message['content']);
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_page_context_helper_no_longer_exists(): void {
         global $CFG;
         require_once($CFG->dirroot . '/local/dttutor/lib.php');
@@ -77,6 +89,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertFalse(function_exists('local_dttutor_get_page_context'));
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_system_message_contains_only_the_site_level_prompt(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -94,6 +109,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringNotContainsString('Course custom instructions', $content);
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_system_message_has_no_prompt_section_when_the_site_prompt_is_empty(): void {
         $this->resetAfterTest();
         unset_config('custom_prompt', 'local_dttutor');
@@ -103,6 +121,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringNotContainsString('custom instructions', $message['content']);
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_location_hint_is_included_for_a_known_location(): void {
         $this->resetAfterTest();
         $context = ['course_id' => 5, 'course_name' => 'Algebra', 'location' => 'course'];
@@ -113,6 +134,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringContainsString('- Location: course', $message['content']);
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_no_location_hint_for_an_unknown_location(): void {
         $this->resetAfterTest();
 
@@ -122,5 +146,29 @@ final class system_message_test extends \advanced_testcase {
         foreach (['course', 'activity', 'gradebook', 'admin', 'dashboard', 'messages', 'profile', 'calendar', 'files'] as $key) {
             $this->assertStringNotContainsString(get_string('ctx_loc_' . $key, 'local_dttutor'), $message['content']);
         }
+    }
+
+    /**
+     * MDL-E2E-008: the fragment selected on the page travels with the question.
+     *
+     * [Pendiente:fail] The interface shows an indicator with the selected text, but the fragment
+     * never reaches the AI service, so the tutor answers as if it did not exist and the privacy
+     * declaration, which states that it is transferred, does not match what happens.
+     */
+    public function test_the_selected_fragment_travels_with_the_question(): void {
+        $this->resetAfterTest();
+        $fragment = 'The mitochondria is the powerhouse of the cell';
+
+        $message = system_message::build('student', [
+            'course_id' => 5,
+            'location' => 'course',
+            'selected_text' => $fragment,
+        ], '');
+
+        $this->assertStringContainsString(
+            $fragment,
+            $message['content'],
+            'The fragment the user selected on the page must reach the AI service with the question.'
+        );
     }
 }

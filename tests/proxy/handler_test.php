@@ -31,6 +31,9 @@ require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
  * @covers     \local_dttutor\proxy\handler
  */
 final class handler_test extends \advanced_testcase {
+    /**
+     * MDL-CTR-003: contract of the request sent to the AI service.
+     */
     public function test_payload_has_no_tool_definitions(): void {
         $this->resetAfterTest();
         $messages = [
@@ -49,6 +52,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertSame('fake-site', $payload['site_id']);
     }
 
+    /**
+     * MDL-CTR-003: contract of the request sent to the AI service.
+     */
     public function test_payload_is_serialisable_without_tool_keys_anywhere(): void {
         $this->resetAfterTest();
 
@@ -60,6 +66,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertStringNotContainsString('tool_choice', $json);
     }
 
+    /**
+     * MDL-CTR-002: contract of the stream sent to the browser.
+     */
     public function test_error_frame_carries_an_explicit_error_event_and_json_data(): void {
         $frame = handler::format_sse_event('error', ['error' => 'ai_api_error']);
 
@@ -69,16 +78,25 @@ final class handler_test extends \advanced_testcase {
         $this->assertSame(['error' => 'ai_api_error'], json_decode($matches[1], true));
     }
 
+    /**
+     * MDL-CTR-002: contract of the stream sent to the browser.
+     */
     public function test_token_frame_keeps_the_token_event(): void {
         $frame = handler::format_sse_event('token', ['t' => 'Hola ñ']);
 
         $this->assertSame("event: token\ndata: {\"t\":\"Hola ñ\"}\n\n", $frame);
     }
 
+    /**
+     * MDL-CTR-002: contract of the stream sent to the browser.
+     */
     public function test_done_frame_has_an_empty_json_object(): void {
         $this->assertSame("event: done\ndata: {}\n\n", handler::format_sse_event('done', []));
     }
 
+    /**
+     * MDL-UNIT-007: headers and payload of the request to the AI service.
+     */
     public function test_request_headers_carry_the_license_key_and_the_service_id_in_order(): void {
         $headers = handler::build_request_headers(new fake_ai_client());
 
@@ -89,6 +107,9 @@ final class handler_test extends \advanced_testcase {
         ], $headers);
     }
 
+    /**
+     * MDL-UNIT-007: headers and payload of the request to the AI service.
+     */
     public function test_request_headers_append_every_rate_limit_header_after_the_service_id(): void {
         $client = new fake_ai_client();
         $client->set_rate_limit_headers(['X-Rate-Limit: 20', 'X-Rate-Window: 3600']);
@@ -104,6 +125,9 @@ final class handler_test extends \advanced_testcase {
         ], $headers);
     }
 
+    /**
+     * MDL-UNIT-007: headers and payload of the request to the AI service.
+     */
     public function test_request_headers_omit_the_license_key_when_none_is_configured(): void {
         $client = new fake_ai_client();
         $client->set_license_key('');
@@ -113,6 +137,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertSame(['Content-Type: application/json', 'X-Service-Id: local_dttutor'], $headers);
     }
 
+    /**
+     * MDL-UNIT-006: classifying the answer of the AI service.
+     */
     public function test_rate_limited_response_becomes_a_notice_with_the_retry_time(): void {
         $resetat = time() + 120;
         $body = json_encode(['detail' => 'rate_limit_exceeded', 'reset_at' => $resetat]);
@@ -127,6 +154,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertDebuggingCalled('[local_dttutor] AI_API_RATE_LIMITED {"reset_at":' . $resetat . '}');
     }
 
+    /**
+     * MDL-UNIT-006: classifying the answer of the AI service.
+     */
     public function test_rate_limited_response_without_reset_time_is_a_notice_with_an_empty_retry_time(): void {
         $response = handler::classify_response(403, 0, json_encode(['detail' => 'rate_limit_exceeded']));
 
@@ -137,6 +167,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertDebuggingCalled('[local_dttutor] AI_API_RATE_LIMITED {"reset_at":0}');
     }
 
+    /**
+     * MDL-UNIT-006: classifying the answer of the AI service.
+     */
     public function test_forbidden_response_with_another_detail_is_a_generic_error(): void {
         $body = json_encode(['detail' => 'license_invalid']);
 
@@ -148,6 +181,9 @@ final class handler_test extends \advanced_testcase {
         );
     }
 
+    /**
+     * MDL-UNIT-006: classifying the answer of the AI service.
+     */
     public function test_forbidden_response_with_malformed_json_is_a_generic_error(): void {
         $response = handler::classify_response(403, 0, '{"detail": "rate_limit_exceeded"');
 
@@ -155,6 +191,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertDebuggingCalled('[local_dttutor] AI_API_ERROR {"http_code":403,"curl_errno":0,"body_length":32}');
     }
 
+    /**
+     * MDL-UNIT-006: classifying the answer of the AI service.
+     */
     public function test_server_error_is_a_generic_error(): void {
         $response = handler::classify_response(500, 0, 'Internal Server Error');
 
@@ -162,6 +201,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertDebuggingCalled('[local_dttutor] AI_API_ERROR {"http_code":500,"curl_errno":0,"body_length":21}');
     }
 
+    /**
+     * MDL-UNIT-006: classifying the answer of the AI service.
+     */
     public function test_ok_status_with_an_empty_body_is_a_generic_error(): void {
         $response = handler::classify_response(200, 0, '');
 
@@ -169,6 +211,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertDebuggingCalled('[local_dttutor] AI_API_ERROR {"http_code":200,"curl_errno":0,"body_length":0}');
     }
 
+    /**
+     * MDL-UNIT-006: classifying the answer of the AI service.
+     */
     public function test_transport_failure_is_a_generic_error(): void {
         $response = handler::classify_response(0, CURLE_OPERATION_TIMEDOUT, '');
 
@@ -176,6 +221,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertDebuggingCalled('[local_dttutor] AI_API_ERROR {"http_code":0,"curl_errno":28,"body_length":0}');
     }
 
+    /**
+     * MDL-UNIT-008: extracting the text of the answer of the model.
+     */
     public function test_sse_body_is_concatenated_into_text(): void {
         $body = "data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n"
             . "data: {\"choices\":[{\"delta\":{\"content\":\"lo\"}}]}\n\n"
@@ -187,6 +235,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertDebuggingCalled('[local_dttutor] AI_API_RESPONSE_TEXT {"length":5,"estimated_completion_tokens":1}');
     }
 
+    /**
+     * MDL-UNIT-008: extracting the text of the answer of the model.
+     */
     public function test_sse_frames_after_done_and_non_json_frames_are_ignored(): void {
         $body = "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\n"
             . "data: not json\n\n"
@@ -201,6 +252,9 @@ final class handler_test extends \advanced_testcase {
         $this->assertDebuggingCalled('[local_dttutor] AI_API_RESPONSE_TEXT {"length":2,"estimated_completion_tokens":0}');
     }
 
+    /**
+     * MDL-UNIT-008: extracting the text of the answer of the model.
+     */
     public function test_ok_body_without_content_deltas_is_empty_text_and_logs_response_empty(): void {
         $body = "data: {\"choices\":[{\"delta\":{}}]}\n\ndata: [DONE]\n\n";
 
