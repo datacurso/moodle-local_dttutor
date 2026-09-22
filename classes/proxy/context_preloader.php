@@ -526,12 +526,14 @@ class context_preloader {
      * @return string
      */
     private static function describe_grade(\grade_item $item, ?\grade_grade $grade, bool $seehidden): string {
-        if (!$seehidden && $item->is_hidden()) {
-            return '';
-        }
         if ($grade === null) {
             return '';
         }
+
+        // Handing over the item that is already in memory: left to itself, a grade fetches its own
+        // item from the database, which would be one query per gradable activity and per message.
+        $grade->grade_item = $item;
+
         if (!$seehidden && $grade->is_hidden()) {
             return '';
         }
@@ -575,7 +577,9 @@ class context_preloader {
         if ($grade === null || $grade->finalgrade === null) {
             return '';
         }
-        if (!$seehidden && ($item->is_hidden() || $grade->is_hidden())) {
+
+        $grade->grade_item = $item;
+        if (!$seehidden && $grade->is_hidden()) {
             return '';
         }
 

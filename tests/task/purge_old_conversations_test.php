@@ -45,6 +45,7 @@ final class purge_old_conversations_test extends \advanced_testcase {
      *
      * @param int $daysago
      * @param string $remoteid
+     * @param int $userid Owner of the conversation: one row per user, course and activity.
      */
     private function add_conversation(int $daysago, string $remoteid, int $userid = 5): void {
         global $DB;
