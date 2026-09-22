@@ -93,8 +93,4 @@ final class scope_gaps_test extends \advanced_testcase {
             . 'is no criterion to accept or reject the performance. Definition pending with the client.'
         );
     }
-
-
-
-
 }

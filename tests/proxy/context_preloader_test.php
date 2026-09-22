@@ -292,17 +292,19 @@ final class context_preloader_test extends \advanced_testcase {
     }
 
     /**
-     * MDL-INT-011: including the grades costs the same whatever the number of activities.
+     * The extra database reads that including the grades costs in a course of a given size.
+     *
+     * @param int $activities Gradable activities the course has.
+     * @return int
      */
-    public function test_reading_the_grades_does_not_grow_with_the_number_of_activities(): void {
+    private function cost_of_including_the_grades(int $activities): int {
         global $DB, $CFG;
-        $this->resetAfterTest();
         require_once($CFG->libdir . '/gradelib.php');
 
         $generator = $this->getDataGenerator();
         $course = $generator->create_course();
         $student = $generator->create_and_enrol($course, 'student');
-        for ($i = 0; $i < 8; $i++) {
+        for ($i = 0; $i < $activities; $i++) {
             $assign = $generator->create_module('assign', ['course' => $course->id, 'grade' => 100]);
             $item = \grade_item::fetch([
                 'courseid' => $course->id,
@@ -310,25 +312,38 @@ final class context_preloader_test extends \advanced_testcase {
                 'itemmodule' => 'assign',
                 'iteminstance' => $assign->id,
             ]);
-            $item->update_final_grade($student->id, 50 + $i);
+            $item->update_final_grade($student->id, 50);
         }
 
-        // Warm the course knowledge so that only the cost of the grades is measured.
+        // Warm the course knowledge and the permissions, so that only the grades are measured.
         set_config('include_grades', 0, 'local_dttutor');
         context_preloader::build($course->id, (int)$student->id);
         $before = $DB->perf_get_reads();
         context_preloader::build($course->id, (int)$student->id);
-        $withoutgrades = $DB->perf_get_reads() - $before;
+        $without = $DB->perf_get_reads() - $before;
 
         set_config('include_grades', 1, 'local_dttutor');
+        context_preloader::build($course->id, (int)$student->id);
         $before = $DB->perf_get_reads();
         $text = context_preloader::build($course->id, (int)$student->id);
-        $withgrades = $DB->perf_get_reads() - $before;
+        $with = $DB->perf_get_reads() - $before;
 
         $this->assertStringContainsString('YOUR GRADES', $text);
-        $this->assertLessThan(
-            8,
-            $withgrades - $withoutgrades,
+        return $with - $without;
+    }
+
+    /**
+     * MDL-INT-011: including the grades costs the same whatever the number of activities.
+     */
+    public function test_reading_the_grades_does_not_grow_with_the_number_of_activities(): void {
+        $this->resetAfterTest();
+
+        $small = $this->cost_of_including_the_grades(2);
+        $large = $this->cost_of_including_the_grades(10);
+
+        $this->assertLessThanOrEqual(
+            2,
+            $large - $small,
             'The grades of the user must be read for the whole course at once, not activity by activity.'
         );
     }
@@ -373,6 +388,8 @@ final class context_preloader_test extends \advanced_testcase {
      */
     public function test_the_dates_of_a_lesson_are_sent(): void {
         $this->resetAfterTest();
+        // Both generators reach the file API, which refuses to work with nobody logged in.
+        $this->setAdminUser();
         $generator = $this->getDataGenerator();
         $course = $generator->create_course();
         $generator->create_module('lesson', [
@@ -395,6 +412,8 @@ final class context_preloader_test extends \advanced_testcase {
      */
     public function test_the_dates_of_a_workshop_are_sent(): void {
         $this->resetAfterTest();
+        // Both generators reach the file API, which refuses to work with nobody logged in.
+        $this->setAdminUser();
         $generator = $this->getDataGenerator();
         $course = $generator->create_course();
         $generator->create_module('workshop', [

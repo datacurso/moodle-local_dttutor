@@ -416,7 +416,7 @@ class context_preloader {
      * Read once for the whole course instead of once per activity and message.
      *
      * @param int $courseid
-     * @return array<string, \grade_item>
+     * @return array
      */
     private static function get_grade_items(int $courseid): array {
         $items = [];
@@ -491,7 +491,7 @@ class context_preloader {
      *
      * @param int $courseid
      * @param int $userid
-     * @return array<int, \grade_grade>
+     * @return array
      */
     private static function get_user_grades(int $courseid, int $userid): array {
         global $DB;
@@ -552,7 +552,7 @@ class context_preloader {
      *
      * @param int $courseid
      * @param int $userid
-     * @param array<int, \grade_grade> $usergrades
+     * @param array $usergrades Grades of the user indexed by grade item id.
      * @param bool $seehidden
      * @return string
      */

@@ -275,8 +275,13 @@ final class handler_test extends \advanced_testcase {
      * @return array{0: string, 1: string} The text carried and what was written out.
      */
     private function forward(string $chunk, string &$pending): array {
+        // The handler flushes as it writes, which would empty a single buffer: the inner one is
+        // the one it flushes, and the outer one is what this test ends up reading.
+        ob_start();
         ob_start();
         $text = handler::stream_chunk($chunk, $pending);
+        ob_end_flush();
+
         return [$text, (string)ob_get_clean()];
     }
 

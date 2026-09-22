@@ -46,11 +46,11 @@ final class purge_old_conversations_test extends \advanced_testcase {
      * @param int $daysago
      * @param string $remoteid
      */
-    private function add_conversation(int $daysago, string $remoteid): void {
+    private function add_conversation(int $daysago, string $remoteid, int $userid = 5): void {
         global $DB;
         $when = time() - ($daysago * DAYSECS);
         $DB->insert_record('local_dttutor_session', (object)[
-            'userid' => 5,
+            'userid' => $userid,
             'courseid' => 7,
             'cmid' => 0,
             'remotesessionid' => $remoteid,
@@ -67,8 +67,8 @@ final class purge_old_conversations_test extends \advanced_testcase {
         $fake = new fake_ai_client();
         \core\di::set(ai_client::class, $fake);
         set_config('retention_days', 30, 'local_dttutor');
-        $this->add_conversation(45, 'old-one');
-        $this->add_conversation(2, 'recent-one');
+        $this->add_conversation(45, 'old-one', 5);
+        $this->add_conversation(2, 'recent-one', 6);
 
         (new purge_old_conversations())->execute();
 

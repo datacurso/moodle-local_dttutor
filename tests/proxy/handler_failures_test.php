@@ -88,8 +88,11 @@ final class handler_failures_test extends \advanced_testcase {
         fake_ai_client::bind_unavailable();
         $messages = [['role' => 'user', 'content' => 'Hello']];
 
+        // Two buffers: the handler flushes the inner one as it writes, the outer one is read here.
+        ob_start();
         ob_start();
         handler::run('any-model', $messages, 'student');
+        ob_end_flush();
         $output = (string)ob_get_clean();
         $this->resetDebugging();
 

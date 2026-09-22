@@ -124,7 +124,7 @@ final class save_course_config_test extends \advanced_testcase {
         set_config('enabled', 0, 'local_dttutor');
 
         $this->expectException(\moodle_exception::class);
-        $this->expectExceptionMessage(get_string('error_api_not_configured', 'local_dttutor'));
+        $this->expectExceptionMessage(get_string('error_tutor_disabled_site', 'local_dttutor'));
         save_course_config::execute((int)$course->id, true);
     }
 }
