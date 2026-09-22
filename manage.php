@@ -52,9 +52,18 @@ $PAGE->set_heading($course->fullname);
 $config = course_config::get_by_course($courseid);
 
 // Prepare template context.
+$status = \local_dttutor\local\service_status::get();
+$usage = \local_dttutor\local\service_status::get_course_usage($courseid);
+
 $templatecontext = [
     'courseid' => $courseid,
     'tutor_enabled' => (bool)$config->indexing_enabled,
+    'service_available' => $status['available'],
+    'has_credits' => $status['credits'] !== null,
+    'credits' => $status['credits'],
+    'has_usage' => $usage !== null,
+    'usage_questions' => $usage,
+    'usage_days' => \local_dttutor\local\service_status::USAGE_WINDOW_DAYS,
 ];
 
 echo $OUTPUT->header();

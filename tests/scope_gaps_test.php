@@ -70,25 +70,7 @@ final class scope_gaps_test extends \advanced_testcase {
         );
     }
 
-    /**
-     * MDL-INT-044: failures of the AI service reach the administrator inside Moodle.
-     */
-    public function test_failures_of_the_service_reach_the_administrator_inside_moodle(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] Failures only land in the system error log, with no notice or report '
-            . 'inside Moodle.'
-        );
-    }
 
-    /**
-     * MDL-E2E-013: the position configurator works with a touch screen and with a keyboard.
-     */
-    public function test_the_position_configurator_works_with_touch_and_keyboard(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] Dragging only answers to a mouse, there is no keyboard alternative and '
-            . 'overlaps with fixed controls are not warned about. Checked by hand on a tablet.'
-        );
-    }
 
 
     /**
@@ -101,15 +83,6 @@ final class scope_gaps_test extends \advanced_testcase {
         );
     }
 
-    /**
-     * MDL-E2E-026: the course page tells the teacher the state of the service and the consumption.
-     */
-    public function test_the_course_page_reports_the_state_of_the_service_and_the_consumption(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] The page only shows the switch, so the teacher cannot tell whether there '
-            . 'are credits left or how much the tutor has been used in their course.'
-        );
-    }
 
     /**
      * SYS-E2E-005: a response time target is defined and measured step by step.

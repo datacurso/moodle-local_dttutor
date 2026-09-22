@@ -34,6 +34,18 @@ if ($hassiteconfig) {
     $ADMIN->add('localplugins', $settings);
 
     // Enable/Disable Chat.
+    $failures = \local_dttutor\local\service_status::get_recent_failures();
+    if (!empty($failures)) {
+        $settings->add(new admin_setting_description(
+            'local_dttutor/recentfailures',
+            get_string('recent_failures', 'local_dttutor'),
+            html_writer::div(
+                get_string('recent_failures_desc', 'local_dttutor', $failures),
+                'alert alert-warning'
+            )
+        ));
+    }
+
     $settings->add(
         new admin_setting_configcheckbox(
             'local_dttutor/enabled',

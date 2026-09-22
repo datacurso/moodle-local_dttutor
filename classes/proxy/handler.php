@@ -61,6 +61,7 @@ class handler {
             // The provider could not even be built (no licence key, licence store unreachable).
             // The stream is already open, so the failure has to leave through it.
             \local_dttutor_log('AI_API_UNAVAILABLE', ['exception' => get_class($e)], true);
+            \local_dttutor\event\service_failed::record('provider_unavailable');
             $response = ['type' => 'error', 'error' => get_string('error_unexpected', 'local_dttutor')];
         }
 
@@ -308,6 +309,7 @@ class handler {
             // A refusal the administrator can act on: say which one it is instead of a generic error.
             if (isset(self::REFUSALS[$detail])) {
                 \local_dttutor_log('AI_API_REFUSED', ['detail' => $detail], true);
+                \local_dttutor\event\service_failed::record($detail);
                 return ['type' => 'error', 'error' => get_string(self::REFUSALS[$detail], 'local_dttutor')];
             }
         }
@@ -318,6 +320,7 @@ class handler {
                 'curl_errno' => $curlerrno,
                 'body_length' => strlen($buffer),
             ], true);
+            \local_dttutor\event\service_failed::record($curlerrno !== 0 ? 'transport' : 'http_' . $httpcode);
             return ['type' => 'error', 'error' => 'ai_api_error'];
         }
 

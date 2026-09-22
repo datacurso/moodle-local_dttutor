@@ -52,6 +52,41 @@
 
         {{! Sidebar }}
         <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="fa fa-heartbeat mr-2"></i>
+                        {{#str}}service_status, local_dttutor{{/str}}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {{#service_available}}
+                        <p class="mb-2"><i class="fa fa-check-circle text-success mr-1"></i>
+                            {{#str}}service_available, local_dttutor{{/str}}</p>
+                    {{/service_available}}
+                    {{^service_available}}
+                        <p class="mb-2"><i class="fa fa-times-circle text-danger mr-1"></i>
+                            {{#str}}service_unavailable, local_dttutor{{/str}}</p>
+                    {{/service_available}}
+
+                    {{#has_credits}}
+                        <p class="small text-muted mb-2">{{#str}}credits_left, local_dttutor{{/str}}: {{credits}}</p>
+                    {{/has_credits}}
+                    {{^has_credits}}
+                        <p class="small text-muted mb-2">{{#str}}credits_unknown, local_dttutor{{/str}}</p>
+                    {{/has_credits}}
+
+                    {{#has_usage}}
+                        <p class="small text-muted mb-0">
+                            {{#str}}usage_in_course, local_dttutor, {"questions": "{{usage_questions}}", "days": "{{usage_days}}"}{{/str}}
+                        </p>
+                    {{/has_usage}}
+                    {{^has_usage}}
+                        <p class="small text-muted mb-0">{{#str}}usage_unknown, local_dttutor{{/str}}</p>
+                    {{/has_usage}}
+                </div>
+            </div>
+
             <div class="card shadow-sm">
                 <div class="card-header bg-light">
                     <h5 class="mb-0">
