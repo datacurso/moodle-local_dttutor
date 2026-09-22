@@ -26,8 +26,6 @@ php admin/tool/behat/cli/run.php --tags=@local_dttutor
 # Behat, one case
 php admin/tool/behat/cli/run.php --tags=@MDL-E2E-001
 
-# Behat, the interface gaps that are expected to fail (not part of the run above)
-php admin/tool/behat/cli/run.php --tags=@local_dttutor_pending
 ```
 
 ## Pending items of the scope
@@ -59,6 +57,7 @@ Tests that fail on purpose today:
 | `API-CTR-001`, `API-CTR-002`, `API-CTR-003`, `API-CTR-004`, `API-CTR-005`, `API-INT-001`, `API-INT-002`, `API-INT-003`, `API-INT-004` | They belong to the Datacurso AI service (Python), not to this plugin |
 | `SYS-E2E-001`, `SYS-E2E-002`, `SYS-E2E-003`, `SYS-E2E-004`, `SYS-EVAL-001`, `SYS-EVAL-002`, `SYS-EVAL-003`, `SYS-EVAL-004`, `SYS-EVAL-005`, `SYS-EVAL-006` | They need the real service, a valid licence and the golden datasets |
 | `MDL-E2E-003`, `MDL-E2E-004`, `MDL-E2E-005`, `MDL-E2E-006`, `MDL-E2E-007`, `MDL-E2E-016` | They drive a conversation, so they need a stubbed AI service behind `chatproxy.php` |
+| `MDL-E2E-013`, `MDL-E2E-020` to `MDL-E2E-026` (`[Pendiente:skip]`) | Interface gaps with no behaviour to drive yet; listed as skipped tests in `tests/scope_gaps_test.php` |
 | `MDL-E2E-015` (`[Pendiente:fail]`) | The defect only shows with a conversation already stored in the service; checked by hand |
 | `MDL-E2E-019` (`[Pendiente:fail]`) | Its server side is covered by `MDL-INT-021`; the missing notice is browser side and needs the same stub |
 | `MDL-UNIT-009`, `MDL-UNIT-010`, `MDL-UNIT-012`, `MDL-UNIT-013` | They live in the chat JavaScript and the plugin has no JavaScript unit runner; listed in `tests/frontend_coverage_test.php` |

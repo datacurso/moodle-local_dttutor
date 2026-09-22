@@ -66,6 +66,9 @@ final class chat_hook_output_test extends \advanced_testcase {
         string $pagetype = 'course-view'
     ): void {
         global $PAGE;
+        // Enrolling users can send the course welcome message, and that sets up the theme of the
+        // current page. A fresh page is the only way left to choose the course after that.
+        $PAGE = new \moodle_page();
         $PAGE->set_context(\context_course::instance((int)$course->id));
         $PAGE->set_course($course);
         $PAGE->set_url('/course/view.php', ['id' => $course->id]);
@@ -83,6 +86,7 @@ final class chat_hook_output_test extends \advanced_testcase {
     private function set_activity_page(\stdClass $course, int $cmid, string $modname): void {
         global $PAGE;
         $cm = get_coursemodule_from_id($modname, $cmid, 0, false, MUST_EXIST);
+        $PAGE = new \moodle_page();
         $PAGE->set_cm($cm, $course);
         $PAGE->set_url('/mod/' . $modname . '/view.php', ['id' => $cmid]);
         $PAGE->set_pagelayout('incourse');
@@ -235,6 +239,7 @@ final class chat_hook_output_test extends \advanced_testcase {
         $this->create_enabled_course();
         $user = $this->getDataGenerator()->create_user();
         $this->setUser($user);
+        $PAGE = new \moodle_page();
         $PAGE->set_context(\context_system::instance());
         $PAGE->set_url('/my/index.php');
         $PAGE->set_pagelayout('mydashboard');

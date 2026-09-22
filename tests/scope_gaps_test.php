@@ -22,7 +22,7 @@ use local_dttutor\external\save_course_config;
  * Scope items with no home of their own: features still to be built and one misleading message.
  *
  * See MDL-INT-022, MDL-INT-037, MDL-INT-040 to MDL-INT-044, MDL-E2E-010, MDL-E2E-013,
- * MDL-E2E-021, MDL-E2E-025, MDL-E2E-026 and SYS-E2E-005 of cases_data/dttutor/dttutor-2.0.9.md.
+ * MDL-E2E-020 to MDL-E2E-026 and SYS-E2E-005 of cases_data/dttutor/dttutor-2.0.9.md.
  *
  * @package    local_dttutor
  * @category   test
@@ -178,6 +178,46 @@ final class scope_gaps_test extends \advanced_testcase {
         $this->markTestSkipped(
             '[Pendiente:skip] None of the steps that make up an answer has a committed time, so there '
             . 'is no criterion to accept or reject the performance. Definition pending with the client.'
+        );
+    }
+
+    /**
+     * MDL-E2E-020: the chat offers starting a new conversation or clearing the history.
+     */
+    public function test_the_chat_offers_a_new_conversation_or_clearing_the_history(): void {
+        $this->markTestSkipped(
+            '[Pendiente:skip] The only way to restart is editing an earlier message, and the history '
+            . 'cannot be cleared from the interface even though the server already supports deleting it.'
+        );
+    }
+
+    /**
+     * MDL-E2E-022: validation warnings are shown by the form, not by the tutor.
+     */
+    public function test_validation_warnings_are_shown_by_the_form(): void {
+        $this->markTestSkipped(
+            '[Pendiente:skip] Warnings about a message being too long or invalid appear as a bubble of '
+            . 'the conversation, as if the tutor had said them.'
+        );
+    }
+
+    /**
+     * MDL-E2E-023: the chat panel is usable on the screen of a phone.
+     */
+    public function test_the_panel_is_usable_on_a_phone_screen(): void {
+        $this->markTestSkipped(
+            '[Pendiente:skip] The panel has a fixed width with no adaptation to the size of the screen, '
+            . 'so on a narrow phone it covers almost the whole page or runs off it.'
+        );
+    }
+
+    /**
+     * MDL-E2E-024: the page content moves aside under any theme.
+     */
+    public function test_the_page_content_moves_aside_under_any_theme(): void {
+        $this->markTestSkipped(
+            '[Pendiente:skip] The shift depends on a class of the Boost theme, so under another theme '
+            . 'the panel can sit on top of the content instead of pushing it aside.'
         );
     }
 }

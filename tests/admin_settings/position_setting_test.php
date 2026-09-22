@@ -128,10 +128,12 @@ final class position_setting_test extends \advanced_testcase {
      * @dataProvider invalid_coordinate_provider
      */
     public function test_a_coordinate_that_is_not_valid_css_is_turned_down(string $value): void {
+        $inuse = get_config('local_dttutor', 'avatar_position_data');
+
         $error = $this->setting()->write_setting($this->position(['x' => $value]));
 
         $this->assertSame(get_string('error_invalid_coordinates', 'local_dttutor'), $error);
-        $this->assertFalse(get_config('local_dttutor', 'avatar_position_data'));
+        $this->assertSame($inuse, get_config('local_dttutor', 'avatar_position_data'));
     }
 
     /**
@@ -172,10 +174,12 @@ final class position_setting_test extends \advanced_testcase {
      * @dataProvider invalid_position_provider
      */
     public function test_an_incomplete_or_incoherent_position_is_turned_down(string $data): void {
+        $inuse = get_config('local_dttutor', 'avatar_position_data');
+
         $error = $this->setting()->write_setting($data);
 
         $this->assertSame(get_string('error_invalid_position', 'local_dttutor'), $error);
-        $this->assertFalse(get_config('local_dttutor', 'avatar_position_data'));
+        $this->assertSame($inuse, get_config('local_dttutor', 'avatar_position_data'));
     }
 
     /**

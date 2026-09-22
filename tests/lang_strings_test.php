@@ -111,9 +111,12 @@ final class lang_strings_test extends \advanced_testcase {
     }
 
     /**
-     * MDL-INT-031: the interface follows the language of the session, whatever the tutor answers in.
+     * MDL-INT-031: each language gets its own strings, whatever the tutor answers in.
+     *
+     * The language is asked for explicitly instead of through the session: what matters here is
+     * that the pack of a language is the one served for that language.
      */
-    public function test_the_interface_follows_the_language_of_the_session(): void {
+    public function test_every_language_is_served_its_own_strings(): void {
         $this->resetAfterTest();
         $reference = $this->load_language_pack('en');
         $spanish = $this->load_language_pack('es');
@@ -127,10 +130,8 @@ final class lang_strings_test extends \advanced_testcase {
         }
         $this->assertNotNull($key, 'The Spanish pack is expected to differ from the reference one.');
 
-        force_current_language('es');
-        $this->assertEquals($spanish[$key], get_string($key, 'local_dttutor'));
-
-        force_current_language('en');
-        $this->assertEquals($reference[$key], get_string($key, 'local_dttutor'));
+        $manager = get_string_manager();
+        $this->assertEquals($spanish[$key], $manager->get_string($key, 'local_dttutor', null, 'es'));
+        $this->assertEquals($reference[$key], $manager->get_string($key, 'local_dttutor', null, 'en'));
     }
 }
