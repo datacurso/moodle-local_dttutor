@@ -5,6 +5,33 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.10] - 2026-09-22
+
+Automated coverage of the 2.0.9 test case definitions. No change in plugin behaviour.
+
+### Added
+- **Test suite from the definition document**: `cases_data/dttutor/dttutor-2.0.9.md` of the
+  test-cases-definition repository is now implemented as PHPUnit tests and Behat scenarios, always
+  through the public API. New coverage for the global and per-course switches, the footer hook
+  output (button conditions, exclusions, avatar resolution, placeholders and role label), the
+  position setting validation, the declared web service contract with its pagination limits, the
+  course navigation entry point, the language packs, and the reuse and refresh of the course
+  knowledge.
+- **Behat support files**: a data generator for the per-course switch and stored conversations, and
+  a page resolver for the course management page.
+- **`tests/README.md`**: maps every case identifier of the document to the tests that implement it,
+  and records which cases are not automated here and why.
+
+### Known Issues
+- **Seven tests fail on purpose**: the items the scope classifies as critical are written with the
+  behaviour the scope requires, so they stay red until the defect is corrected: grades hidden by the
+  teacher reaching the AI service, the privacy declaration naming data that is never sent, the tutor
+  still answering when the AI provider is disabled, the selected fragment never travelling with the
+  question, the refusal that blames the API configuration when the chat is off site wide, provider
+  failures that end in silence, and licence or credit refusals turned into a generic error.
+- **Gaps of the scope are skipped**: the remaining pending items are reported as skipped tests with
+  their reason, so they stay visible until the feature exists.
+
 ## [2.0.9] - 2026-09-08
 
 Remediation of the MindFree security assessment of 2.0.7 (findings SEC-001 to SEC-005) plus the defects it left out.
