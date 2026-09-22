@@ -30,24 +30,21 @@ php admin/tool/behat/cli/run.php --tags=@MDL-E2E-001
 
 ## Pending items of the scope
 
-The definition document classifies each `[Pendiente]` item of the scope by severity, and the suite
-follows that classification:
+The definition document classifies each `[Pendiente]` item of the scope by severity. Thirty-one of
+the thirty-seven are now implemented and their tests describe the behaviour that exists. The six
+left are skipped with their reason, and every one of them is waiting on something outside this
+plugin:
 
-| Severity | How it is implemented | Effect on CI |
-|---|---|---|
-| `[Pendiente:fail]` | A test written with the behaviour the scope requires | **Fails** until the defect is corrected |
-| `[Pendiente:skip]` | `markTestSkipped()` with the reason | Reported as skipped until the feature exists |
+| Case | Waiting on |
+|---|---|
+| MDL-INT-039 | The licence region is resolved inside the `aiprovider_datacurso` plugin |
+| API-CTR-005 | Bulk deletion of conversations belongs to the Datacurso AI service |
+| MDL-INT-043 | A decision on whether the tutor is customised per course or category |
+| MDL-E2E-025 | A decision on what the tutor may discuss during a quiz attempt |
+| MDL-INT-016 | A decision on whether the content of the resources is in scope |
+| SYS-E2E-005 | A response time target agreed with the client |
 
-Tests that fail on purpose today:
-
-| Case | Where | What it protects |
-|---|---|---|
-| MDL-INT-009 | `tests/proxy/course_knowledge_gaps_test.php` | Hidden grades must not reach the AI service |
-| MDL-INT-034 | `tests/privacy/provider_test.php` | The privacy declaration must match what is really sent |
-| MDL-E2E-008 | `tests/proxy/system_message_test.php` | The selected fragment must travel with the question |
-| MDL-E2E-010 | `tests/scope_gaps_test.php` | The refusal must name the real situation |
-| MDL-E2E-017 | `tests/proxy/handler_failures_test.php` | No failure may end in silence |
-| MDL-E2E-018 | `tests/proxy/handler_failures_test.php` | Licence and credit refusals must keep their own message |
+No test fails on purpose any more.
 
 ## What this suite does not cover
 
@@ -56,9 +53,7 @@ Tests that fail on purpose today:
 | `API-CTR-001`, `API-CTR-002`, `API-CTR-003`, `API-CTR-004`, `API-CTR-005`, `API-INT-001`, `API-INT-002`, `API-INT-003`, `API-INT-004` | They belong to the Datacurso AI service (Python), not to this plugin |
 | `SYS-E2E-001`, `SYS-E2E-002`, `SYS-E2E-003`, `SYS-E2E-004`, `SYS-EVAL-001`, `SYS-EVAL-002`, `SYS-EVAL-003`, `SYS-EVAL-004`, `SYS-EVAL-005`, `SYS-EVAL-006` | They need the real service, a valid licence and the golden datasets |
 | `MDL-E2E-003`, `MDL-E2E-004`, `MDL-E2E-005`, `MDL-E2E-006`, `MDL-E2E-007`, `MDL-E2E-016` | They drive a conversation, so they need a stubbed AI service behind `chatproxy.php` |
-| `MDL-E2E-013`, `MDL-E2E-020` to `MDL-E2E-026` (`[Pendiente:skip]`) | Interface gaps with no behaviour to drive yet; listed as skipped tests in `tests/scope_gaps_test.php` |
-| `MDL-E2E-015` (`[Pendiente:fail]`) | The defect only shows with a conversation already stored in the service; checked by hand |
-| `MDL-E2E-019` (`[Pendiente:fail]`) | Its server side is covered by `MDL-INT-021`; the missing notice is browser side and needs the same stub |
+| `MDL-E2E-015`, `MDL-E2E-019`, `MDL-E2E-020`, `MDL-E2E-022`, `MDL-E2E-023`, `MDL-E2E-024` | Corrected in the chat module and its styles. Checking them needs a browser with a stubbed AI service, so only the server side of each is covered here |
 | `MDL-UNIT-009`, `MDL-UNIT-010`, `MDL-UNIT-012`, `MDL-UNIT-013` | They live in the chat JavaScript and the plugin has no JavaScript unit runner; listed in `tests/frontend_coverage_test.php` |
 
 Closing the third row (a stub for the AI service in Behat) would also close the two `[Pendiente:fail]`

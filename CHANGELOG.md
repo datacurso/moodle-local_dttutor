@@ -7,38 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.10] - 2026-09-22
 
-Automated coverage of the 2.0.9 test case definitions, and the first gap of the scope closed.
+Thirty-one of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
 
-### Fixed
-- **The tutor follows the state of the AI provider** (MDL-INT-038): with the Datacurso AI provider
-  disabled in the AI administration of Moodle, the tutor kept answering as long as a licence key
-  existed, so course and user information went on travelling to a service the administrator had
-  switched off. Every entry point that reaches the service now refuses first: the chat proxy, the
-  history and the deletion of a conversation. The floating button is no longer shown either, since
-  its queries would be refused, and the user is told that the provider is disabled.
+### Security
+- **The tutor follows the state of the AI provider** (MDL-INT-038): with the provider disabled in the AI administration of Moodle, the tutor kept answering as long as a licence key existed. Every entry point that reaches the service now refuses first, and the floating button is no longer shown.
+- **Hidden grades stay hidden** (MDL-INT-009): grades hidden by the teacher, hidden for one student or held until a date no longer travel to the AI service, so the chat can no longer reveal a mark that is not in the gradebook yet.
+- **The privacy declaration matches the behaviour** (MDL-INT-034): the selected text was declared as transferred and never was. It travels now, so the declaration is true.
 
 ### Added
-- **Test suite from the definition document**: `cases_data/dttutor/dttutor-2.0.9.md` of the
-  test-cases-definition repository is now implemented as PHPUnit tests and Behat scenarios, always
-  through the public API. New coverage for the global and per-course switches, the footer hook
-  output (button conditions, exclusions, avatar resolution, placeholders and role label), the
-  position setting validation, the declared web service contract with its pagination limits, the
-  course navigation entry point, the language packs, and the reuse and refresh of the course
-  knowledge.
-- **Behat support files**: a data generator for the per-course switch and stored conversations, and
-  a page resolver for the course management page.
-- **`tests/README.md`**: maps every case identifier of the document to the tests that implement it,
-  and records which cases are not automated here and why.
+- **What the tutor knows**: dates of every activity type the scope names, including lesson, workshop, videoconference and the closing date of a database, which was read from a field that does not exist; the time a student has once they start; activities the student sees greyed out, with the condition that releases them; and how far the user has got, what they submitted and what they completed (MDL-INT-013 to MDL-INT-016, MDL-INT-022).
+- **A trail in the platform**: every accepted question triggers an event with who asked, when and where, never what was asked, and failures of the service are recorded as an event of their own (MDL-INT-040, MDL-INT-044).
+- **A retention period** for conversations, off until a number of days is agreed, applied daily here and in the AI service (MDL-INT-037).
+- **New courses can start with the tutor on**, so a rollout does not have to go course by course (MDL-INT-042).
+- **The switch of the course travels with the backup**, so restoring or duplicating no longer loses it. Conversations are deliberately left out (MDL-INT-041).
+- **The course page reports the state of the service**, the credits left and the questions asked in the course over the last thirty days (MDL-E2E-026).
+- **A new conversation action** in the chat, which empties it here and in the AI service (MDL-E2E-020).
+- **A bound on the course knowledge** sent with each question, a hundred activities by default, with the omission announced to the tutor (MDL-INT-012).
+
+### Changed
+- **The answer is streamed as the model produces it** instead of being awaited whole and replayed at about six hundred characters a second (MDL-E2E-021).
+- **The grades of the user are read once for the whole course** rather than once per gradable activity and message (MDL-INT-011).
+- **The panel adapts to the screen** and shifting the page aside no longer depends on the classes of the Boost theme (MDL-E2E-023, MDL-E2E-024).
+- **The position configurator answers to touch and to the keyboard**, and warns when the chosen corner is where the platform keeps its own floating controls (MDL-E2E-013).
+
+### Fixed
+- **No failure ends in silence** (MDL-E2E-017): a provider that cannot be built used to leave the user with neither an answer nor an error.
+- **Licence and credit refusals carry their own message** (MDL-E2E-018) instead of a generic error.
+- **The refusal with the chat off site wide names that situation** (MDL-E2E-010) instead of blaming a missing API configuration.
+- **The selected fragment reaches the tutor** (MDL-E2E-008); the indicator in the interface stops being decoration.
+- **The question reaches the service whole** (MDL-UNIT-012): the less than and greater than signs are no longer stripped.
+- **A message of a single dot is treated like any other** single character (MDL-UNIT-013).
+- **Validation warnings appear next to the field** instead of as a bubble of the conversation (MDL-E2E-022).
+- **The notice for a history that cannot be loaded reaches the screen** (MDL-E2E-019).
+- **Paging back never shows a message twice** (MDL-INT-022).
+- **A welcome message with quotes no longer breaks the chat** (MDL-E2E-015).
 
 ### Known Issues
-- **Seven tests fail on purpose**: the items the scope classifies as critical are written with the
-  behaviour the scope requires, so they stay red until the defect is corrected: grades hidden by the
-  teacher reaching the AI service, the privacy declaration naming data that is never sent, the tutor
-  still answering when the AI provider is disabled, the selected fragment never travelling with the
-  question, the refusal that blames the API configuration when the chat is off site wide, provider
-  failures that end in silence, and licence or credit refusals turned into a generic error.
-- **Gaps of the scope are skipped**: the remaining pending items are reported as skipped tests with
-  their reason, so they stay visible until the feature exists.
+- Six gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039), bulk deletion of conversations in the AI service (API-CTR-005), and four decisions pending with the client, namely customisation per course (MDL-INT-043), the tutor during a quiz attempt (MDL-E2E-025), whether the content of the resources is in scope (MDL-INT-016) and a response time target (SYS-E2E-005).
 
 ## [2.0.9] - 2026-09-08
 
