@@ -121,6 +121,16 @@ if ($hassiteconfig) {
 
     // Send the student's own grades to the AI service (opt-in, data minimisation).
     $settings->add(
+        new admin_setting_configtext(
+            'local_dttutor/max_activities',
+            get_string('max_activities', 'local_dttutor'),
+            get_string('max_activities_desc', 'local_dttutor'),
+            \local_dttutor\proxy\context_preloader::DEFAULT_MAX_ACTIVITIES,
+            PARAM_INT
+        )
+    );
+
+    $settings->add(
         new admin_setting_configcheckbox(
             'local_dttutor/include_grades',
             get_string('include_grades', 'local_dttutor'),
