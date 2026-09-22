@@ -75,6 +75,7 @@ $string['error_license_not_allowed'] = 'Your site license does not allow access 
 $string['error_license_not_allowed_short'] = 'License Error';
 $string['error_message_too_long'] = '[Error] Message is too long. Maximum 4000 characters.';
 $string['error_no_credits_fallback'] = 'Insufficient credits: {$a}';
+$string['error_provider_disabled'] = 'The AI Tutor is unavailable because the AI provider is disabled on this site. Please contact your administrator.';
 $string['error_ratelimit_exceeded'] = 'The allowed consumption limit has been exceeded. Please try again at {$a}.';
 $string['error_tutor_not_available'] = 'The AI Tutor is not available for this course.';
 $string['error_unexpected'] = 'An unexpected error occurred. Please try again.';

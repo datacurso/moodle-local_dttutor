@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.10] - 2026-09-22
 
-Automated coverage of the 2.0.9 test case definitions. No change in plugin behaviour.
+Automated coverage of the 2.0.9 test case definitions, and the first gap of the scope closed.
+
+### Fixed
+- **The tutor follows the state of the AI provider** (MDL-INT-038): with the Datacurso AI provider
+  disabled in the AI administration of Moodle, the tutor kept answering as long as a licence key
+  existed, so course and user information went on travelling to a service the administrator had
+  switched off. Every entry point that reaches the service now refuses first: the chat proxy, the
+  history and the deletion of a conversation. The floating button is no longer shown either, since
+  its queries would be refused, and the user is told that the provider is disabled.
 
 ### Added
 - **Test suite from the definition document**: `cases_data/dttutor/dttutor-2.0.9.md` of the

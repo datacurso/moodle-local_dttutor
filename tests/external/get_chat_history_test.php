@@ -54,6 +54,7 @@ final class get_chat_history_test extends \advanced_testcase {
      */
     private function enrolled_student_in_course(bool $courseenabled): array {
         set_config('enabled', 1, 'local_dttutor');
+        set_config('enabled', 1, 'aiprovider_datacurso');
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         course_config::update($course->id, ['indexing_enabled' => (int)$courseenabled]);

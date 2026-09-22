@@ -17,6 +17,7 @@
 namespace local_dttutor\proxy;
 
 use local_dttutor\course_config;
+use local_dttutor\httpclient\client_factory;
 
 /**
  * Authorization guard for the chat proxy endpoint.
@@ -73,6 +74,8 @@ class request_guard {
      */
     public static function authorize(array $input): \stdClass {
         global $USER;
+
+        self::assert_provider_enabled();
 
         $context = is_array($input['context'] ?? null) ? $input['context'] : [];
         $courseid = (int)($context['course_id'] ?? 0);
@@ -149,6 +152,20 @@ class request_guard {
     public static function assert_course_enabled(int $courseid): void {
         if (!get_config('local_dttutor', 'enabled') || !course_config::is_enabled_for_course($courseid)) {
             throw new \moodle_exception('error_tutor_not_available', 'local_dttutor');
+        }
+    }
+
+    /**
+     * Refuse the request when the administrator has disabled the AI provider the tutor depends on.
+     *
+     * Checked before anything is gathered or sent, so that no course or user information leaves
+     * the site towards a service the administrator switched off.
+     *
+     * @throws \moodle_exception When the provider is not enabled.
+     */
+    public static function assert_provider_enabled(): void {
+        if (!client_factory::is_provider_enabled()) {
+            throw new \moodle_exception('error_provider_disabled', 'local_dttutor');
         }
     }
 

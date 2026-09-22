@@ -44,7 +44,6 @@ Tests that fail on purpose today:
 |---|---|---|
 | MDL-INT-009 | `tests/proxy/course_knowledge_gaps_test.php` | Hidden grades must not reach the AI service |
 | MDL-INT-034 | `tests/privacy/provider_test.php` | The privacy declaration must match what is really sent |
-| MDL-INT-038 | `tests/provider_availability_test.php` | Disabling the AI provider must stop the tutor |
 | MDL-E2E-008 | `tests/proxy/system_message_test.php` | The selected fragment must travel with the question |
 | MDL-E2E-010 | `tests/scope_gaps_test.php` | The refusal must name the real situation |
 | MDL-E2E-017 | `tests/proxy/handler_failures_test.php` | No failure may end in silence |

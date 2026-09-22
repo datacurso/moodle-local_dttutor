@@ -48,6 +48,7 @@ final class chat_hook_output_test extends \advanced_testcase {
     private function create_enabled_course(): \stdClass {
         $this->setAdminUser();
         set_config('enabled', 1, 'local_dttutor');
+        set_config('enabled', 1, 'aiprovider_datacurso');
         $course = $this->getDataGenerator()->create_course();
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
         return $course;
@@ -138,6 +139,19 @@ final class chat_hook_output_test extends \advanced_testcase {
         $course = $this->create_enabled_course();
         course_config::update((int)$course->id, ['indexing_enabled' => 0]);
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+        $this->set_course_page($course);
+
+        $this->assertSame('', $this->footer_output());
+    }
+
+    /**
+     * MDL-INT-038: the AI provider disabled removes the button, since every query would be refused.
+     */
+    public function test_no_button_when_the_ai_provider_is_disabled(): void {
+        $course = $this->create_enabled_course();
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        unset_config('enabled', 'aiprovider_datacurso');
         $this->setUser($student);
         $this->set_course_page($course);
 

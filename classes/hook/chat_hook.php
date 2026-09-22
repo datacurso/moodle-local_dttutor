@@ -127,6 +127,11 @@ class chat_hook {
             return;
         }
 
+        // Nobody is offered a chat whose queries would be refused afterwards.
+        if (!\local_dttutor\httpclient\client_factory::is_provider_enabled()) {
+            return;
+        }
+
         // Don't render inside embedded/iframe/popup pages (e.g. H5P content served via
         // /h5p/embed.php), otherwise the floating widget is duplicated inside the iframe.
         if (in_array($PAGE->pagelayout, ['embedded', 'popup', 'frametop'], true)) {

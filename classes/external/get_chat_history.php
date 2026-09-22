@@ -101,6 +101,7 @@ class get_chat_history extends external_api {
 
         // Verify user has permission to use Tutor-IA and that the tutor is enabled for this course.
         require_capability('local/dttutor:use', $context);
+        request_guard::assert_provider_enabled();
         request_guard::assert_course_enabled((int)$params['courseid']);
 
         $cmid = null;
