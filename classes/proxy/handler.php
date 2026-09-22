@@ -35,6 +35,12 @@ use local_dttutor\httpclient\client_factory;
  * SSE streaming handler.
  */
 class handler {
+    /** @var array Refusals of the AI service, mapped to the message the user is given. */
+    private const REFUSALS = [
+        'license_not_allowed' => 'error_license_not_allowed',
+        'tokens_not_sufficient' => 'error_insufficient_tokens',
+    ];
+
     /**
      * Run a single streaming completion and relay it to the client.
      *
@@ -49,7 +55,14 @@ class handler {
         echo ": thinking\n\n";
         self::flush();
 
-        $response = self::call_ai_api_buffer($model, $messages);
+        try {
+            $response = self::call_ai_api_buffer($model, $messages);
+        } catch (\Throwable $e) {
+            // The provider could not even be built (no licence key, licence store unreachable).
+            // The stream is already open, so the failure has to leave through it.
+            \local_dttutor_log('AI_API_UNAVAILABLE', ['exception' => get_class($e)], true);
+            $response = ['type' => 'error', 'error' => get_string('error_unexpected', 'local_dttutor')];
+        }
 
         if ($response['type'] === 'error') {
             // The client only dispatches frames that carry an explicit event name.
@@ -217,7 +230,9 @@ class handler {
         // Rate limit reached: show the student a clear, friendly message (not a generic error).
         if ($httpcode === 403) {
             $err = json_decode($buffer, true);
-            if (is_array($err) && ($err['detail'] ?? '') === 'rate_limit_exceeded') {
+            $detail = is_array($err) ? (string)($err['detail'] ?? '') : '';
+
+            if ($detail === 'rate_limit_exceeded') {
                 $resetat = (int)($err['reset_at'] ?? 0);
                 $retryat = $resetat > 0
                     ? userdate($resetat, get_string('strftimedatetime', 'langconfig'))
@@ -225,6 +240,12 @@ class handler {
                 $message = get_string('error_ratelimit_exceeded', 'local_dttutor', $retryat);
                 \local_dttutor_log('AI_API_RATE_LIMITED', ['reset_at' => $resetat], true);
                 return ['type' => 'notice', 'message' => $message];
+            }
+
+            // A refusal the administrator can act on: say which one it is instead of a generic error.
+            if (isset(self::REFUSALS[$detail])) {
+                \local_dttutor_log('AI_API_REFUSED', ['detail' => $detail], true);
+                return ['type' => 'error', 'error' => get_string(self::REFUSALS[$detail], 'local_dttutor')];
             }
         }
 
