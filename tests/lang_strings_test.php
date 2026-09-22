@@ -114,10 +114,15 @@ final class lang_strings_test extends \advanced_testcase {
      * MDL-INT-031: each language gets its own strings, whatever the tutor answers in.
      *
      * The language is asked for explicitly instead of through the session: what matters here is
-     * that the pack of a language is the one served for that language.
+     * that the pack of a language is the one served for that language. Moodle only reads the
+     * translations a plugin ships once the language pack of the site is installed, so on a site
+     * that only has English there is nothing to check here.
      */
     public function test_every_language_is_served_its_own_strings(): void {
         $this->resetAfterTest();
+        if (!get_string_manager()->translation_exists('es')) {
+            $this->markTestSkipped('The Spanish language pack is not installed on this site.');
+        }
         $reference = $this->load_language_pack('en');
         $spanish = $this->load_language_pack('es');
 
