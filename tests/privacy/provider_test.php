@@ -382,20 +382,23 @@ final class provider_test extends provider_testcase {
     }
 
     /**
-     * MDL-INT-034: the declaration only names data the plugin really transfers.
-     *
-     * [Pendiente:fail] The declaration states that the text selected on the page is transferred to
-     * the AI service, and it never is. An inaccurate privacy declaration is a compliance problem,
-     * so this stays visible until either the declaration or the behaviour is corrected.
+     * MDL-INT-034: what the declaration names as transferred is what really travels.
      */
-    public function test_the_external_location_only_declares_data_that_is_really_sent(): void {
+    public function test_the_declared_selected_text_really_travels(): void {
         $external = $this->get_items_by_type(external_location::class);
         $declared = array_keys($external['datacurso_ai']->get_privacy_fields());
+        $this->assertContains('selected_text', $declared);
 
-        $this->assertNotContains(
-            'selected_text',
-            $declared,
-            'The selected text is declared as transferred but the plugin never sends it.'
+        $fragment = 'A fragment picked on the course page';
+        $message = \local_dttutor\proxy\system_message::build('student', [
+            'course_id' => 5,
+            'selected_text' => $fragment,
+        ], '');
+
+        $this->assertStringContainsString(
+            $fragment,
+            $message['content'],
+            'The declaration names the selected text as transferred, so it has to travel.'
         );
     }
 }

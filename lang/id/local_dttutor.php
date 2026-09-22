@@ -61,6 +61,7 @@ $string['enable_tutor_for_course_help'] = 'Saat diaktifkan, Tutor AI akan tersed
 $string['enabled'] = 'Aktifkan Obrolan';
 $string['enabled_desc'] = 'Aktifkan atau nonaktifkan obrolan Tutor AI secara global';
 $string['error_api_not_configured'] = 'Konfigurasi API hilang. Silakan periksa pengaturan Anda.';
+$string['error_tutor_disabled_site'] = 'Tutor AI dimatikan di situs ini. Hubungi administrator situs jika Anda membutuhkannya.';
 $string['error_attempt_later'] = 'Terjadi kesalahan. Silakan coba lagi nanti.';
 $string['error_history_unavailable'] = 'Percakapan sebelumnya tidak dapat dimuat. Anda dapat terus mengobrol.';
 $string['error_insufficient_tokens'] = 'Tidak ada cukup kredit AI yang tersedia untuk memproses permintaan Anda. Silakan hubungi administrator Anda untuk menambahkan lebih banyak kredit untuk terus menggunakan Tutor AI.';

@@ -38,11 +38,8 @@ final class scope_gaps_test extends \advanced_testcase {
 
     /**
      * MDL-E2E-010: with the chat switched off for the site, the message names that situation.
-     *
-     * [Pendiente:fail] Today the teacher is told that the API configuration is missing, which
-     * describes a different problem and sends them looking for a configuration fault that is not there.
      */
-    public function test_the_refusal_with_the_chat_off_site_wide_does_not_blame_the_api_configuration(): void {
+    public function test_the_refusal_with_the_chat_off_site_wide_names_that_situation(): void {
         $this->setAdminUser();
         set_config('enabled', 0, 'local_dttutor');
         $course = $this->getDataGenerator()->create_course();
@@ -53,11 +50,8 @@ final class scope_gaps_test extends \advanced_testcase {
             save_course_config::execute((int)$course->id, true);
             $this->fail('The tutor is switched off for the site, so the request had to be refused.');
         } catch (\moodle_exception $e) {
-            $this->assertNotEquals(
-                get_string('error_api_not_configured', 'local_dttutor'),
-                $e->getMessage(),
-                'The message must say the tutor is switched off for the site, not that its API is unconfigured.'
-            );
+            $this->assertEquals(get_string('error_tutor_disabled_site', 'local_dttutor'), $e->getMessage());
+            $this->assertNotEquals(get_string('error_api_not_configured', 'local_dttutor'), $e->getMessage());
         }
     }
 

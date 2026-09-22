@@ -61,6 +61,7 @@ $string['enable_tutor_for_course_help'] = 'Lorsqu\'il est activé, le tuteur IA 
 $string['enabled'] = 'Activer le chat';
 $string['enabled_desc'] = 'Activer ou désactiver le chat du tuteur IA globalement';
 $string['error_api_not_configured'] = 'La configuration de l\'API est manquante. Veuillez vérifier vos paramètres.';
+$string['error_tutor_disabled_site'] = 'Le Tuteur IA est désactivé sur ce site. Contactez l\'administrateur du site si vous avez besoin de l\'activer.';
 $string['error_attempt_later'] = 'Une erreur s\'est produite. Veuillez réessayer plus tard.';
 $string['error_history_unavailable'] = 'La conversation précédente n\'a pas pu être chargée. Vous pouvez continuer à discuter.';
 $string['error_insufficient_tokens'] = 'Il n\'y a pas assez de crédits IA disponibles pour traiter votre demande. Veuillez contacter votre administrateur pour ajouter plus de crédits et continuer à utiliser le tuteur IA.';

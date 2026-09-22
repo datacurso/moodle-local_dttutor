@@ -92,7 +92,7 @@ class get_chat_history extends external_api {
 
         // Verify plugin is enabled.
         if (!get_config('local_dttutor', 'enabled')) {
-            throw new \moodle_exception('error_api_not_configured', 'local_dttutor');
+            throw new \moodle_exception('error_tutor_disabled_site', 'local_dttutor');
         }
 
         // Validate course context and permissions.

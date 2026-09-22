@@ -325,4 +325,19 @@ final class request_guard_test extends \advanced_testcase {
 
         $this->assertSame('unknown', $result->location);
     }
+
+    /**
+     * MDL-E2E-008: the fragment selected on the page is cleaned and bounded before it is used.
+     */
+    public function test_the_selected_fragment_is_cleaned_and_bounded(): void {
+        $this->assertSame('', request_guard::sanitise_selected_text(null));
+        $this->assertSame('', request_guard::sanitise_selected_text(['not a string']));
+        $this->assertSame('a fragment', request_guard::sanitise_selected_text("  a fragment \n"));
+
+        $long = str_repeat('x', request_guard::MAX_SELECTED_TEXT_LENGTH + 500);
+        $this->assertSame(
+            request_guard::MAX_SELECTED_TEXT_LENGTH,
+            mb_strlen(request_guard::sanitise_selected_text($long))
+        );
+    }
 }

@@ -150,10 +150,6 @@ final class system_message_test extends \advanced_testcase {
 
     /**
      * MDL-E2E-008: the fragment selected on the page travels with the question.
-     *
-     * [Pendiente:fail] The interface shows an indicator with the selected text, but the fragment
-     * never reaches the AI service, so the tutor answers as if it did not exist and the privacy
-     * declaration, which states that it is transferred, does not match what happens.
      */
     public function test_the_selected_fragment_travels_with_the_question(): void {
         $this->resetAfterTest();
@@ -170,5 +166,31 @@ final class system_message_test extends \advanced_testcase {
             $message['content'],
             'The fragment the user selected on the page must reach the AI service with the question.'
         );
+    }
+
+    /**
+     * MDL-E2E-008: with nothing selected the prompt says nothing about a fragment.
+     */
+    public function test_no_fragment_section_when_nothing_is_selected(): void {
+        $this->resetAfterTest();
+
+        $message = system_message::build('student', ['course_id' => 5, 'location' => 'course'], '');
+
+        $this->assertStringNotContainsString('SELECTED ON THE PAGE', $message['content']);
+    }
+
+    /**
+     * MDL-E2E-008: a fragment of only spaces is treated as no fragment at all.
+     */
+    public function test_a_blank_fragment_is_ignored(): void {
+        $this->resetAfterTest();
+
+        $message = system_message::build('student', [
+            'course_id' => 5,
+            'location' => 'course',
+            'selected_text' => "   \n  ",
+        ], '');
+
+        $this->assertStringNotContainsString('SELECTED ON THE PAGE', $message['content']);
     }
 }

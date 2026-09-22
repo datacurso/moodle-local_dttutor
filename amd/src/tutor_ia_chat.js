@@ -821,6 +821,11 @@ define([
                     pagetype: this.pageContext.pagetype || '',
                 };
 
+                // The fragment the user picked on the page travels with the question it is about.
+                if (this.selectedText) {
+                    context.selected_text = this.selectedText;
+                }
+
                 // Build payload for chatproxy.php.
                 const payload = {
                     messages: payloadMessages,

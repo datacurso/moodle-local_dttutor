@@ -61,6 +61,7 @@ $string['enable_tutor_for_course_help'] = 'Wenn aktiviert, steht der KI-Tutor St
 $string['enabled'] = 'Chat aktivieren';
 $string['enabled_desc'] = 'Aktivieren oder deaktivieren Sie den KI-Tutor Chat global';
 $string['error_api_not_configured'] = 'API-Konfiguration fehlt. Bitte überprüfen Sie Ihre Einstellungen.';
+$string['error_tutor_disabled_site'] = 'Der KI-Tutor ist auf dieser Website ausgeschaltet. Wenden Sie sich an die Administration, wenn Sie ihn benötigen.';
 $string['error_attempt_later'] = 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es später noch einmal.';
 $string['error_history_unavailable'] = 'Die vorherige Unterhaltung konnte nicht geladen werden. Sie können weiter chatten.';
 $string['error_insufficient_tokens'] = 'Es sind nicht genügend KI-Guthaben verfügbar, um Ihre Anfrage zu bearbeiten. Bitte wenden Sie sich an Ihren Administrator, um mehr Guthaben hinzuzufügen.';

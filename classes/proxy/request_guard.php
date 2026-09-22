@@ -41,6 +41,9 @@ class request_guard {
     /** @var string[] Message roles the client is allowed to send. */
     private const ALLOWED_ROLES = ['user', 'assistant'];
 
+    /** @var int Maximum length (in characters) of the fragment selected on the page. */
+    public const MAX_SELECTED_TEXT_LENGTH = 2000;
+
     /** @var int Maximum length (in characters) of the client-supplied page type. */
     private const MAX_PAGETYPE_LENGTH = 100;
 
@@ -167,6 +170,22 @@ class request_guard {
         if (!client_factory::is_provider_enabled()) {
             throw new \moodle_exception('error_provider_disabled', 'local_dttutor');
         }
+    }
+
+    /**
+     * Clean and bound the fragment the user selected on the page.
+     *
+     * Untrusted client input that becomes part of the prompt, so it is capped: a whole page
+     * pasted into every question would cost credits without helping the answer.
+     *
+     * @param mixed $value Raw value received from the client.
+     * @return string The fragment, or an empty string when there is none.
+     */
+    public static function sanitise_selected_text($value): string {
+        if (!is_string($value)) {
+            return '';
+        }
+        return trim(mb_substr($value, 0, self::MAX_SELECTED_TEXT_LENGTH));
     }
 
     /**
