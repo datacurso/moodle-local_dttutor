@@ -63,7 +63,8 @@ class course_config {
 
         $record = new \stdClass();
         $record->courseid = $courseid;
-        $record->indexing_enabled = 0; // Tutor disabled by default (column kept for schema compat).
+        // Disabled unless the administrator asked for the tutor to be on in new courses.
+        $record->indexing_enabled = (int)(bool)get_config('local_dttutor', 'enabled_by_default');
         $record->timecreated = time();
         $record->timemodified = time();
         $record->usermodified = $USER->id;

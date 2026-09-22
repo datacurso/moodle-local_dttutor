@@ -44,6 +44,25 @@ if ($hassiteconfig) {
     );
 
     // Avatar Selection.
+    $settings->add(
+        new admin_setting_configcheckbox(
+            'local_dttutor/enabled_by_default',
+            get_string('enabled_by_default', 'local_dttutor'),
+            get_string('enabled_by_default_desc', 'local_dttutor'),
+            '0'
+        )
+    );
+
+    $settings->add(
+        new admin_setting_configtext(
+            'local_dttutor/retention_days',
+            get_string('retention_days', 'local_dttutor'),
+            get_string('retention_days_desc', 'local_dttutor'),
+            '0',
+            PARAM_INT
+        )
+    );
+
     $settings->add(new admin_setting_heading(
         'local_dttutor/avatarsettings',
         get_string('avatar', 'local_dttutor'),

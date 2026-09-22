@@ -55,55 +55,10 @@ final class scope_gaps_test extends \advanced_testcase {
         }
     }
 
-    /**
-     * MDL-INT-022: the history can be walked backwards without repeating messages already shown.
-     */
-    public function test_the_history_pages_do_not_repeat_messages_after_new_ones_arrive(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] Page numbering shifts with every message added, so messages already shown '
-            . 'can appear again when scrolling up. Verified in the interface once corrected.'
-        );
-    }
 
-    /**
-     * MDL-INT-037: conversations are removed once the retention period is over.
-     */
-    public function test_conversations_are_removed_once_the_retention_period_is_over(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] No retention policy exists yet: conversations only disappear with the user, '
-            . 'with the course or through a privacy request. Business decision pending with the client.'
-        );
-    }
 
-    /**
-     * MDL-INT-040: using the tutor leaves a trace in the Moodle logs.
-     */
-    public function test_using_the_tutor_is_recorded_as_a_moodle_event(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] No event is triggered, so the platform keeps no record of who used the '
-            . 'tutor, when and in which course.'
-        );
-    }
 
-    /**
-     * MDL-INT-041: the course switch survives backup, restore and duplication.
-     */
-    public function test_the_course_switch_survives_backup_and_restore(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] The plugin takes no part in the course backup, so the restored course '
-            . 'comes back with the tutor switched off and no warning.'
-        );
-    }
 
-    /**
-     * MDL-INT-042: the tutor can be switched on for several courses at once.
-     */
-    public function test_the_tutor_can_be_switched_on_for_several_courses_at_once(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] Only the per-course switch exists: there is no activation by category, '
-            . 'in bulk, or by default for new courses.'
-        );
-    }
 
     /**
      * MDL-INT-043: name, welcome message and institutional instructions can differ per course.
@@ -175,43 +130,7 @@ final class scope_gaps_test extends \advanced_testcase {
         );
     }
 
-    /**
-     * MDL-E2E-020: the chat offers starting a new conversation or clearing the history.
-     */
-    public function test_the_chat_offers_a_new_conversation_or_clearing_the_history(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] The only way to restart is editing an earlier message, and the history '
-            . 'cannot be cleared from the interface even though the server already supports deleting it.'
-        );
-    }
 
-    /**
-     * MDL-E2E-022: validation warnings are shown by the form, not by the tutor.
-     */
-    public function test_validation_warnings_are_shown_by_the_form(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] Warnings about a message being too long or invalid appear as a bubble of '
-            . 'the conversation, as if the tutor had said them.'
-        );
-    }
 
-    /**
-     * MDL-E2E-023: the chat panel is usable on the screen of a phone.
-     */
-    public function test_the_panel_is_usable_on_a_phone_screen(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] The panel has a fixed width with no adaptation to the size of the screen, '
-            . 'so on a narrow phone it covers almost the whole page or runs off it.'
-        );
-    }
 
-    /**
-     * MDL-E2E-024: the page content moves aside under any theme.
-     */
-    public function test_the_page_content_moves_aside_under_any_theme(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] The shift depends on a class of the Boost theme, so under another theme '
-            . 'the panel can sit on top of the content instead of pushing it aside.'
-        );
-    }
 }

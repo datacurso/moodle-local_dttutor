@@ -107,6 +107,17 @@ class request_guard {
             $cm = self::resolve_cm((int)$cmrecord->id, $course->id, (int)$USER->id);
         }
 
+        // Triggered here, at the single gate every accepted query goes through, so that the
+        // platform keeps a record of who used the tutor, when and where. Metadata only: the
+        // plugin does not store what was asked.
+        \local_dttutor\event\tutor_used::create([
+            'context' => $coursecontext,
+            'other' => [
+                'cmid' => $cm !== null ? (int)$cm->id : 0,
+                'modname' => $cm !== null ? $cm->modname : '',
+            ],
+        ])->trigger();
+
         $pagetype = is_string($context['pagetype'] ?? null) ? $context['pagetype'] : '';
 
         return (object)[

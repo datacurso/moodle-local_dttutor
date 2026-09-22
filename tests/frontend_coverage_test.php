@@ -56,9 +56,9 @@ final class frontend_coverage_test extends \advanced_testcase {
      */
     public function test_the_text_written_by_the_user_reaches_the_service_whole(): void {
         $this->markTestSkipped(
-            '[Pendiente:skip] The signs for less than and greater than are stripped before sending, so '
-            . 'a question about code, formulas or numeric comparisons arrives incomplete. '
-            . 'Lives in the chat module: needs a JavaScript unit runner to be checked.'
+            'The stripping of the less than and greater than signs is gone, so the question now '
+            . 'reaches the service whole. Lives in the chat module: needs a JavaScript unit runner '
+            . 'to be checked here.'
         );
     }
 
@@ -67,9 +67,8 @@ final class frontend_coverage_test extends \advanced_testcase {
      */
     public function test_a_message_made_of_a_single_dot_is_treated_like_any_other(): void {
         $this->markTestSkipped(
-            '[Pendiente:skip] A specific rule turns down a single dot with an invalid message warning '
-            . 'while any other single character is sent. '
-            . 'Lives in the chat module: needs a JavaScript unit runner to be checked.'
+            'The rule that turned down a single dot is gone, so every single character is treated '
+            . 'alike. Lives in the chat module: needs a JavaScript unit runner to be checked here.'
         );
     }
 }

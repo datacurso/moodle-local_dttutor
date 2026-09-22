@@ -175,4 +175,39 @@ final class course_config_test extends \advanced_testcase {
         $this->assertFalse($DB->record_exists('local_dttutor_course_config', ['courseid' => $first->id]));
         $this->assertTrue($DB->record_exists('local_dttutor_course_config', ['courseid' => $second->id]));
     }
+
+    /**
+     * MDL-INT-042: new courses start with the tutor on when the administrator asks for it.
+     */
+    public function test_a_new_course_starts_with_the_tutor_on_when_configured(): void {
+        $this->setAdminUser();
+        set_config('enabled_by_default', 1, 'local_dttutor');
+        $course = $this->getDataGenerator()->create_course();
+
+        $this->assertTrue(course_config::is_enabled_for_course((int)$course->id));
+    }
+
+    /**
+     * MDL-INT-042: with the default off, a new course keeps the tutor off.
+     */
+    public function test_a_new_course_keeps_the_tutor_off_by_default(): void {
+        $this->setAdminUser();
+        set_config('enabled_by_default', 0, 'local_dttutor');
+        $course = $this->getDataGenerator()->create_course();
+
+        $this->assertFalse(course_config::is_enabled_for_course((int)$course->id));
+    }
+
+    /**
+     * MDL-INT-042: the teacher of a course can still switch off what the default switched on.
+     */
+    public function test_the_teacher_can_still_switch_the_tutor_off(): void {
+        $this->setAdminUser();
+        set_config('enabled_by_default', 1, 'local_dttutor');
+        $course = $this->getDataGenerator()->create_course();
+
+        course_config::update((int)$course->id, ['indexing_enabled' => 0]);
+
+        $this->assertFalse(course_config::is_enabled_for_course((int)$course->id));
+    }
 }
