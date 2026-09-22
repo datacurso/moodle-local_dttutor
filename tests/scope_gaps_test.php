@@ -90,15 +90,6 @@ final class scope_gaps_test extends \advanced_testcase {
         );
     }
 
-    /**
-     * MDL-E2E-021: the answer reaches the browser as the model produces it.
-     */
-    public function test_the_answer_reaches_the_browser_as_it_is_produced(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] Moodle waits for the whole answer and then plays it back at a fixed pace. '
-            . 'Measured against the real service, so it has no automated form yet.'
-        );
-    }
 
     /**
      * MDL-E2E-025: what the tutor may discuss while an attempt of a quiz is open.

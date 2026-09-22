@@ -266,4 +266,73 @@ final class handler_test extends \advanced_testcase {
             '[local_dttutor] AI_API_RESPONSE_TEXT {"length":0,"estimated_completion_tokens":0}',
         ]);
     }
+
+    /**
+     * Forward one fragment of the answer and report what left and what it carried.
+     *
+     * @param string $chunk
+     * @param string $pending
+     * @return array{0: string, 1: string} The text carried and what was written out.
+     */
+    private function forward(string $chunk, string &$pending): array {
+        ob_start();
+        $text = handler::stream_chunk($chunk, $pending);
+        return [$text, (string)ob_get_clean()];
+    }
+
+    /**
+     * MDL-E2E-021: each fragment of the answer leaves as it arrives.
+     */
+    public function test_each_fragment_leaves_as_it_arrives(): void {
+        $pending = '';
+
+        [$text, $written] = $this->forward('data: {"choices":[{"delta":{"content":"Hel"}}]}' . "\n", $pending);
+
+        $this->assertSame('Hel', $text);
+        $this->assertStringContainsString('event: token', $written);
+        $this->assertStringContainsString('Hel', $written);
+    }
+
+    /**
+     * MDL-E2E-021: a line cut in two waits for the rest before anything leaves.
+     */
+    public function test_a_line_cut_in_two_waits_for_the_rest(): void {
+        $pending = '';
+
+        [$text, $written] = $this->forward('data: {"choices":[{"delta":{"content":"lo wo', $pending);
+        $this->assertSame('', $text);
+        $this->assertSame('', $written);
+
+        [$text, $written] = $this->forward('rld"}}]}' . "\n", $pending);
+        $this->assertSame('lo world', $text);
+        $this->assertStringContainsString('event: token', $written);
+    }
+
+    /**
+     * MDL-E2E-021: the end of the answer stops the forwarding.
+     */
+    public function test_the_end_of_the_answer_stops_the_forwarding(): void {
+        $pending = '';
+
+        [$text, $written] = $this->forward(
+            'data: {"choices":[{"delta":{"content":"done"}}]}' . "\n" . 'data: [DONE]' . "\n",
+            $pending
+        );
+
+        $this->assertSame('done', $text);
+        $this->assertSame(1, substr_count($written, 'event: token'));
+        $this->assertSame('', $pending);
+    }
+
+    /**
+     * MDL-E2E-021: fragments that carry no text of the answer write nothing out.
+     */
+    public function test_fragments_without_text_write_nothing(): void {
+        $pending = '';
+
+        [$text, $written] = $this->forward(": keep-alive\n" . 'data: {"choices":[{"delta":{}}]}' . "\n", $pending);
+
+        $this->assertSame('', $text);
+        $this->assertSame('', $written);
+    }
 }
