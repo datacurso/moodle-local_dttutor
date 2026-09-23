@@ -80,6 +80,35 @@ class chat_hook {
      * @return bool
      * @since Moodle 4.5
      */
+    /**
+     * Whether the current user is sitting a quiz of this course at this moment.
+     *
+     * A course with no quizzes answers without asking the database, which is most of them.
+     *
+     * @param int $courseid
+     * @return bool
+     */
+    private static function is_sitting_a_quiz(int $courseid): bool {
+        global $USER;
+
+        try {
+            $modinfo = get_fast_modinfo($courseid);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        if (empty($modinfo->get_instances_of('quiz'))) {
+            return false;
+        }
+
+        return \local_dttutor\local\open_attempt::is_being_sat($courseid, (int)$USER->id);
+    }
+
+    /**
+     * Whether the page being rendered belongs to a quiz.
+     *
+     * @return bool
+     */
     private static function is_quiz_module(): bool {
         global $PAGE;
 
@@ -127,6 +156,11 @@ class chat_hook {
             return;
         }
 
+        // Nobody is offered a chat whose queries would be refused afterwards.
+        if (!\local_dttutor\httpclient\client_factory::is_provider_enabled()) {
+            return;
+        }
+
         // Don't render inside embedded/iframe/popup pages (e.g. H5P content served via
         // /h5p/embed.php), otherwise the floating widget is duplicated inside the iframe.
         if (in_array($PAGE->pagelayout, ['embedded', 'popup', 'frametop'], true)) {
@@ -157,6 +191,11 @@ class chat_hook {
             return;
         }
 
+        // Nobody is offered a chat whose queries would be refused afterwards.
+        if (self::is_sitting_a_quiz($courseid)) {
+            return;
+        }
+
         $cmid = 0;
         $context = $PAGE->context;
         if ($context->contextlevel == CONTEXT_MODULE) {
@@ -171,14 +210,14 @@ class chat_hook {
         $avatarurl = self::get_avatar_url();
         $positiondata = self::get_position_data();
 
-        $tutorname = get_config('local_dttutor', 'tutorname');
-        if (empty($tutorname)) {
+        $tutorname = \local_dttutor\course_config::get_setting($courseid, 'tutorname');
+        if ($tutorname === '') {
             $tutorname = get_string('tutorname_default', 'local_dttutor');
         }
         $tutorname = self::replace_placeholders($tutorname, $courseid);
 
-        $welcomemessage = get_config('local_dttutor', 'welcomemessage');
-        if (empty($welcomemessage)) {
+        $welcomemessage = \local_dttutor\course_config::get_setting($courseid, 'welcomemessage');
+        if ($welcomemessage === '') {
             $welcomemessage = get_string('welcomemessage_default', 'local_dttutor');
         }
         $welcomemessage = self::replace_placeholders($welcomemessage, $courseid);

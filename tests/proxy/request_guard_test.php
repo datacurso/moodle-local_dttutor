@@ -37,6 +37,7 @@ final class request_guard_test extends \advanced_testcase {
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course($courseoptions);
         set_config('enabled', 1, 'local_dttutor');
+        set_config('enabled', 1, 'aiprovider_datacurso');
         course_config::update($course->id, ['indexing_enabled' => 1]);
         return $course;
     }
@@ -59,6 +60,9 @@ final class request_guard_test extends \advanced_testcase {
         ];
     }
 
+    /**
+     * MDL-INT-002: authorising the chat query on the server.
+     */
     public function test_missing_course_id_is_rejected(): void {
         $this->resetAfterTest();
         $this->create_enabled_course();
@@ -68,6 +72,9 @@ final class request_guard_test extends \advanced_testcase {
         request_guard::authorize($this->build_input(0));
     }
 
+    /**
+     * MDL-INT-002: authorising the chat query on the server.
+     */
     public function test_non_enrolled_user_is_rejected(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -77,6 +84,9 @@ final class request_guard_test extends \advanced_testcase {
         request_guard::authorize($this->build_input($course->id));
     }
 
+    /**
+     * MDL-INT-002: authorising the chat query on the server.
+     */
     public function test_hidden_course_rejects_student(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course(['visible' => 0]);
@@ -87,6 +97,9 @@ final class request_guard_test extends \advanced_testcase {
         request_guard::authorize($this->build_input($course->id));
     }
 
+    /**
+     * MDL-INT-001, MDL-INT-002: global and per-course enablement of the tutor.
+     */
     public function test_plugin_globally_disabled_is_rejected(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -99,6 +112,9 @@ final class request_guard_test extends \advanced_testcase {
         request_guard::authorize($this->build_input($course->id));
     }
 
+    /**
+     * MDL-INT-001, MDL-INT-002: global and per-course enablement of the tutor.
+     */
     public function test_tutor_disabled_for_course_is_rejected(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -111,6 +127,9 @@ final class request_guard_test extends \advanced_testcase {
         request_guard::authorize($this->build_input($course->id));
     }
 
+    /**
+     * MDL-INT-003, MDL-INT-004: resolving the activity named in the query.
+     */
     public function test_module_from_another_course_is_rejected(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -123,6 +142,9 @@ final class request_guard_test extends \advanced_testcase {
         request_guard::authorize($this->build_input($course->id, [], ['activity_id' => $foreignpage->cmid]));
     }
 
+    /**
+     * MDL-INT-003: resolving the activity named in the query.
+     */
     public function test_hidden_module_rejects_student(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -134,6 +156,9 @@ final class request_guard_test extends \advanced_testcase {
         request_guard::authorize($this->build_input($course->id, [], ['activity_id' => $hiddenpage->cmid]));
     }
 
+    /**
+     * MDL-INT-002: authorising the chat query on the server.
+     */
     public function test_enrolled_student_with_enabled_tutor_is_authorized(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -149,6 +174,9 @@ final class request_guard_test extends \advanced_testcase {
         $this->assertSame([['role' => 'user', 'content' => 'Hello']], $result->messages);
     }
 
+    /**
+     * MDL-INT-003: resolving the activity named in the query.
+     */
     public function test_authorized_request_resolves_visible_module(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -163,6 +191,9 @@ final class request_guard_test extends \advanced_testcase {
         $this->assertSame('page', $result->cm->modname);
     }
 
+    /**
+     * MDL-UNIT-001: sanitising the conversation before it is processed.
+     */
     public function test_system_and_tool_roles_are_stripped(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -188,6 +219,9 @@ final class request_guard_test extends \advanced_testcase {
         ], $result->messages);
     }
 
+    /**
+     * MDL-UNIT-001: sanitising the conversation before it is processed.
+     */
     public function test_message_count_is_capped_keeping_most_recent(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -206,6 +240,9 @@ final class request_guard_test extends \advanced_testcase {
         $this->assertSame('m49', $result->messages[request_guard::MAX_MESSAGES - 1]['content']);
     }
 
+    /**
+     * MDL-UNIT-001: sanitising the conversation before it is processed.
+     */
     public function test_message_length_is_capped(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -248,6 +285,8 @@ final class request_guard_test extends \advanced_testcase {
     }
 
     /**
+     * MDL-UNIT-002: deriving the location of the user from the page type.
+     *
      * Each page type maps to the expected location key; untrusted input maps to unknown.
      *
      * @dataProvider pagetype_location_provider
@@ -258,6 +297,9 @@ final class request_guard_test extends \advanced_testcase {
         $this->assertSame($expected, request_guard::location_from_pagetype($pagetype));
     }
 
+    /**
+     * MDL-UNIT-002: deriving the location of the user from the page type.
+     */
     public function test_location_is_derived_from_the_client_pagetype(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -269,6 +311,9 @@ final class request_guard_test extends \advanced_testcase {
         $this->assertSame('activity', $result->location);
     }
 
+    /**
+     * MDL-UNIT-002, MDL-INT-004: deriving the location of the user from the page type.
+     */
     public function test_client_supplied_location_is_ignored(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
@@ -279,5 +324,89 @@ final class request_guard_test extends \advanced_testcase {
         $result = request_guard::authorize($input);
 
         $this->assertSame('unknown', $result->location);
+    }
+
+    /**
+     * MDL-E2E-008: the fragment selected on the page is cleaned and bounded before it is used.
+     */
+    public function test_the_selected_fragment_is_cleaned_and_bounded(): void {
+        $this->assertSame('', request_guard::sanitise_selected_text(null));
+        $this->assertSame('', request_guard::sanitise_selected_text(['not a string']));
+        $this->assertSame('a fragment', request_guard::sanitise_selected_text("  a fragment \n"));
+
+        $long = str_repeat('x', request_guard::MAX_SELECTED_TEXT_LENGTH + 500);
+        $this->assertSame(
+            request_guard::MAX_SELECTED_TEXT_LENGTH,
+            mb_strlen(request_guard::sanitise_selected_text($long))
+        );
+    }
+
+    /**
+     * MDL-E2E-025: the tutor steps aside while a quiz of the course is being sat.
+     */
+    public function test_a_query_is_refused_while_a_quiz_is_being_sat(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $course = $this->create_enabled_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+            'timelimit' => HOURSECS,
+        ]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+        $DB->insert_record('quiz_attempts', (object)[
+            'quiz' => $quiz->id,
+            'userid' => $student->id,
+            'attempt' => 1,
+            'uniqueid' => 1,
+            'layout' => '1,0',
+            'currentpage' => 0,
+            'preview' => 0,
+            'state' => 'inprogress',
+            'timestart' => time(),
+            'timefinish' => 0,
+            'timemodified' => time(),
+            'timemodifiedoffline' => 0,
+            'sumgrades' => null,
+        ]);
+
+        try {
+            request_guard::authorize($this->build_input($course->id));
+            $this->fail('A quiz of this course is being sat, so the query had to be refused.');
+        } catch (\moodle_exception $e) {
+            $this->assertEquals(get_string('error_quiz_in_progress', 'local_dttutor'), $e->getMessage());
+        }
+    }
+
+    /**
+     * MDL-E2E-025: once the quiz is handed in, the tutor is back.
+     */
+    public function test_a_query_is_allowed_once_the_quiz_is_handed_in(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $course = $this->create_enabled_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+            'timelimit' => HOURSECS,
+        ]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+        $DB->insert_record('quiz_attempts', (object)[
+            'quiz' => $quiz->id,
+            'userid' => $student->id,
+            'attempt' => 1,
+            'uniqueid' => 1,
+            'layout' => '1,0',
+            'currentpage' => 0,
+            'preview' => 0,
+            'state' => 'finished',
+            'timestart' => time() - MINSECS,
+            'timefinish' => time(),
+            'timemodified' => time(),
+            'timemodifiedoffline' => 0,
+            'sumgrades' => 1,
+        ]);
+
+        $this->assertNotEmpty(request_guard::authorize($this->build_input($course->id)));
     }
 }

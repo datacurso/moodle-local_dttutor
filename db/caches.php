@@ -36,6 +36,12 @@ $definitions = [
     // Remote chat session handles (session id, TTL, validation timestamps) keyed by
     // "session_v2_{courseid}_{userid}[_{cmid}]", so a session is reused instead of being
     // re-created on every request. The durable copy lives in local_dttutor_session.
+    'service_status' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'ttl' => 300, // Five minutes: enough to spare a call on every page load.
+        'simplekeys' => true,
+        'simpledata' => true,
+    ],
     'sessions' => [
         'mode' => cache_store::MODE_APPLICATION,
         'simplekeys' => true,

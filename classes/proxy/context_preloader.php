@@ -18,10 +18,11 @@
  * Course knowledge pre-loader for the AI chat proxy.
  *
  * Builds a compact, deterministic snapshot of the course and the activities the
- * requesting user can see (structure, dates, max grades) and, only when the
- * administrator enables local_dttutor/include_grades, that user's own grades, so
- * the model can answer course/activity questions from a single, pre-authorised
- * context block. Gathering this in PHP costs zero tokens.
+ * requesting user can see (structure, dates, time limits, max grades and how far
+ * the user has got) and, only when the administrator enables
+ * local_dttutor/include_grades, that user's own released grades, so the model can
+ * answer course/activity questions from a single, pre-authorised context block.
+ * Gathering this in PHP costs zero tokens.
  *
  * @package    local_dttutor
  * @copyright  2026 Datacurso
@@ -34,25 +35,48 @@ namespace local_dttutor\proxy;
  * Builds the pre-loaded course knowledge block for the system message.
  */
 class context_preloader {
-    /** @var array Instance fields that represent activity dates, mapped to a short label. */
+    /** @var int Activities listed at most, unless the administrator configures another limit. */
+    public const DEFAULT_MAX_ACTIVITIES = 100;
+
+    /**
+     * Instance fields that represent activity dates, mapped to a short label.
+     *
+     * Ordered opening dates first so that a reader follows the life of the activity.
+     *
+     * @var array
+     */
     private const DATE_FIELDS = [
         'allowsubmissionsfromdate' => 'opens',
         'timeopen'                 => 'opens',
+        'available'                => 'opens',
+        'openingtime'              => 'opens',
         'timeavailablefrom'        => 'available from',
+        'submissionstart'          => 'submissions open',
+        'assessmentstart'          => 'assessment opens',
         'duedate'                  => 'due',
         'timedue'                  => 'due',
+        'deadline'                 => 'due',
+        'submissionend'            => 'submissions close',
+        'assessmentend'            => 'assessment closes',
         'timeclose'                => 'closes',
+        'closingtime'              => 'closes',
+        'timeavailableto'          => 'available until',
         'timeavailableuntil'       => 'available until',
         'cutoffdate'               => 'cutoff',
     ];
 
+    /** @var array Instance fields that represent a duration in seconds, mapped to a short label. */
+    private const DURATION_FIELDS = [
+        'timelimit' => 'time limit',
+    ];
+
     /**
-     * Build the full course-knowledge block (static course data + this student's grades when enabled).
+     * Build the pre-loaded course knowledge block.
      *
-     * @param  int   $courseid The current course ID.
-     * @param  int   $userid   The current user ID (for personal grades).
-     * @param  array $context  The page context. Not used yet: kept so callers can pass it when activity focus is added.
-     * @return string          A compact text block, or '' when there is nothing to add.
+     * @param int $courseid Course id.
+     * @param int $userid User the knowledge is built for.
+     * @param array $context Client context (unused for now, kept for future use).
+     * @return string The knowledge block, or an empty string when there is nothing to say.
      */
     public static function build(int $courseid, int $userid, array $context = []): string {
         if ($courseid <= 1) {
@@ -70,43 +94,90 @@ class context_preloader {
             return '';
         }
 
-        // Personal grades are sent to the AI provider only when the site opted in.
+        $progress = self::get_progress_block($course, $userid);
+
         $student = '';
         if (get_config('local_dttutor', 'include_grades')) {
             $student = self::get_student_block($course, $userid);
         }
 
-        return $static . $student;
+        return $static . $progress . $student;
     }
 
     /**
-     * Get the static knowledge block for one user, cached per course, user and course revision.
+     * Number of activities the block may list.
      *
-     * The block only lists modules visible to the given user, so it must never be
-     * shared across users.
+     * @return int
+     */
+    private static function max_activities(): int {
+        $configured = (int)get_config('local_dttutor', 'max_activities');
+        return $configured > 0 ? $configured : self::DEFAULT_MAX_ACTIVITIES;
+    }
+
+    /**
+     * The cached static block for this course and user, rebuilt when the course changes.
      *
-     * @param  \stdClass $course The course record.
-     * @param  int       $userid The user the block is built for.
+     * @param \stdClass $course
+     * @param int $userid
      * @return string
      */
     private static function get_static_block(\stdClass $course, int $userid): string {
         $cache    = \cache::make('local_dttutor', 'course_knowledge');
         $cachekey = $course->id . '_' . $userid;
-        $cached   = $cache->get($cachekey);
-        if (is_array($cached) && (int)($cached['cacherev'] ?? -1) === (int)$course->cacherev) {
+        $stamp    = self::content_stamp((int)$course->id);
+
+        $cached = $cache->get($cachekey);
+        if (
+            is_array($cached)
+            && (int)($cached['cacherev'] ?? -1) === (int)$course->cacherev
+            && (int)($cached['contentstamp'] ?? -1) === $stamp
+        ) {
             return (string)$cached['text'];
         }
 
         $text = self::build_static_block($course, $userid);
-        $cache->set($cachekey, ['cacherev' => (int)$course->cacherev, 'text' => $text]);
+        $cache->set($cachekey, [
+            'cacherev' => (int)$course->cacherev,
+            'contentstamp' => $stamp,
+            'text' => $text,
+        ]);
         return $text;
     }
 
     /**
-     * Build the static course knowledge: course info + every activity visible to the user.
+     * A stamp that changes when course material changes outside the form of an activity.
      *
-     * @param  \stdClass $course The course record.
-     * @param  int       $userid The user whose visibility applies.
+     * Editing an activity rebuilds the cache of the course, so its text can never go stale. The
+     * chapters of a book are edited by their own pages, which do not, and a corrected chapter
+     * would otherwise keep travelling for a day. Only worked out when material is being sent.
+     *
+     * @param int $courseid
+     * @return int Latest modification of the material, or 0 when there is none to watch.
+     */
+    private static function content_stamp(int $courseid): int {
+        global $DB;
+
+        if (!activity_content::is_enabled()) {
+            return 0;
+        }
+
+        $sql = "SELECT MAX(bc.timemodified)
+                  FROM {book_chapters} bc
+                  JOIN {book} b ON b.id = bc.bookid
+                 WHERE b.course = :courseid";
+
+        try {
+            return (int)$DB->get_field_sql($sql, ['courseid' => $courseid]);
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Build the course and activity part of the block.
+     *
+     * @param \stdClass $course
+     * @param int $userid
      * @return string
      */
     private static function build_static_block(\stdClass $course, int $userid): string {
@@ -114,6 +185,7 @@ class context_preloader {
         require_once($CFG->libdir . '/gradelib.php');
 
         $modinfo = get_fast_modinfo($course, $userid);
+        $gradeitems = self::get_grade_items((int)$course->id);
 
         $lines = [];
         $lines[] = 'COURSE KNOWLEDGE (already retrieved for you — use it to answer directly '
@@ -125,56 +197,315 @@ class context_preloader {
             $lines[] = '- Summary: ' . $summary;
         }
 
+        $max = self::max_activities();
+        $withcontent = activity_content::is_enabled();
+        $budget = $withcontent ? activity_content::chars_total() : 0;
+
         $activitylines = [];
+        $omitted = 0;
+        $activitycount = 0;
+        $contentcut = false;
+
         foreach ($modinfo->get_cms() as $cm) {
-            // Skip modules this user cannot see (hidden or restricted), labels and deleted modules.
-            if (!$cm->uservisible || $cm->deletioninprogress || $cm->modname === 'label') {
+            if ($cm->deletioninprogress || $cm->modname === 'label') {
                 continue;
             }
 
-            $parts = [];
-            $parts[] = '[' . $cm->modname . ']';
-            $parts[] = format_string($cm->name);
-            $parts[] = '(cmid ' . (int)$cm->id . ', instance ' . (int)$cm->instance . ')';
-
-            $sectionname = trim((string)$modinfo->get_section_info($cm->sectionnum)->name);
-            if ($sectionname === '') {
-                $sectionname = get_section_name($course, $cm->sectionnum);
-            }
-            if ($sectionname !== '') {
-                $parts[] = "section '" . $sectionname . "'";
+            // An activity the user cannot open yet is announced with its condition and nothing else:
+            // the student sees it greyed out on the course page and asks about it.
+            $locked = !$cm->uservisible;
+            if ($locked && !self::is_announced_as_locked($cm)) {
+                continue;
             }
 
-            $dates = self::extract_dates($DB, $cm->modname, (int)$cm->instance);
-            if ($dates !== '') {
-                $parts[] = $dates;
+            if ($activitycount >= $max) {
+                $omitted++;
+                continue;
+            }
+            $activitycount++;
+
+            $record = self::get_instance_record($DB, $cm->modname, (int)$cm->instance);
+
+            $activitylines[] = '  - ' . implode(' | ', self::describe_activity(
+                $course,
+                $modinfo,
+                $cm,
+                $locked,
+                $gradeitems,
+                $record
+            ));
+
+            // The material of an activity the user cannot open yet never travels: what is announced
+            // about it is its name and the condition that releases it.
+            if (!$withcontent || $locked) {
+                continue;
             }
 
-            $maxgrade = self::extract_max_grade((int)$course->id, $cm->modname, (int)$cm->instance);
-            if ($maxgrade !== '') {
-                $parts[] = 'max grade ' . $maxgrade;
+            $content = activity_content::extract($cm, $record, $budget);
+            if ($content === '') {
+                continue;
             }
 
-            $activitylines[] = '  - ' . implode(' | ', $parts);
+            $budget -= \core_text::strlen($content);
+            $contentcut = $contentcut || str_ends_with($content, activity_content::TRUNCATION_MARK);
+            foreach (explode("\n", $content) as $contentline) {
+                $activitylines[] = '      ' . $contentline;
+            }
         }
 
         if (!empty($activitylines)) {
-            $lines[] = '- Activities (' . count($activitylines) . '):';
+            $lines[] = '- Activities (' . $activitycount . '):';
             $lines   = array_merge($lines, $activitylines);
+        }
+        if ($omitted > 0) {
+            $lines[] = '- ' . $omitted . ' further activities are not listed here. Say so if the answer '
+                . 'might be among them, and point the student at the course page.';
+        }
+        if ($withcontent && ($contentcut || $budget <= 0)) {
+            $lines[] = '- The material above is abridged. Answer from what is here, and say that you '
+                . 'are working from an extract when the question needs more of it.';
         }
 
         return implode("\n", $lines) . "\n";
     }
 
     /**
-     * Build the current student's personal grades block (fetched fresh, not cached).
+     * Whether an activity the user cannot open is still shown to them on the course page.
      *
-     * @param  \stdClass $course The course record.
-     * @param  int       $userid The current user ID.
+     * @param \cm_info $cm
+     * @return bool
+     */
+    private static function is_announced_as_locked(\cm_info $cm): bool {
+        return $cm->is_visible_on_course_page() && trim((string)$cm->availableinfo) !== '';
+    }
+
+    /**
+     * The parts describing one activity.
+     *
+     * @param \stdClass $course
+     * @param \course_modinfo $modinfo
+     * @param \cm_info $cm
+     * @param bool $locked Whether the user cannot open the activity yet.
+     * @param array $gradeitems Grade items of the course indexed by module and instance.
+     * @param \stdClass|null $record The instance record of the activity, or null when unreadable.
+     * @return string[]
+     */
+    private static function describe_activity(
+        \stdClass $course,
+        \course_modinfo $modinfo,
+        \cm_info $cm,
+        bool $locked,
+        array $gradeitems,
+        ?\stdClass $record
+    ): array {
+        $parts = [];
+        $parts[] = '[' . $cm->modname . ']';
+        $parts[] = format_string($cm->name);
+        $parts[] = '(cmid ' . (int)$cm->id . ', instance ' . (int)$cm->instance . ')';
+
+        $sectionname = trim((string)$modinfo->get_section_info($cm->sectionnum)->name);
+        if ($sectionname === '') {
+            $sectionname = get_section_name($course, $cm->sectionnum);
+        }
+        if ($sectionname !== '') {
+            $parts[] = "section '" . $sectionname . "'";
+        }
+
+        if ($locked) {
+            // Nothing else is disclosed about an activity the user cannot open.
+            $parts[] = 'not available yet: ' . trim(html_to_text((string)$cm->availableinfo, 0, false));
+            return $parts;
+        }
+
+        $dates = self::extract_dates($record);
+        if ($dates !== '') {
+            $parts[] = $dates;
+        }
+
+        $durations = self::extract_durations($record);
+        if ($durations !== '') {
+            $parts[] = $durations;
+        }
+
+        $item = $gradeitems[$cm->modname . '|' . (int)$cm->instance] ?? null;
+        if ($item !== null && (float)$item->grademax > 0) {
+            $parts[] = 'max grade ' . format_float((float)$item->grademax, (int)$item->get_decimals());
+        }
+
+        return $parts;
+    }
+
+    /**
+     * The instance record of an activity, or null when it cannot be read.
+     *
+     * @param \moodle_database $db
+     * @param string $modname
+     * @param int $instance
+     * @return \stdClass|null
+     */
+    private static function get_instance_record(\moodle_database $db, string $modname, int $instance): ?\stdClass {
+        try {
+            $record = $db->get_record($modname, ['id' => $instance]);
+        } catch (\Throwable $e) {
+            return null;
+        }
+        return $record ?: null;
+    }
+
+    /**
+     * The dates configured for an activity.
+     *
+     * @param \stdClass|null $record
+     * @return string
+     */
+    private static function extract_dates(?\stdClass $record): string {
+        if ($record === null) {
+            return '';
+        }
+
+        $found = [];
+        foreach (self::DATE_FIELDS as $field => $label) {
+            if (!empty($record->$field) && (int)$record->$field > 0) {
+                $found[] = $label . ': ' . userdate((int)$record->$field);
+            }
+        }
+        return empty($found) ? '' : implode(', ', $found);
+    }
+
+    /**
+     * The time the user has to complete an activity once started.
+     *
+     * @param \stdClass|null $record
+     * @return string
+     */
+    private static function extract_durations(?\stdClass $record): string {
+        if ($record === null) {
+            return '';
+        }
+
+        $found = [];
+        foreach (self::DURATION_FIELDS as $field => $label) {
+            if (!empty($record->$field) && (int)$record->$field > 0) {
+                $found[] = $label . ': ' . format_time((int)$record->$field);
+            }
+        }
+        return empty($found) ? '' : implode(', ', $found);
+    }
+
+    /**
+     * How far the user has got with the course: what they submitted and what they completed.
+     *
+     * Never cached: unlike the structure of the course, this changes with every submission the
+     * user makes, and an answer about what is left to hand in has to be current.
+     *
+     * @param \stdClass $course
+     * @param int $userid
+     * @return string
+     */
+    private static function get_progress_block(\stdClass $course, int $userid): string {
+        global $DB;
+
+        if ($userid <= 0) {
+            return '';
+        }
+
+        try {
+            $modinfo = get_fast_modinfo($course, $userid);
+        } catch (\Throwable $e) {
+            return '';
+        }
+        $completion = new \completion_info($course);
+
+        $lines = [];
+        foreach ($modinfo->get_cms() as $cm) {
+            if (!$cm->uservisible || $cm->deletioninprogress || $cm->modname === 'label') {
+                continue;
+            }
+            $states = self::extract_progress($DB, $cm, $completion, $userid);
+            if ($states !== '') {
+                $lines[] = '  - ' . format_string($cm->name) . ': ' . $states;
+            }
+        }
+
+        if (empty($lines)) {
+            return '';
+        }
+
+        return "\nYOUR PROGRESS (current user):\n" . implode("\n", $lines) . "\n";
+    }
+
+    /**
+     * How far the user has got with one activity: submitted, completed, or nothing worth saying.
+     *
+     * @param \moodle_database $db
+     * @param \cm_info $cm
+     * @param \completion_info $completion
+     * @param int $userid
+     * @return string
+     */
+    private static function extract_progress(
+        \moodle_database $db,
+        \cm_info $cm,
+        \completion_info $completion,
+        int $userid
+    ): string {
+        $states = [];
+
+        if ($cm->modname === 'assign') {
+            $submitted = $db->record_exists('assign_submission', [
+                'assignment' => (int)$cm->instance,
+                'userid' => $userid,
+                'status' => 'submitted',
+                'latest' => 1,
+            ]);
+            $states[] = $submitted ? 'submitted' : 'not submitted';
+        }
+
+        if ($completion->is_enabled($cm) != COMPLETION_TRACKING_NONE) {
+            try {
+                $data = $completion->get_data($cm, false, $userid);
+                $states[] = in_array((int)$data->completionstate, [COMPLETION_COMPLETE, COMPLETION_COMPLETE_PASS], true)
+                    ? 'completed'
+                    : 'not completed';
+            } catch (\Throwable $e) {
+                unset($e);
+            }
+        }
+
+        return empty($states) ? '' : implode(', ', $states);
+    }
+
+    /**
+     * Grade items of the course, indexed by module name and instance.
+     *
+     * Read once for the whole course instead of once per activity and message.
+     *
+     * @param int $courseid
+     * @return array
+     */
+    private static function get_grade_items(int $courseid): array {
+        $items = [];
+        try {
+            $all = \grade_item::fetch_all(['courseid' => $courseid, 'itemtype' => 'mod']);
+        } catch (\Throwable $e) {
+            return [];
+        }
+        foreach ($all ?: [] as $item) {
+            $items[$item->itemmodule . '|' . (int)$item->iteminstance] = $item;
+        }
+        return $items;
+    }
+
+    /**
+     * Build the part of the block with the grades of the user.
+     *
+     * @param \stdClass $course
+     * @param int $userid
      * @return string
      */
     private static function get_student_block(\stdClass $course, int $userid): string {
         global $CFG;
+
         if ($userid <= 0) {
             return '';
         }
@@ -186,12 +517,20 @@ class context_preloader {
             return '';
         }
 
+        $gradeitems = self::get_grade_items((int)$course->id);
+        $usergrades = self::get_user_grades((int)$course->id, $userid);
+        $seehidden = has_capability('moodle/grade:viewhidden', \context_course::instance((int)$course->id), $userid);
+
         $gradelines = [];
         foreach ($modinfo->get_cms() as $cm) {
             if (!$cm->uservisible || $cm->deletioninprogress || $cm->modname === 'label') {
                 continue;
             }
-            $grade = self::extract_user_grade((int)$course->id, $cm->modname, (int)$cm->instance, $userid);
+            $item = $gradeitems[$cm->modname . '|' . (int)$cm->instance] ?? null;
+            if ($item === null) {
+                continue;
+            }
+            $grade = self::describe_grade($item, $usergrades[(int)$item->id] ?? null, $seehidden);
             if ($grade !== '') {
                 $gradelines[] = '  - ' . format_string($cm->name) . ': ' . $grade;
             }
@@ -201,7 +540,7 @@ class context_preloader {
             return '';
         }
 
-        $coursegrade = self::extract_course_grade((int)$course->id, $userid);
+        $coursegrade = self::extract_course_grade((int)$course->id, $userid, $usergrades, $seehidden);
         $header = "\nYOUR GRADES (current student, user id {$userid}):";
         if ($coursegrade !== '') {
             $header .= "\n  - Course total: " . $coursegrade;
@@ -211,116 +550,109 @@ class context_preloader {
     }
 
     /**
-     * Extract formatted date fields from a module instance record.
+     * Every grade of the user in the course, indexed by grade item id.
      *
-     * @param  \moodle_database $db       The DB handle.
-     * @param  string           $modname  Module name (e.g. assign, quiz).
-     * @param  int              $instance Module instance ID.
-     * @return string                     A " | "-free, comma-joined date string, or ''.
+     * Read in one go instead of once per activity and message.
+     *
+     * @param int $courseid
+     * @param int $userid
+     * @return array
      */
-    private static function extract_dates(\moodle_database $db, string $modname, int $instance): string {
+    private static function get_user_grades(int $courseid, int $userid): array {
+        global $DB;
+
+        $sql = "SELECT gg.*
+                  FROM {grade_grades} gg
+                  JOIN {grade_items} gi ON gi.id = gg.itemid
+                 WHERE gi.courseid = :courseid
+                   AND gg.userid = :userid";
+
+        $grades = [];
         try {
-            $record = $db->get_record($modname, ['id' => $instance]);
+            $records = $DB->get_records_sql($sql, ['courseid' => $courseid, 'userid' => $userid]);
         } catch (\Throwable $e) {
-            return '';
+            return [];
         }
-        if (!$record) {
-            return '';
+        foreach ($records as $record) {
+            $grades[(int)$record->itemid] = new \grade_grade($record, false);
         }
-
-        $found = [];
-        foreach (self::DATE_FIELDS as $field => $label) {
-            if (!empty($record->$field) && (int)$record->$field > 0) {
-                $found[] = $label . ': ' . userdate((int)$record->$field);
-            }
-        }
-
-        return empty($found) ? '' : implode(', ', $found);
+        return $grades;
     }
 
     /**
-     * Extract the maximum grade for a gradable activity.
+     * Describe one grade of the user, or nothing when the user is not meant to see it yet.
      *
-     * @param  int    $courseid Course ID.
-     * @param  string $modname  Module name.
-     * @param  int    $instance Module instance ID.
-     * @return string           Formatted max grade, or '' if not graded.
+     * A grade hidden by the teacher, or one still held by the marking workflow, never leaves the
+     * site: the student would learn through the chat a mark that is not in their gradebook.
+     *
+     * @param \grade_item $item
+     * @param \grade_grade|null $grade
+     * @param bool $seehidden Whether the user may see hidden grades.
+     * @return string
      */
-    private static function extract_max_grade(int $courseid, string $modname, int $instance): string {
-        try {
-            $grades = grade_get_grades($courseid, 'mod', $modname, $instance);
-        } catch (\Throwable $e) {
+    private static function describe_grade(\grade_item $item, ?\grade_grade $grade, bool $seehidden): string {
+        if ($grade === null) {
             return '';
         }
-        if (empty($grades->items)) {
-            return '';
-        }
-        $item = reset($grades->items);
-        if (!isset($item->grademax) || (float)$item->grademax <= 0) {
-            return '';
-        }
-        return format_float((float)$item->grademax, (int)($item->decimals ?? 2));
-    }
 
-    /**
-     * Extract the current user's grade for a gradable activity.
-     *
-     * @param  int    $courseid Course ID.
-     * @param  string $modname  Module name.
-     * @param  int    $instance Module instance ID.
-     * @param  int    $userid   User ID.
-     * @return string           Human-readable grade (e.g. "85 / 100"), or '' if none.
-     */
-    private static function extract_user_grade(int $courseid, string $modname, int $instance, int $userid): string {
-        try {
-            $grades = grade_get_grades($courseid, 'mod', $modname, $instance, $userid);
-        } catch (\Throwable $e) {
+        // Handing over the item that is already in memory: left to itself, a grade fetches its own
+        // item from the database, which would be one query per gradable activity and per message.
+        $grade->grade_item = $item;
+
+        if (!$seehidden && $grade->is_hidden()) {
             return '';
         }
-        if (empty($grades->items)) {
-            return '';
-        }
-        $item = reset($grades->items);
-        if (empty($item->grades) || !isset($item->grades[$userid])) {
-            return '';
-        }
-        $usergrade = $item->grades[$userid];
-        if (!isset($usergrade->grade) || $usergrade->grade === null || $usergrade->grade === false) {
+        if ($grade->finalgrade === null) {
             return 'not graded yet';
         }
-        $decimals = (int)($item->decimals ?? 2);
-        $value    = format_float((float)$usergrade->grade, $decimals);
-        if (isset($item->grademax) && (float)$item->grademax > 0) {
+
+        $decimals = (int)$item->get_decimals();
+        $value    = format_float((float)$grade->finalgrade, $decimals);
+        if ((float)$item->grademax > 0) {
             return $value . ' / ' . format_float((float)$item->grademax, $decimals);
         }
         return $value;
     }
 
     /**
-     * Extract the current user's overall course grade.
+     * The course total of the user, when they are meant to see it.
      *
-     * @param  int $courseid Course ID.
-     * @param  int $userid   User ID.
-     * @return string        Human-readable course total, or ''.
+     * @param int $courseid
+     * @param int $userid
+     * @param array $usergrades Grades of the user indexed by grade item id.
+     * @param bool $seehidden
+     * @return string
      */
-    private static function extract_course_grade(int $courseid, int $userid): string {
+    private static function extract_course_grade(
+        int $courseid,
+        int $userid,
+        array $usergrades,
+        bool $seehidden
+    ): string {
         try {
             $item = \grade_item::fetch_course_item($courseid);
-            if (!$item) {
-                return '';
-            }
-            $grade = new \grade_grade(['itemid' => $item->id, 'userid' => $userid], true);
-            if (!$grade || $grade->finalgrade === null) {
-                return '';
-            }
-            $decimals = (int)$item->get_decimals();
-            $value    = format_float((float)$grade->finalgrade, $decimals);
-            if ((float)$item->grademax > 0) {
-                return $value . ' / ' . format_float((float)$item->grademax, $decimals);
-            }
-            return $value;
         } catch (\Throwable $e) {
             return '';
         }
+        if (!$item) {
+            return '';
+        }
+
+        $grade = $usergrades[(int)$item->id] ?? null;
+        if ($grade === null || $grade->finalgrade === null) {
+            return '';
+        }
+
+        $grade->grade_item = $item;
+        if (!$seehidden && $grade->is_hidden()) {
+            return '';
+        }
+
+        $decimals = (int)$item->get_decimals();
+        $value    = format_float((float)$grade->finalgrade, $decimals);
+        if ((float)$item->grademax > 0) {
+            return $value . ' / ' . format_float((float)$item->grademax, $decimals);
+        }
+        return $value;
     }
 }

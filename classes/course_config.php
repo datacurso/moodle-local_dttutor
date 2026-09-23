@@ -33,6 +33,16 @@ namespace local_dttutor;
  */
 class course_config {
     /**
+     * Settings a course may give its own value to, leaving the value of the site as the fallback.
+     *
+     * The institutional instructions are deliberately not among them: the scope calls them
+     * institutional, so tone and limits are set once for the site and a course cannot relax them.
+     *
+     * @var string[]
+     */
+    public const OVERRIDABLE = ['tutorname', 'welcomemessage'];
+
+    /**
      * Get course configuration record (creates if not exists).
      *
      * @param int $courseid Course ID
@@ -63,7 +73,12 @@ class course_config {
 
         $record = new \stdClass();
         $record->courseid = $courseid;
-        $record->indexing_enabled = 0; // Tutor disabled by default (column kept for schema compat).
+        // Disabled unless the administrator asked for the tutor to be on in new courses.
+        $record->indexing_enabled = (int)(bool)get_config('local_dttutor', 'enabled_by_default');
+        foreach (self::OVERRIDABLE as $name) {
+            // Null is what "follow the site" looks like in the table.
+            $record->$name = null;
+        }
         $record->timecreated = time();
         $record->timemodified = time();
         $record->usermodified = $USER->id;
@@ -87,12 +102,10 @@ class course_config {
         $record = self::get_by_course($courseid);
 
         // Only update allowed fields.
-        $allowedfields = [
-            'indexing_enabled',
-        ];
+        $allowedfields = array_merge(['indexing_enabled'], self::OVERRIDABLE);
 
         foreach ($data as $key => $value) {
-            if (in_array($key, $allowedfields) && property_exists($record, $key)) {
+            if (in_array($key, $allowedfields, true)) {
                 $record->$key = $value;
             }
         }
@@ -109,6 +122,36 @@ class course_config {
      * @param int $courseid Course ID
      * @return bool True if tutor is enabled
      * @since Moodle 4.5
+     */
+    /**
+     * The value in force for a course: its own when it has one, the value of the site otherwise.
+     *
+     * An empty value in the course is not an override. It is what a teacher leaves behind when
+     * they clear the field, and it means "use what the site says".
+     *
+     * @param int $courseid
+     * @param string $name One of the overridable settings.
+     * @return string
+     */
+    public static function get_setting(int $courseid, string $name): string {
+        if (!in_array($name, self::OVERRIDABLE, true)) {
+            throw new \coding_exception('The setting ' . $name . ' cannot be set for one course.');
+        }
+
+        $record = self::get_by_course($courseid);
+        $ofcourse = trim((string)($record->$name ?? ''));
+        if ($ofcourse !== '') {
+            return $ofcourse;
+        }
+
+        return trim((string)get_config('local_dttutor', $name));
+    }
+
+    /**
+     * Whether the tutor is switched on for a course.
+     *
+     * @param int $courseid
+     * @return bool
      */
     public static function is_enabled_for_course(int $courseid): bool {
         $config = self::get_by_course($courseid);

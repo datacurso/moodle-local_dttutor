@@ -5,6 +5,60 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.10] - 2026-09-22
+
+Thirty-four of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
+
+### Security
+- **The tutor steps aside while a quiz is being sat** (MDL-E2E-025): hiding the button inside the quiz was never enough, because the course page is one tab away and, with the material of the course travelling, the tutor could explain the very subject being examined. Every entry point now refuses while the user is sitting a quiz of that course, and the button is not offered either.
+  - An attempt that is merely open does not count. A quiz with no time limit keeps its attempt open until somebody submits it, and a practice attempt forgotten weeks ago must not cost a student the tutor for the rest of the course. What counts is an attempt still running: within the time limit and its grace period, before the closing date, or with activity in the last hours when the quiz sets no deadline at all.
+  - A preview by whoever teaches the course is not a sitting, and an attempt in one course says nothing about another.
+
+- **The tutor follows the state of the AI provider** (MDL-INT-038): with the provider disabled in the AI administration of Moodle, the tutor kept answering as long as a licence key existed. Every entry point that reaches the service now refuses first, and the floating button is no longer shown.
+- **Hidden grades stay hidden** (MDL-INT-009): grades hidden by the teacher, hidden for one student or held until a date no longer travel to the AI service, so the chat can no longer reveal a mark that is not in the gradebook yet.
+- **The privacy declaration matches the behaviour** (MDL-INT-034): the selected text was declared as transferred and never was. It travels now, so the declaration is true.
+
+### Added
+- **A course can introduce the tutor in its own words** (MDL-INT-043): whoever can edit a course now sets the name of the tutor and its welcome message on the management page of that course. An empty field means the value configured for the site, so a course opts in rather than having to repeat what the site already says, and two courses of the same site can read differently. The placeholders work the same in both.
+  - The institutional instructions of tone and limits stay site wide on purpose. The scope calls them institutional, and a course loosening them would defeat what they are for.
+  - Saving writes only the fields the request carries. The per-course prompt was removed in 2.0.9 because the enablement toggle sent an empty value with every change and wiped it; a test now holds that door shut.
+
+- **The course material can reach the tutor** (MDL-INT-016): a new setting, off by default, lets the tutor read the text written by the teaching side, so it can explain or summarise what the course says instead of only naming its activities. It receives the description of every activity, the body of a page, the visible chapters of a book, the instructions of an assignment and the address of a URL.
+  - Nothing written by the people taking the course ever travels: forum posts, glossary entries, database records, wiki pages and submissions live in tables the extractor never opens. Material under assessment is left out too, so the questions of a quiz and the pages of a lesson never reach the model.
+  - Only the material of activities the user can already open travels. An activity that is hidden, or that a restriction has not released yet, gives up its name and the condition and nothing else.
+  - Two settings bound what each question costs: characters per activity and characters in total. What is left out is announced to the tutor, so it says it is working from an extract instead of answering as if it had the whole text.
+  - The material is declared to the privacy API as transferred to the AI service, in the seven languages of the plugin.
+
+- **What the tutor knows**: dates of every activity type the scope names, including lesson, workshop, videoconference and the closing date of a database, which was read from a field that does not exist; the time a student has once they start; activities the student sees greyed out, with the condition that releases them; and how far the user has got, what they submitted and what they completed (MDL-INT-013 to MDL-INT-016, MDL-INT-022).
+- **A trail in the platform**: every accepted question triggers an event with who asked, when and where, never what was asked, and failures of the service are recorded as an event of their own (MDL-INT-040, MDL-INT-044).
+- **A retention period** for conversations, off until a number of days is agreed, applied daily here and in the AI service (MDL-INT-037).
+- **New courses can start with the tutor on**, so a rollout does not have to go course by course (MDL-INT-042).
+- **The switch of the course travels with the backup**, so restoring or duplicating no longer loses it. Conversations are deliberately left out (MDL-INT-041).
+- **The course page reports the state of the service**, the credits left and the questions asked in the course over the last thirty days (MDL-E2E-026).
+- **A new conversation action** in the chat, which empties it here and in the AI service (MDL-E2E-020).
+- **A bound on the course knowledge** sent with each question, a hundred activities by default, with the omission announced to the tutor (MDL-INT-012).
+
+### Changed
+- **The answer is streamed as the model produces it** instead of being awaited whole and replayed at about six hundred characters a second (MDL-E2E-021).
+- **The grades of the user are read once for the whole course** rather than once per gradable activity and message (MDL-INT-011).
+- **The panel adapts to the screen** and shifting the page aside no longer depends on the classes of the Boost theme (MDL-E2E-023, MDL-E2E-024).
+- **The position configurator answers to touch and to the keyboard**, and warns when the chosen corner is where the platform keeps its own floating controls (MDL-E2E-013).
+
+### Fixed
+- **No failure ends in silence** (MDL-E2E-017): a provider that cannot be built used to leave the user with neither an answer nor an error.
+- **Licence and credit refusals carry their own message** (MDL-E2E-018) instead of a generic error.
+- **The refusal with the chat off site wide names that situation** (MDL-E2E-010) instead of blaming a missing API configuration.
+- **The selected fragment reaches the tutor** (MDL-E2E-008); the indicator in the interface stops being decoration.
+- **The question reaches the service whole** (MDL-UNIT-012): the less than and greater than signs are no longer stripped.
+- **A message of a single dot is treated like any other** single character (MDL-UNIT-013).
+- **Validation warnings appear next to the field** instead of as a bubble of the conversation (MDL-E2E-022).
+- **The notice for a history that cannot be loaded reaches the screen** (MDL-E2E-019).
+- **Paging back never shows a message twice** (MDL-INT-022).
+- **A welcome message with quotes no longer breaks the chat** (MDL-E2E-015).
+
+### Known Issues
+- Three gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039), bulk deletion of conversations in the AI service (API-CTR-005), and a response time target agreed with the client (SYS-E2E-005).
+
 ## [2.0.9] - 2026-09-08
 
 Remediation of the MindFree security assessment of 2.0.7 (findings SEC-001 to SEC-005) plus the defects it left out.

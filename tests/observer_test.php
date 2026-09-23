@@ -64,6 +64,9 @@ final class observer_test extends \advanced_testcase {
         ]);
     }
 
+    /**
+     * MDL-INT-032: deleting data when a course or a user is removed.
+     */
     public function test_deleting_a_course_removes_its_config_and_sessions(): void {
         global $DB;
         $this->resetAfterTest();
@@ -92,6 +95,9 @@ final class observer_test extends \advanced_testcase {
         );
     }
 
+    /**
+     * MDL-INT-032: deleting data when a course or a user is removed.
+     */
     public function test_deleting_a_user_removes_their_sessions(): void {
         global $DB;
         $this->resetAfterTest();
@@ -116,6 +122,9 @@ final class observer_test extends \advanced_testcase {
         );
     }
 
+    /**
+     * MDL-INT-032: deleting data when a course or a user is removed.
+     */
     public function test_remote_failure_does_not_block_course_deletion(): void {
         global $DB;
         $this->resetAfterTest();
@@ -134,6 +143,9 @@ final class observer_test extends \advanced_testcase {
         $this->assertFalse($DB->record_exists('course', ['id' => $course->id]));
     }
 
+    /**
+     * MDL-INT-032: deleting data when a course or a user is removed.
+     */
     public function test_course_deletion_completes_when_the_remote_client_cannot_be_built(): void {
         global $DB;
         $this->resetAfterTest();

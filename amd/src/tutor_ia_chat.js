@@ -78,6 +78,9 @@ define([
             this.markdownRenderScheduled = false;
             this.editingMessageEl = null;
 
+            // Messages already on screen, so paging back never shows one twice.
+            this.loadedMessageIds = new Set();
+
             // Text selection state.
             this.selectedText = '';
             this.selectionLineCount = 0;
@@ -107,14 +110,14 @@ define([
             this.welcomeMessage = root.getAttribute('data-welcomemessage') || '';
 
             this.drawerElement = document.querySelector(SELECTORS.DRAWER);
-            this.pageElement = document.querySelector(SELECTORS.PAGE);
+            this.pageElement = document.querySelector(SELECTORS.PAGE) || document.body;
             this.bodyElement = document.querySelector(SELECTORS.BODY);
             this.toggleButton = document.querySelector(SELECTORS.TOGGLE_BTN);
             this.closeButton = document.querySelector(SELECTORS.CLOSE_BTN);
             this.jumpTo = document.querySelector(SELECTORS.JUMP_TO);
 
             this.position = this.drawerElement ? this.drawerElement.getAttribute('data-position') || 'right' : 'right';
-            this.pageClass = this.position === 'left' ? 'show-drawer-left' : 'show-drawer-right';
+            this.pageClass = this.position === 'left' ? 'tutor-ia-shifted-left' : 'tutor-ia-shifted-right';
             // Used for footer-popover positioning via CSS.
             this.bodyClass = this.position === 'left' ? 'tutor-ia-drawer-open-left' : 'tutor-ia-drawer-open-right';
 
@@ -344,6 +347,10 @@ define([
                     }
                 });
             }
+
+            this.root.find('[data-action="new-conversation"]').on('click', () => {
+                this.startNewConversation();
+            });
 
             // Text selection listeners are dynamically added/removed when drawer opens/closes.
             this.root.find('[data-action="clear-selection"]').on('click', () => {
@@ -600,6 +607,10 @@ define([
                 .then((data) => {
                     this.hideHistoryLoading();
 
+                    if (data.notice) {
+                        this.showNotice(data.notice);
+                    }
+
                     if (data.success && data.messages && data.messages.length > 0) {
                         const isInitialLoad = this.historyOffset === 0;
 
@@ -652,8 +663,25 @@ define([
         displayHistoryMessages(messages, isInitialLoad) {
             const messagesContainer = this.root.find(SELECTORS.MESSAGES);
 
-            if (isInitialLoad && this.welcomeMessage) {
-                messagesContainer.find('.tutor-ia-message.ai:contains("' + this.welcomeMessage + '")').remove();
+            // Sending messages moves the window of the history, so the same message can come back
+            // in a later page. Whatever is already on screen is dropped here.
+            messages = messages.filter((msg) => {
+                const id = String(msg.id || '');
+                if (!id) {
+                    return true;
+                }
+                if (this.loadedMessageIds.has(id)) {
+                    return false;
+                }
+                this.loadedMessageIds.add(id);
+                return true;
+            });
+            if (!messages.length) {
+                return;
+            }
+
+            if (isInitialLoad) {
+                messagesContainer.find('[data-region="tutor-ia-welcome"]').remove();
             }
 
             if (isInitialLoad) {
@@ -790,15 +818,11 @@ define([
             // Sending a new message cancels any active inline editing.
             this.clearEditingState();
 
-            if (messageText === '.') {
-                this.addMessage('[Error] ' + this.strings.errorInvalidMessage, 'ai');
-                return;
-            }
-
             if (messageText.length > 4000) {
-                this.addMessage(this.strings.errorMessageTooLong, 'ai');
+                this.showInputError(this.strings.errorMessageTooLong);
                 return;
             }
+            this.clearInputError();
 
             try {
                 this.closeCurrentStream();
@@ -820,6 +844,11 @@ define([
                     page_title: document.title,
                     pagetype: this.pageContext.pagetype || '',
                 };
+
+                // The fragment the user picked on the page travels with the question it is about.
+                if (this.selectedText) {
+                    context.selected_text = this.selectedText;
+                }
 
                 // Build payload for chatproxy.php.
                 const payload = {
@@ -1542,6 +1571,88 @@ define([
         }
 
         /**
+         * Show a warning about what was typed, next to the field and never as a message.
+         *
+         * @param {string} message
+         */
+        showInputError(message) {
+            const region = this.root.find('[data-region="tutor-ia-input-error"]');
+            if (!region.length) {
+                return;
+            }
+            region.text(message).show();
+        }
+
+        /**
+         * Remove the warning of the form, if any is showing.
+         */
+        clearInputError() {
+            this.root.find('[data-region="tutor-ia-input-error"]').text('').hide();
+        }
+
+        /**
+         * Show a notice of the chat itself, told apart from what the tutor says.
+         *
+         * @param {string} message
+         */
+        showNotice(message) {
+            const messages = this.root.find(SELECTORS.MESSAGES);
+            if (!messages.length || !message) {
+                return;
+            }
+            messages.append($('<div>').addClass('tutor-ia-notice').attr('role', 'status').text(message));
+            this.scrollToBottom();
+        }
+
+        /**
+         * Drop the conversation and start a fresh one, here and in the AI service.
+         */
+        startNewConversation() {
+            if (this.streaming) {
+                return;
+            }
+
+            Ajax.call([{
+                methodname: 'local_dttutor_delete_chat_session',
+                args: {
+                    courseid: parseInt(this.courseId, 10),
+                    cmid: this.cmId ? parseInt(this.cmId, 10) : null
+                },
+            }])[0]
+                .then(() => {
+                    return this.resetConversation();
+                })
+                .catch((err) => {
+                    ErrorModal.showGeneralError(this.getFriendlyErrorMessage(err));
+                });
+        }
+
+        /**
+         * Empty the conversation on screen and greet again.
+         */
+        resetConversation() {
+            this.closeCurrentStream();
+            this.clearEditingState();
+            this.clearInputError();
+            this.loadedMessageIds = new Set();
+            this.historyOffset = 0;
+            this.hasMoreHistory = false;
+            this.historyLoaded = true;
+
+            const messages = this.root.find(SELECTORS.MESSAGES);
+            messages.empty();
+            if (this.welcomeMessage) {
+                messages.append(
+                    $('<div>')
+                        .addClass('tutor-ia-message ai')
+                        .attr('data-region', 'tutor-ia-welcome')
+                        .text(this.welcomeMessage)
+                );
+            }
+            return true;
+        }
+
+        /**
          * Shows the typing indicator.
          */
         showTypingIndicator() {
@@ -1683,7 +1794,7 @@ define([
             if (typeof str !== 'string') {
                 return '';
             }
-            return str.replace(/[<>]/g, '');
+            return str;
         }
 
         /**

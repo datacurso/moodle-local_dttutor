@@ -60,6 +60,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         // Everything the chat proxy and the external functions send to the Datacurso AI service.
         $collection->add_external_location_link('datacurso_ai', [
             'cmid' => 'privacy:metadata:datacurso_ai:cmid',
+            'course_content' => 'privacy:metadata:datacurso_ai:course_content',
             'course_structure' => 'privacy:metadata:datacurso_ai:course_structure',
             'custom_prompt' => 'privacy:metadata:datacurso_ai:custom_prompt',
             'grades' => 'privacy:metadata:datacurso_ai:grades',

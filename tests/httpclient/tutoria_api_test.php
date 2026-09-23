@@ -43,6 +43,9 @@ final class tutoria_api_test extends \advanced_testcase {
         return ['session_id' => $sessionid, 'ready' => true, 'session_ttl_seconds' => 604800];
     }
 
+    /**
+     * MDL-INT-018: reusing and validating the remote conversation.
+     */
     public function test_sessions_cache_definition_resolves(): void {
         $this->resetAfterTest();
         $cache = \cache::make('local_dttutor', 'sessions');
@@ -52,6 +55,9 @@ final class tutoria_api_test extends \advanced_testcase {
         $this->assertSame(['session_id' => 'x'], $cache->get('session_v2_2_3'));
     }
 
+    /**
+     * MDL-INT-017, MDL-INT-018: local reference of the conversation.
+     */
     public function test_start_session_v2_persists_a_row_and_reuses_the_cached_session(): void {
         global $DB;
         $this->resetAfterTest();
@@ -73,6 +79,9 @@ final class tutoria_api_test extends \advanced_testcase {
         $this->assertSame(1, $DB->count_records('local_dttutor_session'));
     }
 
+    /**
+     * MDL-INT-017: local reference of the conversation.
+     */
     public function test_start_session_v2_persists_the_module_id(): void {
         global $DB;
         $this->resetAfterTest();
@@ -91,6 +100,9 @@ final class tutoria_api_test extends \advanced_testcase {
         $this->assertEquals($user->id, $row->userid);
     }
 
+    /**
+     * MDL-INT-018: reusing and validating the remote conversation.
+     */
     public function test_forget_cached_session_clears_the_v2_key(): void {
         $this->resetAfterTest();
         $fake = new fake_ai_client();
@@ -105,6 +117,9 @@ final class tutoria_api_test extends \advanced_testcase {
         $this->assertFalse($cache->get('session_v2_2_3_7'));
     }
 
+    /**
+     * MDL-INT-019: restarting the conversation after editing a message.
+     */
     public function test_reset_session_v2_replaces_the_stored_row(): void {
         global $DB;
         $this->resetAfterTest();
@@ -129,6 +144,9 @@ final class tutoria_api_test extends \advanced_testcase {
         $this->assertSame('remote-new', reset($rows)->remotesessionid);
     }
 
+    /**
+     * MDL-INT-024: deleting the conversation of the user.
+     */
     public function test_delete_session_removes_the_stored_row(): void {
         global $DB;
         $this->resetAfterTest();
@@ -145,6 +163,9 @@ final class tutoria_api_test extends \advanced_testcase {
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-del']));
     }
 
+    /**
+     * MDL-INT-017: local reference of the conversation.
+     */
     public function test_session_without_id_is_not_stored(): void {
         global $DB;
         $this->resetAfterTest();

@@ -150,5 +150,25 @@ function xmldb_local_dttutor_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026090900, 'local', 'dttutor');
     }
 
+    if ($oldversion < 2026092301) {
+        // The name and the welcome message may now be set for one course, leaving the value of
+        // the site as the fallback. Empty means "use the value of the site", which is why both
+        // are nullable and why nothing is written into them here.
+        $table = new xmldb_table('local_dttutor_course_config');
+
+        $field = new xmldb_field('tutorname', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'indexing_enabled');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('welcomemessage', XMLDB_TYPE_TEXT, null, null, null, null, null, 'tutorname');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Dttutor savepoint reached.
+        upgrade_plugin_savepoint(true, 2026092301, 'local', 'dttutor');
+    }
+
     return true;
 }

@@ -92,7 +92,7 @@ class get_chat_history extends external_api {
 
         // Verify plugin is enabled.
         if (!get_config('local_dttutor', 'enabled')) {
-            throw new \moodle_exception('error_api_not_configured', 'local_dttutor');
+            throw new \moodle_exception('error_tutor_disabled_site', 'local_dttutor');
         }
 
         // Validate course context and permissions.
@@ -101,7 +101,9 @@ class get_chat_history extends external_api {
 
         // Verify user has permission to use Tutor-IA and that the tutor is enabled for this course.
         require_capability('local/dttutor:use', $context);
+        request_guard::assert_provider_enabled();
         request_guard::assert_course_enabled((int)$params['courseid']);
+        request_guard::assert_not_sitting_a_quiz((int)$params['courseid'], (int)$USER->id);
 
         $cmid = null;
         if (!empty($params['cmid'])) {

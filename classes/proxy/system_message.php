@@ -134,6 +134,14 @@ class system_message {
             $content .= "\n" . $preloaded;
         }
 
+        $selected = trim((string)($context['selected_text'] ?? ''));
+        if ($selected !== '') {
+            $content .= "\n---\nTEXT THE STUDENT SELECTED ON THE PAGE:\n";
+            $content .= $selected . "\n";
+            $content .= "Their question is most likely about this fragment. Answer about it, and say so "
+                . "if it is not enough to answer.\n---\n";
+        }
+
         // Add the institutional (site-level) custom prompt if configured; it is the only custom prompt.
         $customprompt = get_config('local_dttutor', 'custom_prompt');
         if (!empty($customprompt)) {

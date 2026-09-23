@@ -100,6 +100,9 @@ final class provider_test extends provider_testcase {
         return $items;
     }
 
+    /**
+     * MDL-INT-033: what the plugin stores and what it declares.
+     */
     public function test_metadata_declares_tables_and_external_location(): void {
         $tables = $this->get_items_by_type(database_table::class);
         $this->assertArrayHasKey('local_dttutor_course_config', $tables);
@@ -119,12 +122,15 @@ final class provider_test extends provider_testcase {
         $external = $this->get_items_by_type(external_location::class);
         $this->assertArrayHasKey('datacurso_ai', $external);
         $this->assertEqualsCanonicalizing(
-            ['cmid', 'course_structure', 'custom_prompt', 'grades', 'lang', 'messages', 'page_url',
-                'selected_text', 'site_id', 'site_url', 'timezone', 'userid'],
+            ['cmid', 'course_content', 'course_structure', 'custom_prompt', 'grades', 'lang', 'messages',
+                'page_url', 'selected_text', 'site_id', 'site_url', 'timezone', 'userid'],
             array_keys($external['datacurso_ai']->get_privacy_fields())
         );
     }
 
+    /**
+     * MDL-INT-035: exporting personal data.
+     */
     public function test_contexts_for_user_with_a_stored_session(): void {
         $generator = $this->getDataGenerator();
         $coursea = $generator->create_course();
@@ -138,6 +144,9 @@ final class provider_test extends provider_testcase {
         $this->assertNotContains(\context_course::instance($courseb->id)->id, $contextlist->get_contextids());
     }
 
+    /**
+     * MDL-INT-035: exporting personal data.
+     */
     public function test_contexts_for_teacher_who_modified_the_course_config(): void {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course();
@@ -150,6 +159,9 @@ final class provider_test extends provider_testcase {
         $this->assertEquals([\context_course::instance($course->id)->id], $contextlist->get_contextids());
     }
 
+    /**
+     * MDL-INT-035: exporting personal data.
+     */
     public function test_contexts_are_empty_for_an_unrelated_user(): void {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course();
@@ -162,6 +174,9 @@ final class provider_test extends provider_testcase {
         $this->assertCount(0, $contextlist);
     }
 
+    /**
+     * MDL-INT-035: exporting personal data.
+     */
     public function test_users_in_course_context(): void {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course();
@@ -178,12 +193,18 @@ final class provider_test extends provider_testcase {
         $this->assertEqualsCanonicalizing([(int)$student->id, (int)$teacher->id], $userlist->get_userids());
     }
 
+    /**
+     * MDL-INT-035: exporting personal data.
+     */
     public function test_users_in_non_course_context_is_empty(): void {
         $userlist = new userlist(\context_system::instance(), self::COMPONENT);
         provider::get_users_in_context($userlist);
         $this->assertCount(0, $userlist);
     }
 
+    /**
+     * MDL-INT-035: exporting personal data.
+     */
     public function test_export_writes_the_users_sessions_and_config(): void {
         $generator = $this->getDataGenerator();
         $course = $generator->create_course();
@@ -216,6 +237,9 @@ final class provider_test extends provider_testcase {
         $this->assertFalse(property_exists($config, 'custom_prompt'), 'The per-course prompt no longer exists');
     }
 
+    /**
+     * MDL-INT-036: deleting personal data on a privacy request.
+     */
     public function test_delete_data_for_user_removes_only_that_users_rows(): void {
         global $DB;
         $generator = $this->getDataGenerator();
@@ -241,6 +265,9 @@ final class provider_test extends provider_testcase {
         $this->assertEquals(0, $config->usermodified);
     }
 
+    /**
+     * MDL-INT-036: deleting personal data on a privacy request.
+     */
     public function test_delete_data_for_all_users_in_context_clears_the_course(): void {
         global $DB;
         $generator = $this->getDataGenerator();
@@ -266,6 +293,9 @@ final class provider_test extends provider_testcase {
         $this->assertEquals(0, $DB->get_field('local_dttutor_course_config', 'usermodified', ['courseid' => $course->id]));
     }
 
+    /**
+     * MDL-INT-036: deleting personal data on a privacy request.
+     */
     public function test_delete_data_for_all_users_ignores_non_course_contexts(): void {
         global $DB;
         $generator = $this->getDataGenerator();
@@ -279,6 +309,9 @@ final class provider_test extends provider_testcase {
         $this->assertSame(1, $DB->count_records('local_dttutor_session'));
     }
 
+    /**
+     * MDL-INT-036: deleting personal data on a privacy request.
+     */
     public function test_delete_data_for_users_removes_the_listed_users_only(): void {
         global $DB;
         $generator = $this->getDataGenerator();
@@ -310,6 +343,9 @@ final class provider_test extends provider_testcase {
         );
     }
 
+    /**
+     * MDL-INT-036: deleting personal data on a privacy request.
+     */
     public function test_remote_deletion_failure_does_not_abort_local_deletion(): void {
         global $DB;
         $generator = $this->getDataGenerator();
@@ -326,6 +362,9 @@ final class provider_test extends provider_testcase {
         $this->assertSame(0, $DB->count_records('local_dttutor_session'));
     }
 
+    /**
+     * MDL-INT-036: deleting personal data on a privacy request.
+     */
     public function test_deletion_completes_when_the_remote_client_cannot_be_built(): void {
         global $DB;
         $generator = $this->getDataGenerator();
@@ -340,5 +379,72 @@ final class provider_test extends provider_testcase {
 
         $this->assertDebuggingCalled();
         $this->assertSame(0, $DB->count_records('local_dttutor_session'));
+    }
+
+    /**
+     * MDL-INT-034: what the declaration names as transferred is what really travels.
+     */
+    public function test_the_declared_course_content_really_travels(): void {
+        global $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
+        $this->setAdminUser();
+
+        $external = $this->get_items_by_type(external_location::class);
+        $this->assertContains('course_content', array_keys($external['datacurso_ai']->get_privacy_fields()));
+
+        set_config('include_content', 1, 'local_dttutor');
+        $course = $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'name' => 'A page',
+            'content' => 'The material a student can read',
+        ]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        $this->assertStringContainsString(
+            'The material a student can read',
+            \local_dttutor\proxy\context_preloader::build((int)$course->id, (int)$student->id),
+            'The declaration names the course material as transferred, so it has to travel.'
+        );
+    }
+
+    /**
+     * MDL-INT-016: with the setting off, nothing of the declared material travels.
+     */
+    public function test_the_course_content_does_not_travel_unless_enabled(): void {
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'name' => 'A page',
+            'content' => 'The material a student can read',
+        ]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        $this->assertStringNotContainsString(
+            'The material a student can read',
+            \local_dttutor\proxy\context_preloader::build((int)$course->id, (int)$student->id)
+        );
+    }
+
+    /**
+     * MDL-INT-034: what the declaration names as transferred is what really travels.
+     */
+    public function test_the_declared_selected_text_really_travels(): void {
+        $external = $this->get_items_by_type(external_location::class);
+        $declared = array_keys($external['datacurso_ai']->get_privacy_fields());
+        $this->assertContains('selected_text', $declared);
+
+        $fragment = 'A fragment picked on the course page';
+        $message = \local_dttutor\proxy\system_message::build('student', [
+            'course_id' => 5,
+            'selected_text' => $fragment,
+        ], '');
+
+        $this->assertStringContainsString(
+            $fragment,
+            $message['content'],
+            'The declaration names the selected text as transferred, so it has to travel.'
+        );
     }
 }

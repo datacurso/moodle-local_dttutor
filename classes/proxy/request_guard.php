@@ -17,6 +17,8 @@
 namespace local_dttutor\proxy;
 
 use local_dttutor\course_config;
+use local_dttutor\httpclient\client_factory;
+use local_dttutor\local\open_attempt;
 
 /**
  * Authorization guard for the chat proxy endpoint.
@@ -39,6 +41,9 @@ class request_guard {
 
     /** @var string[] Message roles the client is allowed to send. */
     private const ALLOWED_ROLES = ['user', 'assistant'];
+
+    /** @var int Maximum length (in characters) of the fragment selected on the page. */
+    public const MAX_SELECTED_TEXT_LENGTH = 2000;
 
     /** @var int Maximum length (in characters) of the client-supplied page type. */
     private const MAX_PAGETYPE_LENGTH = 100;
@@ -74,6 +79,8 @@ class request_guard {
     public static function authorize(array $input): \stdClass {
         global $USER;
 
+        self::assert_provider_enabled();
+
         $context = is_array($input['context'] ?? null) ? $input['context'] : [];
         $courseid = (int)($context['course_id'] ?? 0);
         if ($courseid <= 1) {
@@ -95,11 +102,23 @@ class request_guard {
         require_capability('local/dttutor:use', $coursecontext);
 
         self::assert_course_enabled($course->id);
+        self::assert_not_sitting_a_quiz($course->id, (int)$USER->id);
 
         $cm = null;
         if ($cmrecord !== null) {
             $cm = self::resolve_cm((int)$cmrecord->id, $course->id, (int)$USER->id);
         }
+
+        // Triggered here, at the single gate every accepted query goes through, so that the
+        // platform keeps a record of who used the tutor, when and where. Metadata only: the
+        // plugin does not store what was asked.
+        \local_dttutor\event\tutor_used::create([
+            'context' => $coursecontext,
+            'other' => [
+                'cmid' => $cm !== null ? (int)$cm->id : 0,
+                'modname' => $cm !== null ? $cm->modname : '',
+            ],
+        ])->trigger();
 
         $pagetype = is_string($context['pagetype'] ?? null) ? $context['pagetype'] : '';
 
@@ -149,6 +168,53 @@ class request_guard {
     public static function assert_course_enabled(int $courseid): void {
         if (!get_config('local_dttutor', 'enabled') || !course_config::is_enabled_for_course($courseid)) {
             throw new \moodle_exception('error_tutor_not_available', 'local_dttutor');
+        }
+    }
+
+    /**
+     * Refuse the request when the administrator has disabled the AI provider the tutor depends on.
+     *
+     * Checked before anything is gathered or sent, so that no course or user information leaves
+     * the site towards a service the administrator switched off.
+     *
+     * @throws \moodle_exception When the provider is not enabled.
+     */
+    public static function assert_provider_enabled(): void {
+        if (!client_factory::is_provider_enabled()) {
+            throw new \moodle_exception('error_provider_disabled', 'local_dttutor');
+        }
+    }
+
+    /**
+     * Clean and bound the fragment the user selected on the page.
+     *
+     * Untrusted client input that becomes part of the prompt, so it is capped: a whole page
+     * pasted into every question would cost credits without helping the answer.
+     *
+     * @param mixed $value Raw value received from the client.
+     * @return string The fragment, or an empty string when there is none.
+     */
+    public static function sanitise_selected_text($value): string {
+        if (!is_string($value)) {
+            return '';
+        }
+        return trim(mb_substr($value, 0, self::MAX_SELECTED_TEXT_LENGTH));
+    }
+
+    /**
+     * Refuse the request while the user is sitting a quiz of this course.
+     *
+     * The tutor steps aside during an assessment. Hiding the button inside the quiz was never
+     * enough: the course page is one tab away, and with the material of the course travelling the
+     * tutor could explain the very subject being examined.
+     *
+     * @param int $courseid
+     * @param int $userid
+     * @throws \moodle_exception When a quiz of this course is being sat.
+     */
+    public static function assert_not_sitting_a_quiz(int $courseid, int $userid): void {
+        if (open_attempt::is_being_sat($courseid, $userid)) {
+            throw new \moodle_exception('error_quiz_in_progress', 'local_dttutor');
         }
     }
 

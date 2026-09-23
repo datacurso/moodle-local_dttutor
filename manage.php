@@ -37,7 +37,7 @@ require_capability('moodle/course:update', $context);
 
 // Check plugin is enabled.
 if (!get_config('local_dttutor', 'enabled')) {
-    throw new moodle_exception('error_api_not_configured', 'local_dttutor');
+    throw new moodle_exception('error_tutor_disabled_site', 'local_dttutor');
 }
 
 // Set up page.
@@ -52,12 +52,44 @@ $PAGE->set_heading($course->fullname);
 $config = course_config::get_by_course($courseid);
 
 // Prepare template context.
+$form = new \local_dttutor\form\course_identity(null, ['courseid' => $courseid]);
+if ($data = $form->get_data()) {
+    // Empty means "follow the site", which is exactly what an empty field says.
+    course_config::update($courseid, [
+        'tutorname' => trim((string)$data->tutorname),
+        'welcomemessage' => trim((string)$data->welcomemessage),
+    ]);
+    redirect(
+        new moodle_url('/local/dttutor/manage.php', ['id' => $courseid]),
+        get_string('changessaved'),
+        null,
+        \core\output\notification::NOTIFY_SUCCESS
+    );
+}
+$form->set_data([
+    'tutorname' => $config->tutorname,
+    'welcomemessage' => $config->welcomemessage,
+]);
+
+$status = \local_dttutor\local\service_status::get();
+$usage = \local_dttutor\local\service_status::get_course_usage($courseid);
+
 $templatecontext = [
     'courseid' => $courseid,
     'tutor_enabled' => (bool)$config->indexing_enabled,
+    'service_available' => $status['available'],
+    'has_credits' => $status['credits'] !== null,
+    'credits' => $status['credits'],
+    'has_usage' => $usage !== null,
+    'usage_questions' => $usage,
+    'usage_days' => \local_dttutor\local\service_status::USAGE_WINDOW_DAYS,
 ];
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('manage_tutor', 'local_dttutor'));
 echo $OUTPUT->render_from_template('local_dttutor/manage_course', $templatecontext);
+
+echo $OUTPUT->heading(get_string('course_identity', 'local_dttutor'), 3);
+echo html_writer::div(get_string('course_identity_help', 'local_dttutor'), 'text-muted mb-3');
+$form->display();
 echo $OUTPUT->footer();

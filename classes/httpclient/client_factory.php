@@ -24,6 +24,21 @@ namespace local_dttutor\httpclient;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class client_factory {
+    /** @var string Name of the AI provider plugin the tutor depends on. */
+    public const PROVIDER = 'datacurso';
+
+    /**
+     * Whether the administrator keeps the AI provider enabled in the AI administration of Moodle.
+     *
+     * A licence key left behind does not make the provider usable: the tutor follows the decision
+     * the administrator took in the AI administration and stops when it is switched off.
+     *
+     * @return bool
+     */
+    public static function is_provider_enabled(): bool {
+        return \core\plugininfo\aiprovider::is_plugin_enabled(self::PROVIDER);
+    }
+
     /**
      * Return the bound client, or the production adapter when nothing is bound.
      *

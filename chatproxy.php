@@ -108,6 +108,7 @@ $context = is_array($input['context'] ?? null) ? $input['context'] : [];
 $context['course_id']   = $courseid;
 $context['course_name'] = format_string($course->fullname, true, ['context' => $auth->context]);
 $context['location']    = $auth->location;
+$context['selected_text'] = request_guard::sanitise_selected_text($context['selected_text'] ?? null);
 unset($context['activity_id'], $context['activity_instance'], $context['activity_type'], $context['pagetype']);
 $cmid = null;
 if ($cm !== null) {
