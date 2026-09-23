@@ -127,9 +127,11 @@ class context_preloader {
         $stamp    = self::content_stamp((int)$course->id);
 
         $cached = $cache->get($cachekey);
-        if (is_array($cached)
+        if (
+            is_array($cached)
             && (int)($cached['cacherev'] ?? -1) === (int)$course->cacherev
-            && (int)($cached['contentstamp'] ?? -1) === $stamp) {
+            && (int)($cached['contentstamp'] ?? -1) === $stamp
+        ) {
             return (string)$cached['text'];
         }
 
@@ -280,7 +282,6 @@ class context_preloader {
     /**
      * The parts describing one activity.
      *
-     * @param \moodle_database $db
      * @param \stdClass $course
      * @param \course_modinfo $modinfo
      * @param \cm_info $cm
