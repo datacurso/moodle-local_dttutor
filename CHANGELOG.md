@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.10] - 2026-09-22
 
-Thirty-two of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
+Thirty-three of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
 
 ### Security
 - **The tutor follows the state of the AI provider** (MDL-INT-038): with the provider disabled in the AI administration of Moodle, the tutor kept answering as long as a licence key existed. Every entry point that reaches the service now refuses first, and the floating button is no longer shown.
@@ -15,6 +15,10 @@ Thirty-two of the thirty-seven gaps the scope listed as pending, plus the test s
 - **The privacy declaration matches the behaviour** (MDL-INT-034): the selected text was declared as transferred and never was. It travels now, so the declaration is true.
 
 ### Added
+- **A course can introduce the tutor in its own words** (MDL-INT-043): whoever can edit a course now sets the name of the tutor and its welcome message on the management page of that course. An empty field means the value configured for the site, so a course opts in rather than having to repeat what the site already says, and two courses of the same site can read differently. The placeholders work the same in both.
+  - The institutional instructions of tone and limits stay site wide on purpose. The scope calls them institutional, and a course loosening them would defeat what they are for.
+  - Saving writes only the fields the request carries. The per-course prompt was removed in 2.0.9 because the enablement toggle sent an empty value with every change and wiped it; a test now holds that door shut.
+
 - **The course material can reach the tutor** (MDL-INT-016): a new setting, off by default, lets the tutor read the text written by the teaching side, so it can explain or summarise what the course says instead of only naming its activities. It receives the description of every activity, the body of a page, the visible chapters of a book, the instructions of an assignment and the address of a URL.
   - Nothing written by the people taking the course ever travels: forum posts, glossary entries, database records, wiki pages and submissions live in tables the extractor never opens. Material under assessment is left out too, so the questions of a quiz and the pages of a lesson never reach the model.
   - Only the material of activities the user can already open travels. An activity that is hidden, or that a restriction has not released yet, gives up its name and the condition and nothing else.
@@ -49,7 +53,7 @@ Thirty-two of the thirty-seven gaps the scope listed as pending, plus the test s
 - **A welcome message with quotes no longer breaks the chat** (MDL-E2E-015).
 
 ### Known Issues
-- Five gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039), bulk deletion of conversations in the AI service (API-CTR-005), and three decisions pending with the client, namely customisation per course (MDL-INT-043), the tutor during a quiz attempt (MDL-E2E-025) and a response time target (SYS-E2E-005).
+- Four gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039), bulk deletion of conversations in the AI service (API-CTR-005), and two decisions pending with the client, namely the tutor during a quiz attempt (MDL-E2E-025) and a response time target (SYS-E2E-005).
 
 ## [2.0.9] - 2026-09-08
 

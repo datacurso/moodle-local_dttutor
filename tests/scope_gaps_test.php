@@ -55,24 +55,6 @@ final class scope_gaps_test extends \advanced_testcase {
         }
     }
 
-
-
-
-
-
-    /**
-     * MDL-INT-043: name, welcome message and institutional instructions can differ per course.
-     */
-    public function test_the_customisation_can_differ_between_courses(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] Name, welcome message and institutional instructions are single values for '
-            . 'the whole site. Scope decision pending with the client.'
-        );
-    }
-
-
-
-
     /**
      * MDL-E2E-025: what the tutor may discuss while an attempt of a quiz is open.
      */
@@ -82,7 +64,6 @@ final class scope_gaps_test extends \advanced_testcase {
             . 'service and the student can ask from another tab. Scope decision pending with the client.'
         );
     }
-
 
     /**
      * SYS-E2E-005: a response time target is defined and measured step by step.
