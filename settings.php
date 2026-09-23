@@ -163,6 +163,35 @@ if ($hassiteconfig) {
 
     $settings->add(
         new admin_setting_configcheckbox(
+            'local_dttutor/include_content',
+            get_string('include_content', 'local_dttutor'),
+            get_string('include_content_desc', 'local_dttutor'),
+            '0'
+        )
+    );
+
+    $settings->add(
+        new admin_setting_configtext(
+            'local_dttutor/content_chars_per_activity',
+            get_string('content_chars_per_activity', 'local_dttutor'),
+            get_string('content_chars_per_activity_desc', 'local_dttutor'),
+            \local_dttutor\proxy\activity_content::DEFAULT_CHARS_PER_ACTIVITY,
+            PARAM_INT
+        )
+    );
+
+    $settings->add(
+        new admin_setting_configtext(
+            'local_dttutor/content_chars_total',
+            get_string('content_chars_total', 'local_dttutor'),
+            get_string('content_chars_total_desc', 'local_dttutor'),
+            \local_dttutor\proxy\activity_content::DEFAULT_CHARS_TOTAL,
+            PARAM_INT
+        )
+    );
+
+    $settings->add(
+        new admin_setting_configcheckbox(
             'local_dttutor/include_grades',
             get_string('include_grades', 'local_dttutor'),
             get_string('include_grades_desc', 'local_dttutor'),

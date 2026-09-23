@@ -30,8 +30,8 @@ php admin/tool/behat/cli/run.php --tags=@MDL-E2E-001
 
 ## Pending items of the scope
 
-The definition document classifies each `[Pendiente]` item of the scope by severity. Thirty-one of
-the thirty-seven are now implemented and their tests describe the behaviour that exists. The six
+The definition document classifies each `[Pendiente]` item of the scope by severity. Thirty-two of
+the thirty-seven are now implemented and their tests describe the behaviour that exists. The five
 left are skipped with their reason, and every one of them is waiting on something outside this
 plugin:
 
@@ -41,7 +41,6 @@ plugin:
 | API-CTR-005 | Bulk deletion of conversations belongs to the Datacurso AI service |
 | MDL-INT-043 | A decision on whether the tutor is customised per course or category |
 | MDL-E2E-025 | A decision on what the tutor may discuss during a quiz attempt |
-| MDL-INT-016 | A decision on whether the content of the resources is in scope |
 | SYS-E2E-005 | A response time target agreed with the client |
 
 No test fails on purpose any more.

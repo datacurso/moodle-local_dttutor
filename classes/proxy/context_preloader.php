@@ -124,15 +124,51 @@ class context_preloader {
     private static function get_static_block(\stdClass $course, int $userid): string {
         $cache    = \cache::make('local_dttutor', 'course_knowledge');
         $cachekey = $course->id . '_' . $userid;
+        $stamp    = self::content_stamp((int)$course->id);
 
         $cached = $cache->get($cachekey);
-        if (is_array($cached) && (int)($cached['cacherev'] ?? -1) === (int)$course->cacherev) {
+        if (is_array($cached)
+            && (int)($cached['cacherev'] ?? -1) === (int)$course->cacherev
+            && (int)($cached['contentstamp'] ?? -1) === $stamp) {
             return (string)$cached['text'];
         }
 
         $text = self::build_static_block($course, $userid);
-        $cache->set($cachekey, ['cacherev' => (int)$course->cacherev, 'text' => $text]);
+        $cache->set($cachekey, [
+            'cacherev' => (int)$course->cacherev,
+            'contentstamp' => $stamp,
+            'text' => $text,
+        ]);
         return $text;
+    }
+
+    /**
+     * A stamp that changes when course material changes outside the form of an activity.
+     *
+     * Editing an activity rebuilds the cache of the course, so its text can never go stale. The
+     * chapters of a book are edited by their own pages, which do not, and a corrected chapter
+     * would otherwise keep travelling for a day. Only worked out when material is being sent.
+     *
+     * @param int $courseid
+     * @return int Latest modification of the material, or 0 when there is none to watch.
+     */
+    private static function content_stamp(int $courseid): int {
+        global $DB;
+
+        if (!activity_content::is_enabled()) {
+            return 0;
+        }
+
+        $sql = "SELECT MAX(bc.timemodified)
+                  FROM {book_chapters} bc
+                  JOIN {book} b ON b.id = bc.bookid
+                 WHERE b.course = :courseid";
+
+        try {
+            return (int)$DB->get_field_sql($sql, ['courseid' => $courseid]);
+        } catch (\Throwable $e) {
+            return 0;
+        }
     }
 
     /**
@@ -160,8 +196,13 @@ class context_preloader {
         }
 
         $max = self::max_activities();
+        $withcontent = activity_content::is_enabled();
+        $budget = $withcontent ? activity_content::chars_total() : 0;
+
         $activitylines = [];
         $omitted = 0;
+        $activitycount = 0;
+        $contentcut = false;
 
         foreach ($modinfo->get_cms() as $cm) {
             if ($cm->deletioninprogress || $cm->modname === 'label') {
@@ -175,28 +216,52 @@ class context_preloader {
                 continue;
             }
 
-            if (count($activitylines) >= $max) {
+            if ($activitycount >= $max) {
                 $omitted++;
                 continue;
             }
+            $activitycount++;
+
+            $record = self::get_instance_record($DB, $cm->modname, (int)$cm->instance);
 
             $activitylines[] = '  - ' . implode(' | ', self::describe_activity(
-                $DB,
                 $course,
                 $modinfo,
                 $cm,
                 $locked,
-                $gradeitems
+                $gradeitems,
+                $record
             ));
+
+            // The material of an activity the user cannot open yet never travels: what is announced
+            // about it is its name and the condition that releases it.
+            if (!$withcontent || $locked) {
+                continue;
+            }
+
+            $content = activity_content::extract($cm, $record, $budget);
+            if ($content === '') {
+                continue;
+            }
+
+            $budget -= \core_text::strlen($content);
+            $contentcut = $contentcut || str_ends_with($content, activity_content::TRUNCATION_MARK);
+            foreach (explode("\n", $content) as $contentline) {
+                $activitylines[] = '      ' . $contentline;
+            }
         }
 
         if (!empty($activitylines)) {
-            $lines[] = '- Activities (' . count($activitylines) . '):';
+            $lines[] = '- Activities (' . $activitycount . '):';
             $lines   = array_merge($lines, $activitylines);
         }
         if ($omitted > 0) {
             $lines[] = '- ' . $omitted . ' further activities are not listed here. Say so if the answer '
                 . 'might be among them, and point the student at the course page.';
+        }
+        if ($withcontent && ($contentcut || $budget <= 0)) {
+            $lines[] = '- The material above is abridged. Answer from what is here, and say that you '
+                . 'are working from an extract when the question needs more of it.';
         }
 
         return implode("\n", $lines) . "\n";
@@ -221,15 +286,16 @@ class context_preloader {
      * @param \cm_info $cm
      * @param bool $locked Whether the user cannot open the activity yet.
      * @param array $gradeitems Grade items of the course indexed by module and instance.
+     * @param \stdClass|null $record The instance record of the activity, or null when unreadable.
      * @return string[]
      */
     private static function describe_activity(
-        \moodle_database $db,
         \stdClass $course,
         \course_modinfo $modinfo,
         \cm_info $cm,
         bool $locked,
-        array $gradeitems
+        array $gradeitems,
+        ?\stdClass $record
     ): array {
         $parts = [];
         $parts[] = '[' . $cm->modname . ']';
@@ -249,8 +315,6 @@ class context_preloader {
             $parts[] = 'not available yet: ' . trim(html_to_text((string)$cm->availableinfo, 0, false));
             return $parts;
         }
-
-        $record = self::get_instance_record($db, $cm->modname, (int)$cm->instance);
 
         $dates = self::extract_dates($record);
         if ($dates !== '') {

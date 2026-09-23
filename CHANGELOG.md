@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.10] - 2026-09-22
 
-Thirty-one of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
+Thirty-two of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
 
 ### Security
 - **The tutor follows the state of the AI provider** (MDL-INT-038): with the provider disabled in the AI administration of Moodle, the tutor kept answering as long as a licence key existed. Every entry point that reaches the service now refuses first, and the floating button is no longer shown.
@@ -15,6 +15,12 @@ Thirty-one of the thirty-seven gaps the scope listed as pending, plus the test s
 - **The privacy declaration matches the behaviour** (MDL-INT-034): the selected text was declared as transferred and never was. It travels now, so the declaration is true.
 
 ### Added
+- **The course material can reach the tutor** (MDL-INT-016): a new setting, off by default, lets the tutor read the text written by the teaching side, so it can explain or summarise what the course says instead of only naming its activities. It receives the description of every activity, the body of a page, the visible chapters of a book, the instructions of an assignment and the address of a URL.
+  - Nothing written by the people taking the course ever travels: forum posts, glossary entries, database records, wiki pages and submissions live in tables the extractor never opens. Material under assessment is left out too, so the questions of a quiz and the pages of a lesson never reach the model.
+  - Only the material of activities the user can already open travels. An activity that is hidden, or that a restriction has not released yet, gives up its name and the condition and nothing else.
+  - Two settings bound what each question costs: characters per activity and characters in total. What is left out is announced to the tutor, so it says it is working from an extract instead of answering as if it had the whole text.
+  - The material is declared to the privacy API as transferred to the AI service, in the seven languages of the plugin.
+
 - **What the tutor knows**: dates of every activity type the scope names, including lesson, workshop, videoconference and the closing date of a database, which was read from a field that does not exist; the time a student has once they start; activities the student sees greyed out, with the condition that releases them; and how far the user has got, what they submitted and what they completed (MDL-INT-013 to MDL-INT-016, MDL-INT-022).
 - **A trail in the platform**: every accepted question triggers an event with who asked, when and where, never what was asked, and failures of the service are recorded as an event of their own (MDL-INT-040, MDL-INT-044).
 - **A retention period** for conversations, off until a number of days is agreed, applied daily here and in the AI service (MDL-INT-037).
@@ -43,7 +49,7 @@ Thirty-one of the thirty-seven gaps the scope listed as pending, plus the test s
 - **A welcome message with quotes no longer breaks the chat** (MDL-E2E-015).
 
 ### Known Issues
-- Six gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039), bulk deletion of conversations in the AI service (API-CTR-005), and four decisions pending with the client, namely customisation per course (MDL-INT-043), the tutor during a quiz attempt (MDL-E2E-025), whether the content of the resources is in scope (MDL-INT-016) and a response time target (SYS-E2E-005).
+- Five gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039), bulk deletion of conversations in the AI service (API-CTR-005), and three decisions pending with the client, namely customisation per course (MDL-INT-043), the tutor during a quiz attempt (MDL-E2E-025) and a response time target (SYS-E2E-005).
 
 ## [2.0.9] - 2026-09-08
 

@@ -122,8 +122,8 @@ final class provider_test extends provider_testcase {
         $external = $this->get_items_by_type(external_location::class);
         $this->assertArrayHasKey('datacurso_ai', $external);
         $this->assertEqualsCanonicalizing(
-            ['cmid', 'course_structure', 'custom_prompt', 'grades', 'lang', 'messages', 'page_url',
-                'selected_text', 'site_id', 'site_url', 'timezone', 'userid'],
+            ['cmid', 'course_content', 'course_structure', 'custom_prompt', 'grades', 'lang', 'messages',
+                'page_url', 'selected_text', 'site_id', 'site_url', 'timezone', 'userid'],
             array_keys($external['datacurso_ai']->get_privacy_fields())
         );
     }
@@ -379,6 +379,52 @@ final class provider_test extends provider_testcase {
 
         $this->assertDebuggingCalled();
         $this->assertSame(0, $DB->count_records('local_dttutor_session'));
+    }
+
+    /**
+     * MDL-INT-034: what the declaration names as transferred is what really travels.
+     */
+    public function test_the_declared_course_content_really_travels(): void {
+        global $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
+        $this->setAdminUser();
+
+        $external = $this->get_items_by_type(external_location::class);
+        $this->assertContains('course_content', array_keys($external['datacurso_ai']->get_privacy_fields()));
+
+        set_config('include_content', 1, 'local_dttutor');
+        $course = $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'name' => 'A page',
+            'content' => 'The material a student can read',
+        ]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        $this->assertStringContainsString(
+            'The material a student can read',
+            \local_dttutor\proxy\context_preloader::build((int)$course->id, (int)$student->id),
+            'The declaration names the course material as transferred, so it has to travel.'
+        );
+    }
+
+    /**
+     * MDL-INT-016: with the setting off, nothing of the declared material travels.
+     */
+    public function test_the_course_content_does_not_travel_unless_enabled(): void {
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'name' => 'A page',
+            'content' => 'The material a student can read',
+        ]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        $this->assertStringNotContainsString(
+            'The material a student can read',
+            \local_dttutor\proxy\context_preloader::build((int)$course->id, (int)$student->id)
+        );
     }
 
     /**
