@@ -104,6 +104,11 @@ class chat_hook {
         return \local_dttutor\local\open_attempt::is_being_sat($courseid, (int)$USER->id);
     }
 
+    /**
+     * Whether the page being rendered belongs to a quiz.
+     *
+     * @return bool
+     */
     private static function is_quiz_module(): bool {
         global $PAGE;
 
