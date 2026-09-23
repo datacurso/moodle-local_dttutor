@@ -278,4 +278,21 @@ final class course_config_test extends \advanced_testcase {
         $this->expectException(\coding_exception::class);
         course_config::get_setting((int)$course->id, 'custom_prompt');
     }
+
+    /**
+     * MDL-INT-043: the first save of a course keeps what it was given.
+     *
+     * The record of a course that had none is built in memory before it is written, and a field
+     * missing from it used to be dropped without a word.
+     */
+    public function test_the_first_save_of_a_course_keeps_the_value(): void {
+        global $DB;
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $this->assertFalse($DB->record_exists('local_dttutor_course_config', ['courseid' => $course->id]));
+
+        course_config::update((int)$course->id, ['tutorname' => 'Tutor of biology']);
+
+        $this->assertSame('Tutor of biology', course_config::get_setting((int)$course->id, 'tutorname'));
+    }
 }

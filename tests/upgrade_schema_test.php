@@ -38,7 +38,8 @@ final class upgrade_schema_test extends \advanced_testcase {
             $this->assertNotContains($dead, $columns, "Column {$dead} should have been dropped");
         }
         $this->assertEqualsCanonicalizing(
-            ['id', 'courseid', 'indexing_enabled', 'timecreated', 'timemodified', 'usermodified'],
+            ['id', 'courseid', 'indexing_enabled', 'tutorname', 'welcomemessage',
+                'timecreated', 'timemodified', 'usermodified'],
             $columns
         );
     }

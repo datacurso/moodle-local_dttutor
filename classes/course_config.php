@@ -75,6 +75,10 @@ class course_config {
         $record->courseid = $courseid;
         // Disabled unless the administrator asked for the tutor to be on in new courses.
         $record->indexing_enabled = (int)(bool)get_config('local_dttutor', 'enabled_by_default');
+        foreach (self::OVERRIDABLE as $name) {
+            // Null is what "follow the site" looks like in the table.
+            $record->$name = null;
+        }
         $record->timecreated = time();
         $record->timemodified = time();
         $record->usermodified = $USER->id;
@@ -101,7 +105,7 @@ class course_config {
         $allowedfields = array_merge(['indexing_enabled'], self::OVERRIDABLE);
 
         foreach ($data as $key => $value) {
-            if (in_array($key, $allowedfields) && property_exists($record, $key)) {
+            if (in_array($key, $allowedfields, true)) {
                 $record->$key = $value;
             }
         }
@@ -143,6 +147,12 @@ class course_config {
         return trim((string)get_config('local_dttutor', $name));
     }
 
+    /**
+     * Whether the tutor is switched on for a course.
+     *
+     * @param int $courseid
+     * @return bool
+     */
     public static function is_enabled_for_course(int $courseid): bool {
         $config = self::get_by_course($courseid);
         return (bool)$config->indexing_enabled;
