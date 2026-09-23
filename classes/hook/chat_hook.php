@@ -80,6 +80,30 @@ class chat_hook {
      * @return bool
      * @since Moodle 4.5
      */
+    /**
+     * Whether the current user is sitting a quiz of this course at this moment.
+     *
+     * A course with no quizzes answers without asking the database, which is most of them.
+     *
+     * @param int $courseid
+     * @return bool
+     */
+    private static function is_sitting_a_quiz(int $courseid): bool {
+        global $USER;
+
+        try {
+            $modinfo = get_fast_modinfo($courseid);
+        } catch (\Throwable $e) {
+            return false;
+        }
+
+        if (empty($modinfo->get_instances_of('quiz'))) {
+            return false;
+        }
+
+        return \local_dttutor\local\open_attempt::is_being_sat($courseid, (int)$USER->id);
+    }
+
     private static function is_quiz_module(): bool {
         global $PAGE;
 
@@ -159,6 +183,11 @@ class chat_hook {
         }
 
         if (self::is_quiz_module()) {
+            return;
+        }
+
+        // Nobody is offered a chat whose queries would be refused afterwards.
+        if (self::is_sitting_a_quiz($courseid)) {
             return;
         }
 

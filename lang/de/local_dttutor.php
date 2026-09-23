@@ -90,6 +90,7 @@ $string['error_license_not_allowed_short'] = 'Lizenzfehler';
 $string['error_message_too_long'] = '[Fehler] Nachricht ist zu lang. Maximal 4000 Zeichen.';
 $string['error_no_credits_fallback'] = 'Unzureichendes Guthaben: {$a}';
 $string['error_provider_disabled'] = 'Der KI-Tutor ist nicht verfügbar, da der KI-Anbieter auf dieser Website deaktiviert ist. Bitte wenden Sie sich an Ihre Administration.';
+$string['error_quiz_in_progress'] = 'Der KI-Tutor ist nicht verfügbar, solange ein Testversuch offen ist. Geben Sie ihn ab oder warten Sie, bis die Zeit abläuft, dann kommt der Tutor zurück.';
 $string['error_ratelimit_exceeded'] = 'Das zulässige Nutzungslimit wurde überschritten. Bitte versuchen Sie es am {$a} erneut.';
 $string['error_tutor_disabled_site'] = 'Der KI-Tutor ist auf dieser Website ausgeschaltet. Wenden Sie sich an die Administration, wenn Sie ihn benötigen.';
 $string['error_tutor_not_available'] = 'Der KI-Tutor ist für diesen Kurs nicht verfügbar.';

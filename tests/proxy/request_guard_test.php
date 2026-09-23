@@ -340,4 +340,73 @@ final class request_guard_test extends \advanced_testcase {
             mb_strlen(request_guard::sanitise_selected_text($long))
         );
     }
+
+    /**
+     * MDL-E2E-025: the tutor steps aside while a quiz of the course is being sat.
+     */
+    public function test_a_query_is_refused_while_a_quiz_is_being_sat(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $course = $this->create_enabled_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+            'timelimit' => HOURSECS,
+        ]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+        $DB->insert_record('quiz_attempts', (object)[
+            'quiz' => $quiz->id,
+            'userid' => $student->id,
+            'attempt' => 1,
+            'uniqueid' => 1,
+            'layout' => '1,0',
+            'currentpage' => 0,
+            'preview' => 0,
+            'state' => 'inprogress',
+            'timestart' => time(),
+            'timefinish' => 0,
+            'timemodified' => time(),
+            'timemodifiedoffline' => 0,
+            'sumgrades' => null,
+        ]);
+
+        try {
+            request_guard::authorize($this->build_input($course->id));
+            $this->fail('A quiz of this course is being sat, so the query had to be refused.');
+        } catch (\moodle_exception $e) {
+            $this->assertEquals(get_string('error_quiz_in_progress', 'local_dttutor'), $e->getMessage());
+        }
+    }
+
+    /**
+     * MDL-E2E-025: once the quiz is handed in, the tutor is back.
+     */
+    public function test_a_query_is_allowed_once_the_quiz_is_handed_in(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $course = $this->create_enabled_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+            'timelimit' => HOURSECS,
+        ]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+        $DB->insert_record('quiz_attempts', (object)[
+            'quiz' => $quiz->id,
+            'userid' => $student->id,
+            'attempt' => 1,
+            'uniqueid' => 1,
+            'layout' => '1,0',
+            'currentpage' => 0,
+            'preview' => 0,
+            'state' => 'finished',
+            'timestart' => time() - MINSECS,
+            'timefinish' => time(),
+            'timemodified' => time(),
+            'timemodifiedoffline' => 0,
+            'sumgrades' => 1,
+        ]);
+
+        $this->assertNotEmpty(request_guard::authorize($this->build_input($course->id)));
+    }
 }

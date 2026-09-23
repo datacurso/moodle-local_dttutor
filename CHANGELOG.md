@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.10] - 2026-09-22
 
-Thirty-three of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
+Thirty-four of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
 
 ### Security
+- **The tutor steps aside while a quiz is being sat** (MDL-E2E-025): hiding the button inside the quiz was never enough, because the course page is one tab away and, with the material of the course travelling, the tutor could explain the very subject being examined. Every entry point now refuses while the user is sitting a quiz of that course, and the button is not offered either.
+  - An attempt that is merely open does not count. A quiz with no time limit keeps its attempt open until somebody submits it, and a practice attempt forgotten weeks ago must not cost a student the tutor for the rest of the course. What counts is an attempt still running: within the time limit and its grace period, before the closing date, or with activity in the last hours when the quiz sets no deadline at all.
+  - A preview by whoever teaches the course is not a sitting, and an attempt in one course says nothing about another.
+
 - **The tutor follows the state of the AI provider** (MDL-INT-038): with the provider disabled in the AI administration of Moodle, the tutor kept answering as long as a licence key existed. Every entry point that reaches the service now refuses first, and the floating button is no longer shown.
 - **Hidden grades stay hidden** (MDL-INT-009): grades hidden by the teacher, hidden for one student or held until a date no longer travel to the AI service, so the chat can no longer reveal a mark that is not in the gradebook yet.
 - **The privacy declaration matches the behaviour** (MDL-INT-034): the selected text was declared as transferred and never was. It travels now, so the declaration is true.
@@ -53,7 +57,7 @@ Thirty-three of the thirty-seven gaps the scope listed as pending, plus the test
 - **A welcome message with quotes no longer breaks the chat** (MDL-E2E-015).
 
 ### Known Issues
-- Four gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039), bulk deletion of conversations in the AI service (API-CTR-005), and two decisions pending with the client, namely the tutor during a quiz attempt (MDL-E2E-025) and a response time target (SYS-E2E-005).
+- Three gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039), bulk deletion of conversations in the AI service (API-CTR-005), and a response time target agreed with the client (SYS-E2E-005).
 
 ## [2.0.9] - 2026-09-08
 

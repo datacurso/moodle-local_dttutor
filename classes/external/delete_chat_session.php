@@ -99,6 +99,7 @@ class delete_chat_session extends external_api {
         require_capability('local/dttutor:use', $context);
         request_guard::assert_provider_enabled();
         request_guard::assert_course_enabled((int)$params['courseid']);
+        request_guard::assert_not_sitting_a_quiz((int)$params['courseid'], (int)$USER->id);
 
         $cmid = null;
         if (!empty($params['cmid'])) {

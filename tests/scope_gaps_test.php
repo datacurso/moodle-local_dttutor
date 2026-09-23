@@ -56,16 +56,6 @@ final class scope_gaps_test extends \advanced_testcase {
     }
 
     /**
-     * MDL-E2E-025: what the tutor may discuss while an attempt of a quiz is open.
-     */
-    public function test_the_tutor_scope_during_an_open_quiz_attempt(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] The button is hidden inside the quiz, but the quiz still reaches the AI '
-            . 'service and the student can ask from another tab. Scope decision pending with the client.'
-        );
-    }
-
-    /**
      * SYS-E2E-005: a response time target is defined and measured step by step.
      */
     public function test_a_response_time_target_is_defined_and_measured(): void {

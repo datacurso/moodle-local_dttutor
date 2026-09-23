@@ -551,4 +551,36 @@ final class chat_hook_output_test extends \advanced_testcase {
             $this->footer_output()
         );
     }
+
+    /**
+     * MDL-E2E-025: no button while a quiz of the course is being sat.
+     */
+    public function test_no_button_while_a_quiz_is_being_sat(): void {
+        global $DB;
+        $course = $this->create_enabled_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', [
+            'course' => $course->id,
+            'timelimit' => HOURSECS,
+        ]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $DB->insert_record('quiz_attempts', (object)[
+            'quiz' => $quiz->id,
+            'userid' => $student->id,
+            'attempt' => 1,
+            'uniqueid' => 1,
+            'layout' => '1,0',
+            'currentpage' => 0,
+            'preview' => 0,
+            'state' => 'inprogress',
+            'timestart' => time(),
+            'timefinish' => 0,
+            'timemodified' => time(),
+            'timemodifiedoffline' => 0,
+            'sumgrades' => null,
+        ]);
+        $this->setUser($student);
+        $this->set_course_page($course);
+
+        $this->assertSame('', $this->footer_output());
+    }
 }

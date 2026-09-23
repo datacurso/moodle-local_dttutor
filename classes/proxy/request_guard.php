@@ -18,6 +18,7 @@ namespace local_dttutor\proxy;
 
 use local_dttutor\course_config;
 use local_dttutor\httpclient\client_factory;
+use local_dttutor\local\open_attempt;
 
 /**
  * Authorization guard for the chat proxy endpoint.
@@ -101,6 +102,7 @@ class request_guard {
         require_capability('local/dttutor:use', $coursecontext);
 
         self::assert_course_enabled($course->id);
+        self::assert_not_sitting_a_quiz($course->id, (int)$USER->id);
 
         $cm = null;
         if ($cmrecord !== null) {
@@ -197,6 +199,23 @@ class request_guard {
             return '';
         }
         return trim(mb_substr($value, 0, self::MAX_SELECTED_TEXT_LENGTH));
+    }
+
+    /**
+     * Refuse the request while the user is sitting a quiz of this course.
+     *
+     * The tutor steps aside during an assessment. Hiding the button inside the quiz was never
+     * enough: the course page is one tab away, and with the material of the course travelling the
+     * tutor could explain the very subject being examined.
+     *
+     * @param int $courseid
+     * @param int $userid
+     * @throws \moodle_exception When a quiz of this course is being sat.
+     */
+    public static function assert_not_sitting_a_quiz(int $courseid, int $userid): void {
+        if (open_attempt::is_being_sat($courseid, $userid)) {
+            throw new \moodle_exception('error_quiz_in_progress', 'local_dttutor');
+        }
     }
 
     /**
