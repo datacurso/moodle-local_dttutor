@@ -89,9 +89,10 @@ final class observer_test extends \advanced_testcase {
         $this->assertTrue($DB->record_exists('local_dttutor_course_config', ['courseid' => $othercourse->id]));
         $this->assertSame(0, $DB->count_records('local_dttutor_session', ['courseid' => $course->id]));
         $this->assertSame(1, $DB->count_records('local_dttutor_session', ['courseid' => $othercourse->id]));
-        $this->assertEqualsCanonicalizing(
-            ['DELETE /chat/session/sess-a', 'DELETE /chat/session/sess-b'],
-            $fake->get_call_signatures()
+        $this->assertSame(['POST /chat/sessions/purge'], $fake->get_call_signatures());
+        $this->assertSame(
+            ['all_users' => true, 'userid' => '0', 'course_id' => (string)$course->id],
+            $fake->calls[0]['body']
         );
     }
 
@@ -116,10 +117,9 @@ final class observer_test extends \advanced_testcase {
 
         $this->assertSame(0, $DB->count_records('local_dttutor_session', ['userid' => $student->id]));
         $this->assertSame(1, $DB->count_records('local_dttutor_session', ['userid' => $other->id]));
-        $this->assertEqualsCanonicalizing(
-            ['DELETE /chat/session/sess-student', 'DELETE /chat/session/sess-student-other'],
-            $fake->get_call_signatures()
-        );
+        // One request for the person, so their conversations in every course go at once.
+        $this->assertSame(['POST /chat/sessions/purge'], $fake->get_call_signatures());
+        $this->assertSame(['all_users' => false, 'userid' => (string)$student->id], $fake->calls[0]['body']);
     }
 
     /**
@@ -158,7 +158,8 @@ final class observer_test extends \advanced_testcase {
 
         delete_course($course->id, false);
 
-        $this->assertDebuggingCalled();
+        // Once for the deletion by course, once for the fallback that deletes the known sessions.
+        $this->assertDebuggingCalledCount(2);
         $this->assertSame(0, $DB->count_records('local_dttutor_session'));
         $this->assertFalse($DB->record_exists('course', ['id' => $course->id]));
     }

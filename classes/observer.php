@@ -32,7 +32,8 @@ class observer {
     public static function course_deleted(\core\event\course_deleted $event): void {
         $courseid = (int)$event->objectid;
         course_config::delete($courseid);
-        session_store::purge('courseid = :courseid', ['courseid' => $courseid]);
+        $remote = session_store::purge_remote_conversations(null, $courseid);
+        session_store::purge('courseid = :courseid', ['courseid' => $courseid], $remote === null);
     }
 
     /**
@@ -41,6 +42,8 @@ class observer {
      * @param \core\event\user_deleted $event
      */
     public static function user_deleted(\core\event\user_deleted $event): void {
-        session_store::purge('userid = :userid', ['userid' => (int)$event->objectid]);
+        $userid = (int)$event->objectid;
+        $remote = session_store::purge_remote_conversations($userid, null);
+        session_store::purge('userid = :userid', ['userid' => $userid], $remote === null);
     }
 }

@@ -1,7 +1,7 @@
 # Test suite of local_dttutor
 
 The suite implements the test case definitions of
-[`cases_data/dttutor/dttutor-2.0.9.md`](https://github.com/datacurso/test-cases-definition/blob/main/cases_data/dttutor/dttutor-2.0.9.md)
+[`cases_data/dttutor/dttutor-2.0.10.md`](https://github.com/datacurso/test-cases-definition/blob/main/cases_data/dttutor/dttutor-2.0.10.md)
 in the `test-cases-definition` repository.
 
 Every case identifier appears in the PHPDoc of the PHPUnit methods that implement it, and as a tag
@@ -30,16 +30,19 @@ php admin/tool/behat/cli/run.php --tags=@MDL-E2E-001
 
 ## Pending items of the scope
 
-The definition document classifies each `[Pendiente]` item of the scope by severity. Thirty-four of
-the thirty-seven are now implemented and their tests describe the behaviour that exists. The three
-left are skipped with their reason, and every one of them is waiting on something outside this
-plugin:
+The definition document classifies each `[Pendiente]` item of the scope by severity. Thirty-five of
+the thirty-seven are now implemented and their tests describe the behaviour that exists. The two
+left are skipped with their reason, and both are waiting on something outside this plugin:
 
 | Case | Waiting on |
 |---|---|
 | MDL-INT-039 | The licence region is resolved inside the `aiprovider_datacurso` plugin |
-| API-CTR-005 | Bulk deletion of conversations belongs to the Datacurso AI service |
 | SYS-E2E-005 | A response time target agreed with the client |
+
+API-CTR-005 is served by `POST /chat/sessions/purge` in the Datacurso AI service, which deletes the
+conversations of a person (or of a whole course) including the ones this plugin never registered.
+The endpoint has its own tests in that repository; the half that lives here, the privacy requests
+and the deletion observers that call it, is covered by `tests/purge_conversations_test.php`.
 
 No test fails on purpose any more.
 
@@ -47,7 +50,7 @@ No test fails on purpose any more.
 
 | Cases | Reason |
 |---|---|
-| `API-CTR-001`, `API-CTR-002`, `API-CTR-003`, `API-CTR-004`, `API-CTR-005`, `API-INT-001`, `API-INT-002`, `API-INT-003`, `API-INT-004` | They belong to the Datacurso AI service (Python), not to this plugin |
+| `API-CTR-001`, `API-CTR-002`, `API-CTR-003`, `API-CTR-004`, `API-INT-001`, `API-INT-002`, `API-INT-003`, `API-INT-004` | They belong to the Datacurso AI service (Python), not to this plugin |
 | `SYS-E2E-001`, `SYS-E2E-002`, `SYS-E2E-003`, `SYS-E2E-004`, `SYS-EVAL-001`, `SYS-EVAL-002`, `SYS-EVAL-003`, `SYS-EVAL-004`, `SYS-EVAL-005`, `SYS-EVAL-006` | They need the real service, a valid licence and the golden datasets |
 | `MDL-E2E-003`, `MDL-E2E-004`, `MDL-E2E-005`, `MDL-E2E-006`, `MDL-E2E-007`, `MDL-E2E-016` | They drive a conversation, so they need a stubbed AI service behind `chatproxy.php` |
 | `MDL-E2E-015`, `MDL-E2E-019`, `MDL-E2E-020`, `MDL-E2E-022`, `MDL-E2E-023`, `MDL-E2E-024` | Corrected in the chat module and its styles. Checking them needs a browser with a stubbed AI service, so only the server side of each is covered here |

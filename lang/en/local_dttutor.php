@@ -128,6 +128,7 @@ $string['privacy:export:sessions'] = 'Chat sessions';
 $string['privacy:metadata:datacurso_ai'] = 'Chat messages and course context are sent to the Datacurso AI service to generate the tutor\'s answers.';
 $string['privacy:metadata:datacurso_ai:cmid'] = 'The ID of the course module the user was viewing when writing the message.';
 $string['privacy:metadata:datacurso_ai:course_content'] = 'The text of the course material written by the teaching side, of the activities the user can open, sent only when the administrator enables it.';
+$string['privacy:metadata:datacurso_ai:course_id'] = 'The ID of the course the conversation belongs to, which also names the conversations to delete on a suppression request.';
 $string['privacy:metadata:datacurso_ai:course_structure'] = 'The structure of the course visible to the user (activities, sections, dates and maximum grades).';
 $string['privacy:metadata:datacurso_ai:custom_prompt'] = 'The institutional custom instructions configured by the administrator.';
 $string['privacy:metadata:datacurso_ai:grades'] = 'The user\'s own grades in the course, only when the "Send the student\'s grades" setting is enabled.';

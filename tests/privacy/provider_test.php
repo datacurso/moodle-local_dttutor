@@ -122,8 +122,8 @@ final class provider_test extends provider_testcase {
         $external = $this->get_items_by_type(external_location::class);
         $this->assertArrayHasKey('datacurso_ai', $external);
         $this->assertEqualsCanonicalizing(
-            ['cmid', 'course_content', 'course_structure', 'custom_prompt', 'grades', 'lang', 'messages',
-                'page_url', 'selected_text', 'site_id', 'site_url', 'timezone', 'userid'],
+            ['cmid', 'course_content', 'course_id', 'course_structure', 'custom_prompt', 'grades', 'lang',
+                'messages', 'page_url', 'selected_text', 'site_id', 'site_url', 'timezone', 'userid'],
             array_keys($external['datacurso_ai']->get_privacy_fields())
         );
     }
@@ -260,7 +260,11 @@ final class provider_test extends provider_testcase {
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'sess-student']));
         $this->assertTrue($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'sess-student-other-course']));
         $this->assertTrue($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'sess-other']));
-        $this->assertSame(['DELETE /chat/session/sess-student'], $fake->get_call_signatures());
+        $this->assertSame(['POST /chat/sessions/purge'], $fake->get_call_signatures());
+        $this->assertSame(
+            ['all_users' => false, 'userid' => (string)$student->id, 'course_id' => (string)$course->id],
+            $fake->calls[0]['body']
+        );
         $config = $DB->get_record('local_dttutor_course_config', ['courseid' => $course->id], '*', MUST_EXIST);
         $this->assertEquals(0, $config->usermodified);
     }
@@ -286,9 +290,11 @@ final class provider_test extends provider_testcase {
 
         $this->assertSame(0, $DB->count_records('local_dttutor_session', ['courseid' => $course->id]));
         $this->assertSame(1, $DB->count_records('local_dttutor_session', ['courseid' => $othercourse->id]));
-        $this->assertEqualsCanonicalizing(
-            ['DELETE /chat/session/sess-a', 'DELETE /chat/session/sess-b'],
-            $fake->get_call_signatures()
+        // One request for the whole course, so the conversations Moodle never registered go too.
+        $this->assertSame(['POST /chat/sessions/purge'], $fake->get_call_signatures());
+        $this->assertSame(
+            ['all_users' => true, 'userid' => '0', 'course_id' => (string)$course->id],
+            $fake->calls[0]['body']
         );
         $this->assertEquals(0, $DB->get_field('local_dttutor_course_config', 'usermodified', ['courseid' => $course->id]));
     }
@@ -335,7 +341,14 @@ final class provider_test extends provider_testcase {
 
         $remaining = $DB->get_fieldset_select('local_dttutor_session', 'remotesessionid', '1 = 1');
         $this->assertSame(['sess-c'], $remaining);
-        $this->assertCount(2, $fake->calls);
+        $this->assertSame(
+            ['POST /chat/sessions/purge', 'POST /chat/sessions/purge'],
+            $fake->get_call_signatures()
+        );
+        $this->assertEqualsCanonicalizing(
+            [(string)$studenta->id, (string)$studentb->id],
+            array_column(array_column($fake->calls, 'body'), 'userid')
+        );
         // Student C modified the config and was not in the list, so the reference is kept.
         $this->assertEquals(
             $studentc->id,
@@ -377,7 +390,8 @@ final class provider_test extends provider_testcase {
         $contextlist = new approved_contextlist($student, self::COMPONENT, [\context_course::instance($course->id)->id]);
         provider::delete_data_for_user($contextlist);
 
-        $this->assertDebuggingCalled();
+        // Once for the deletion by user, once for the fallback that deletes the known sessions.
+        $this->assertDebuggingCalledCount(2);
         $this->assertSame(0, $DB->count_records('local_dttutor_session'));
     }
 
@@ -425,6 +439,23 @@ final class provider_test extends provider_testcase {
             'The material a student can read',
             \local_dttutor\proxy\context_preloader::build((int)$course->id, (int)$student->id)
         );
+    }
+
+    /**
+     * MDL-INT-034: what the declaration names as transferred is what really travels.
+     */
+    public function test_the_declared_course_id_really_travels(): void {
+        $external = $this->get_items_by_type(external_location::class);
+        $this->assertContains('course_id', array_keys($external['datacurso_ai']->get_privacy_fields()));
+
+        $course = $this->getDataGenerator()->create_course();
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $fake = new fake_ai_client();
+        $fake->enqueue(['session_id' => 'remote-course-id']);
+
+        (new \local_dttutor\httpclient\tutoria_api($fake))->start_session_v2((int)$course->id, (int)$student->id);
+
+        $this->assertSame((string)$course->id, $fake->calls[0]['body']['course_id']);
     }
 
     /**

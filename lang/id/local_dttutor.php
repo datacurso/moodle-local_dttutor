@@ -128,6 +128,7 @@ $string['privacy:export:sessions'] = 'Sesi obrolan';
 $string['privacy:metadata:datacurso_ai'] = 'Pesan obrolan dan konteks kursus dikirim ke layanan Datacurso AI untuk menghasilkan jawaban tutor.';
 $string['privacy:metadata:datacurso_ai:cmid'] = 'ID modul kursus yang dilihat pengguna saat menulis pesan.';
 $string['privacy:metadata:datacurso_ai:course_content'] = 'Teks materi kursus yang ditulis pihak pengajar, dari aktivitas yang dapat dibuka pengguna, dikirim hanya jika administrator mengaktifkannya.';
+$string['privacy:metadata:datacurso_ai:course_id'] = 'ID kursus tempat percakapan berada, yang juga menentukan percakapan mana yang dihapus pada permintaan penghapusan data.';
 $string['privacy:metadata:datacurso_ai:course_structure'] = 'Struktur kursus yang terlihat oleh pengguna (aktivitas, bagian, tanggal, dan nilai maksimum).';
 $string['privacy:metadata:datacurso_ai:custom_prompt'] = 'Instruksi khusus institusi yang dikonfigurasi oleh administrator.';
 $string['privacy:metadata:datacurso_ai:grades'] = 'Nilai pengguna dalam kursus, hanya jika pengaturan "Kirim nilai siswa" diaktifkan.';

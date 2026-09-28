@@ -128,6 +128,7 @@ $string['privacy:export:sessions'] = 'Сессии чата';
 $string['privacy:metadata:datacurso_ai'] = 'Сообщения чата и контекст курса отправляются в сервис Datacurso AI для формирования ответов тьютора.';
 $string['privacy:metadata:datacurso_ai:cmid'] = 'ID модуля курса, который пользователь просматривал при написании сообщения.';
 $string['privacy:metadata:datacurso_ai:course_content'] = 'Текст материалов курса, написанный преподавателями, по занятиям, которые пользователь может открыть; передаётся только если администратор это разрешил.';
+$string['privacy:metadata:datacurso_ai:course_id'] = 'ID курса, к которому относится беседа; по нему же определяются беседы, удаляемые по запросу об удалении данных.';
 $string['privacy:metadata:datacurso_ai:course_structure'] = 'Структура курса, видимая пользователю (элементы, разделы, даты и максимальные оценки).';
 $string['privacy:metadata:datacurso_ai:custom_prompt'] = 'Пользовательские инструкции организации, настроенные администратором.';
 $string['privacy:metadata:datacurso_ai:grades'] = 'Собственные оценки пользователя по курсу, только если включена настройка «Отправлять оценки студента».';

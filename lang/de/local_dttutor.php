@@ -128,6 +128,7 @@ $string['privacy:export:sessions'] = 'Chat-Sitzungen';
 $string['privacy:metadata:datacurso_ai'] = 'Chat-Nachrichten und Kurskontext werden an den Datacurso-AI-Dienst gesendet, um die Antworten des Tutors zu erzeugen.';
 $string['privacy:metadata:datacurso_ai:cmid'] = 'Die ID des Kursmoduls, das die Person beim Schreiben der Nachricht angesehen hat.';
 $string['privacy:metadata:datacurso_ai:course_content'] = 'Der von der Lehrseite verfasste Text des Kursmaterials der Aktivitäten, die die Person öffnen kann, nur gesendet, wenn die Administration es erlaubt.';
+$string['privacy:metadata:datacurso_ai:course_id'] = 'Die ID des Kurses, zu dem die Unterhaltung gehört, und zugleich die Angabe, welche Unterhaltungen ein Löschantrag entfernt.';
 $string['privacy:metadata:datacurso_ai:course_structure'] = 'Die für die Person sichtbare Kursstruktur (Aktivitäten, Abschnitte, Termine und Höchstbewertungen).';
 $string['privacy:metadata:datacurso_ai:custom_prompt'] = 'Die vom Administrator konfigurierten institutionellen Anweisungen.';
 $string['privacy:metadata:datacurso_ai:grades'] = 'Die eigenen Kursbewertungen der Person, nur wenn die Einstellung "Bewertungen der Teilnehmer/innen senden" aktiviert ist.';

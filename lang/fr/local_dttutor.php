@@ -128,6 +128,7 @@ $string['privacy:export:sessions'] = 'Sessions de chat';
 $string['privacy:metadata:datacurso_ai'] = 'Les messages du chat et le contexte du cours sont envoyés au service Datacurso AI pour générer les réponses du tuteur.';
 $string['privacy:metadata:datacurso_ai:cmid'] = 'L\'identifiant du module de cours consulté par l\'utilisateur lors de la rédaction du message.';
 $string['privacy:metadata:datacurso_ai:course_content'] = 'Le texte du matériel du cours rédigé par l\'équipe enseignante, pour les activités que la personne peut ouvrir, envoyé seulement si l\'administration l\'autorise.';
+$string['privacy:metadata:datacurso_ai:course_id'] = 'L\'identifiant du cours auquel appartient la conversation, qui désigne aussi les conversations à supprimer lors d\'une demande d\'effacement.';
 $string['privacy:metadata:datacurso_ai:course_structure'] = 'La structure du cours visible par l\'utilisateur (activités, sections, dates et notes maximales).';
 $string['privacy:metadata:datacurso_ai:custom_prompt'] = 'Les instructions institutionnelles personnalisées configurées par l\'administrateur.';
 $string['privacy:metadata:datacurso_ai:grades'] = 'Les notes de l\'utilisateur dans le cours, uniquement lorsque le réglage « Envoyer les notes de l\'étudiant » est activé.';

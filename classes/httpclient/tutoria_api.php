@@ -209,6 +209,42 @@ class tutoria_api {
     }
 
     /**
+     * Delete every conversation of a user, or of a whole course, in the AI service.
+     *
+     * The service is asked by user and course instead of by session handle, so the
+     * conversations Moodle never registered are deleted too. Those exist on sites that used
+     * the tutor before the session handles began to be stored, and no list of identifiers
+     * held here can name them.
+     *
+     * @param int|null $userid User whose conversations are deleted, or null for every user of
+     *                         the course.
+     * @param int|null $courseid Course the deletion is limited to, or null for every course of
+     *                           the user.
+     * @return array Response with the number of conversations and messages deleted.
+     * @throws \coding_exception If neither a user nor a course is given.
+     * @throws moodle_exception If the request fails.
+     * @since Moodle 4.5
+     */
+    public function purge_conversations(?int $userid, ?int $courseid = null): array {
+        if ($userid === null && $courseid === null) {
+            // Without a scope the service would be asked to erase the whole site.
+            throw new \coding_exception('A conversation purge needs a user, a course, or both.');
+        }
+
+        $payload = [
+            'all_users' => $userid === null,
+            // Sent even when every user is meant: the client fills an absent field with the
+            // current user, and the service would then narrow the deletion to that person.
+            'userid' => (string)($userid ?? 0),
+        ];
+        if ($courseid !== null) {
+            $payload['course_id'] = (string)$courseid;
+        }
+
+        return $this->client->request('POST', '/chat/sessions/purge', $payload) ?? [];
+    }
+
+    /**
      * Drop the cached session handle of a user in a course (or module).
      *
      * The V2 key is cleared so that the next request opens a fresh remote session instead of

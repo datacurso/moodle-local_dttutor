@@ -61,6 +61,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         $collection->add_external_location_link('datacurso_ai', [
             'cmid' => 'privacy:metadata:datacurso_ai:cmid',
             'course_content' => 'privacy:metadata:datacurso_ai:course_content',
+            'course_id' => 'privacy:metadata:datacurso_ai:course_id',
             'course_structure' => 'privacy:metadata:datacurso_ai:course_structure',
             'custom_prompt' => 'privacy:metadata:datacurso_ai:custom_prompt',
             'grades' => 'privacy:metadata:datacurso_ai:grades',
@@ -164,7 +165,10 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         }
         $courseid = (int)$context->instanceid;
 
-        session_store::purge('courseid = :courseid', ['courseid' => $courseid]);
+        // The service is asked for the whole course first, so the conversations that were
+        // never registered here go with it; the stored handles are then only deleted locally.
+        $remote = session_store::purge_remote_conversations(null, $courseid);
+        session_store::purge('courseid = :courseid', ['courseid' => $courseid], $remote === null);
         // The configuration belongs to the course, not to a person: only the editor reference is removed.
         $DB->set_field('local_dttutor_course_config', 'usermodified', 0, ['courseid' => $courseid]);
     }
@@ -180,7 +184,8 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             }
             $params = ['courseid' => (int)$context->instanceid, 'userid' => $userid];
 
-            session_store::purge('courseid = :courseid AND userid = :userid', $params);
+            $remote = session_store::purge_remote_conversations($userid, $params['courseid']);
+            session_store::purge('courseid = :courseid AND userid = :userid', $params, $remote === null);
             $DB->set_field('local_dttutor_course_config', 'usermodified', 0, [
                 'courseid' => $params['courseid'],
                 'usermodified' => $userid,
@@ -201,7 +206,12 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         [$insql, $inparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
         $params = ['courseid' => (int)$context->instanceid] + $inparams;
 
-        session_store::purge("courseid = :courseid AND userid {$insql}", $params);
+        $remote = true;
+        foreach ($userids as $userid) {
+            $remote = session_store::purge_remote_conversations((int)$userid, $params['courseid']) !== null && $remote;
+        }
+
+        session_store::purge("courseid = :courseid AND userid {$insql}", $params, !$remote);
         $DB->set_field_select(
             'local_dttutor_course_config',
             'usermodified',

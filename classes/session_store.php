@@ -118,6 +118,50 @@ class session_store {
     }
 
     /**
+     * Ask the AI service to delete every conversation of a user, or of a whole course.
+     *
+     * Deleting the stored handles one by one only reaches the conversations Moodle knows
+     * about. The ones opened before the handles began to be stored have no row here, so a
+     * suppression request that relied on them would leave data behind; this asks the service
+     * by user and course instead, which covers both.
+     *
+     * The call is best effort in the same way as {@see purge()}: a failure is logged as
+     * metadata only and never stops the local rows from being removed, so a Privacy API
+     * request always completes. The caller learns that the service was not reached from the
+     * null return, and can fall back to deleting the known sessions one by one.
+     *
+     * @param int|null $userid User whose conversations are deleted, or null for every user of
+     *                         the course.
+     * @param int|null $courseid Course the deletion is limited to, or null for every course of
+     *                           the user.
+     * @return int|null Conversations the service reported as deleted, or null when it could
+     *                  not be asked.
+     */
+    public static function purge_remote_conversations(?int $userid, ?int $courseid): ?int {
+        global $CFG;
+        require_once($CFG->dirroot . '/local/dttutor/lib.php');
+
+        if ($userid === null && $courseid === null) {
+            return null;
+        }
+
+        try {
+            $api = \core\di::get(tutoria_api::class);
+            $response = $api->purge_conversations($userid, $courseid);
+        } catch (\Throwable $e) {
+            // Metadata only: the scope says what was asked for without naming the person.
+            \local_dttutor_log('CONVERSATION_PURGE_FAILED', [
+                'courseid' => $courseid,
+                'exception' => get_class($e),
+                'scope' => $userid === null ? 'course' : ($courseid === null ? 'user' : 'user_in_course'),
+            ], true);
+            return null;
+        }
+
+        return (int)($response['deleted_sessions'] ?? 0);
+    }
+
+    /**
      * Delete the stored sessions matching a condition, remotely first and then locally.
      *
      * Remote deletion is best effort: a failure (including the remote client being
@@ -126,13 +170,21 @@ class session_store {
      *
      * @param string $select SQL fragment for the WHERE clause (named placeholders).
      * @param array $params Placeholder values.
+     * @param bool $deleteremote Whether each stored session is also deleted in the AI service.
+     *                           Pass false when {@see purge_remote_conversations()} already
+     *                           erased the same conversations by user and course.
      */
-    public static function purge(string $select, array $params): void {
+    public static function purge(string $select, array $params, bool $deleteremote = true): void {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/local/dttutor/lib.php');
 
         $rows = $DB->get_records_select(self::TABLE, $select, $params, '', 'id, remotesessionid');
         if ($rows === []) {
+            return;
+        }
+
+        if (!$deleteremote) {
+            $DB->delete_records_select(self::TABLE, $select, $params);
             return;
         }
 
