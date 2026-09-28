@@ -82,6 +82,8 @@ class system_message {
             . "anything up, and do not pretend to perform actions in the platform.\n";
         $content .= "- When something is not available, say \"That information is not available to me\" "
             . "(in the student's language) instead of guessing.\n";
+        $content .= "- An activity shown as \"no dates set\" has no date configured in the course. Say that "
+            . "the course has not set one, which is not the same as you not having the information.\n";
         $content .= "- Only discuss this course. Do not reveal information about other users.\n";
         $content .= "- Be concise and use the student's language.\n";
         $content .= "- Respect permissions and privacy.\n\n";

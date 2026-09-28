@@ -65,6 +65,14 @@ class context_preloader {
         'cutoffdate'               => 'cutoff',
     ];
 
+    /**
+     * @var string Said of an activity whose type carries dates when the course set none.
+     *
+     * Silence would be read as a gap in what the tutor was told, and it would answer that it does
+     * not have the dates. This says the opposite and is the truth: there is no date to give.
+     */
+    private const NO_DATES = 'no dates set';
+
     /** @var array Instance fields that represent a duration in seconds, mapped to a short label. */
     private const DURATION_FIELDS = [
         'timelimit' => 'time limit',
@@ -353,7 +361,11 @@ class context_preloader {
     }
 
     /**
-     * The dates configured for an activity.
+     * The dates configured for an activity, or the fact that it has none.
+     *
+     * An activity whose type has no date fields at all, a page or a folder, says nothing. One that
+     * could have dates and has none says so, because the tutor cannot otherwise tell a course that
+     * set no deadline from a question it was given no data to answer.
      *
      * @param \stdClass|null $record
      * @return string
@@ -364,12 +376,21 @@ class context_preloader {
         }
 
         $found = [];
+        $carriesdates = false;
         foreach (self::DATE_FIELDS as $field => $label) {
-            if (!empty($record->$field) && (int)$record->$field > 0) {
+            if (!property_exists($record, $field)) {
+                continue;
+            }
+            $carriesdates = true;
+            if ((int)$record->$field > 0) {
                 $found[] = $label . ': ' . userdate((int)$record->$field);
             }
         }
-        return empty($found) ? '' : implode(', ', $found);
+
+        if ($found !== []) {
+            return implode(', ', $found);
+        }
+        return $carriesdates ? self::NO_DATES : '';
     }
 
     /**

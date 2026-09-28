@@ -193,4 +193,16 @@ final class system_message_test extends \advanced_testcase {
 
         $this->assertStringNotContainsString('SELECTED ON THE PAGE', $message['content']);
     }
+
+    /**
+     * MDL-INT-013: the prompt tells apart a course with no deadline from data the tutor lacks.
+     */
+    public function test_the_prompt_explains_what_an_activity_without_dates_means(): void {
+        $this->resetAfterTest();
+
+        $message = system_message::build('student', ['course_id' => 5, 'location' => 'course'], '');
+
+        $this->assertStringContainsString('no dates set', $message['content']);
+        $this->assertStringContainsString('the course has not set one', $message['content']);
+    }
 }

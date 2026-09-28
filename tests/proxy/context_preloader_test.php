@@ -408,6 +408,61 @@ final class context_preloader_test extends \advanced_testcase {
     }
 
     /**
+     * MDL-INT-013: an activity that could have dates and has none says so.
+     */
+    public function test_an_activity_without_dates_says_that_none_are_set(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $generator->create_module('assign', ['course' => $course->id, 'name' => 'Field report']);
+        $student = $generator->create_and_enrol($course, 'student');
+
+        $text = context_preloader::build($course->id, (int)$student->id);
+
+        $this->assertStringContainsString('no dates set', $text);
+        $this->assertStringNotContainsString('due:', $text);
+    }
+
+    /**
+     * MDL-INT-013: an activity of a type that never has dates says nothing about them.
+     */
+    public function test_an_activity_that_cannot_have_dates_stays_silent_about_them(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $generator->create_module('page', ['course' => $course->id, 'name' => 'Reading material']);
+        $student = $generator->create_and_enrol($course, 'student');
+
+        $text = context_preloader::build($course->id, (int)$student->id);
+
+        $this->assertStringContainsString('Reading material', $text);
+        $this->assertStringNotContainsString('no dates set', $text);
+    }
+
+    /**
+     * MDL-INT-013: an activity with its dates set is never announced as having none.
+     */
+    public function test_an_activity_with_dates_is_not_announced_as_having_none(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $generator->create_module('assign', [
+            'course' => $course->id,
+            'name' => 'Field report',
+            'duedate' => mktime(0, 0, 0, 5, 1, 2030),
+        ]);
+        $student = $generator->create_and_enrol($course, 'student');
+
+        $text = context_preloader::build($course->id, (int)$student->id);
+
+        $this->assertStringContainsString('due:', $text);
+        $this->assertStringNotContainsString('no dates set', $text);
+    }
+
+    /**
      * MDL-INT-013: the dates of a workshop reach the AI service.
      */
     public function test_the_dates_of_a_workshop_are_sent(): void {
