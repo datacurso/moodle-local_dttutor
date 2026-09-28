@@ -40,7 +40,7 @@ Thirty-five of the thirty-seven gaps the scope listed as pending, plus the test 
 - **New courses can start with the tutor on**, so a rollout does not have to go course by course (MDL-INT-042).
 - **The switch of the course travels with the backup**, so restoring or duplicating no longer loses it. Conversations are deliberately left out (MDL-INT-041).
 - **The course page reports the state of the service**, the credits left and the questions asked in the course over the last thirty days (MDL-E2E-026).
-- **A new conversation action** in the chat, which empties it here and in the AI service (MDL-E2E-020).
+- **A new conversation action** in the chat, which empties it here and in the AI service (MDL-E2E-020). Its button is bound on the drawer, not on the body of the panel: the header where it sits is a sibling of that body, so the first wiring never reached it and the button did nothing when clicked. A Behat scenario now clicks it.
 - **A bound on the course knowledge** sent with each question, a hundred activities by default, with the omission announced to the tutor (MDL-INT-012).
 
 ### Changed
