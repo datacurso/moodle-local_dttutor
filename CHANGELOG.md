@@ -5,11 +5,16 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.10] - 2026-09-22
+## [2.0.10] - 2026-09-28
 
-Thirty-four of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
+Thirty-five of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
 
 ### Security
+- **A suppression request no longer needs support** (API-CTR-005): erasing the data of a person, of a course, or of a list of people now asks the AI service for the conversations of that person and that course, instead of only the ones this plugin holds a handle for. Conversations opened before the handles began to be stored have no row here, so until now the platform could not even list them, and the request had to be carried out by hand.
+  - The endpoint belongs to the AI service; what this release adds is the half that calls it, from the three privacy deletions and from the course and user deletion observers.
+  - When the service cannot be reached, the plugin falls back to deleting the conversations it does know about. The local rows go either way, so a privacy request always completes.
+  - The identifier of the course is now declared to the privacy API as transferred to the AI service, in the seven languages of the plugin. It always travelled; the declaration had missed it.
+
 - **The tutor steps aside while a quiz is being sat** (MDL-E2E-025): hiding the button inside the quiz was never enough, because the course page is one tab away and, with the material of the course travelling, the tutor could explain the very subject being examined. Every entry point now refuses while the user is sitting a quiz of that course, and the button is not offered either.
   - An attempt that is merely open does not count. A quiz with no time limit keeps its attempt open until somebody submits it, and a practice attempt forgotten weeks ago must not cost a student the tutor for the rest of the course. What counts is an attempt still running: within the time limit and its grace period, before the closing date, or with activity in the last hours when the quiz sets no deadline at all.
   - A preview by whoever teaches the course is not a sitting, and an attempt in one course says nothing about another.
@@ -57,7 +62,8 @@ Thirty-four of the thirty-seven gaps the scope listed as pending, plus the test 
 - **A welcome message with quotes no longer breaks the chat** (MDL-E2E-015).
 
 ### Known Issues
-- Three gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039), bulk deletion of conversations in the AI service (API-CTR-005), and a response time target agreed with the client (SYS-E2E-005).
+- Two gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039) and a response time target agreed with the client (SYS-E2E-005).
+- The bulk deletion of conversations needs the matching endpoint deployed in the AI service. Until it is, the deletion falls back to the conversations this plugin has a handle for, which is what it did before.
 
 ## [2.0.9] - 2026-09-08
 
