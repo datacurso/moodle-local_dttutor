@@ -63,6 +63,18 @@ Feature: Opening and closing the chat panel
     When I click on "[data-action='tutor-ia-toggle']" "css_element"
     Then I should see "Teacher" in the ".tutor-ia-role" "css_element"
 
+  @MDL-E2E-019 @MDL-E2E-020
+  Scenario: The new conversation button empties what is on screen
+    Given the following "local_dttutor > conversations" exist:
+      | user     | course | remotesessionid |
+      | student1 | C1     | behat-session   |
+    And I am on the "Course 1" course page logged in as "student1"
+    And I click on "[data-action='tutor-ia-toggle']" "css_element"
+    And ".tutor-ia-notice" "css_element" should exist
+    When I click on "[data-action='new-conversation']" "css_element"
+    Then ".tutor-ia-notice" "css_element" should not exist
+    And "[data-region='tutor-ia-welcome']" "css_element" should exist
+
   @MDL-UNIT-011
   Scenario: An empty message is never sent
     Given I am on the "Course 1" course page logged in as "student1"

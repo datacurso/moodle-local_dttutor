@@ -348,7 +348,9 @@ define([
                 });
             }
 
-            this.root.find('[data-action="new-conversation"]').on('click', () => {
+            // The button sits in the header of the drawer, and the root of this module is its body,
+            // so the header is a sibling and this.root would never find it.
+            $(this.drawerElement || document).find('[data-action="new-conversation"]').on('click', () => {
                 this.startNewConversation();
             });
 

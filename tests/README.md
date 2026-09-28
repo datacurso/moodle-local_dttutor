@@ -53,7 +53,7 @@ No test fails on purpose any more.
 | `API-CTR-001`, `API-CTR-002`, `API-CTR-003`, `API-CTR-004`, `API-INT-001`, `API-INT-002`, `API-INT-003`, `API-INT-004` | They belong to the Datacurso AI service (Python), not to this plugin |
 | `SYS-E2E-001`, `SYS-E2E-002`, `SYS-E2E-003`, `SYS-E2E-004`, `SYS-EVAL-001`, `SYS-EVAL-002`, `SYS-EVAL-003`, `SYS-EVAL-004`, `SYS-EVAL-005`, `SYS-EVAL-006` | They need the real service, a valid licence and the golden datasets |
 | `MDL-E2E-003`, `MDL-E2E-004`, `MDL-E2E-005`, `MDL-E2E-006`, `MDL-E2E-007`, `MDL-E2E-016` | They drive a conversation, so they need a stubbed AI service behind `chatproxy.php` |
-| `MDL-E2E-015`, `MDL-E2E-019`, `MDL-E2E-020`, `MDL-E2E-022`, `MDL-E2E-023`, `MDL-E2E-024` | Corrected in the chat module and its styles. Checking them needs a browser with a stubbed AI service, so only the server side of each is covered here |
+| `MDL-E2E-015`, `MDL-E2E-022`, `MDL-E2E-023`, `MDL-E2E-024` | Corrected in the chat module and its styles. Checking them needs a browser with a stubbed AI service, so only the server side of each is covered here |
 | `MDL-UNIT-009`, `MDL-UNIT-010`, `MDL-UNIT-012`, `MDL-UNIT-013` | They live in the chat JavaScript and the plugin has no JavaScript unit runner; listed in `tests/frontend_coverage_test.php` |
 
 Closing the third row (a stub for the AI service in Behat) would also close the two `[Pendiente:fail]`
