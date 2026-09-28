@@ -57,6 +57,7 @@ Thirty-five of the thirty-seven gaps the scope listed as pending, plus the test 
 - **The question reaches the service whole** (MDL-UNIT-012): the less than and greater than signs are no longer stripped.
 - **A message of a single dot is treated like any other** single character (MDL-UNIT-013).
 - **Validation warnings appear next to the field** instead of as a bubble of the conversation (MDL-E2E-022).
+- **The tutor knows that the material it holds is material** (MDL-INT-016): the text of an activity travelled glued to its description, with nothing to tell one from the other, and the prompt listed everything the knowledge block carries except the material. Asked what it could read, the tutor answered that it only had descriptions and metadata while it was holding the chapters of a book. The description and the material are now labelled apart, and the prompt says that the material is the text of the activity and is there to be answered from.
 - **An activity with no dates says so** (MDL-INT-013): a course that set no deadline used to be indistinguishable from data the tutor had not been given, and the answer was that the information was not available. An activity whose type can carry dates and has none is now announced as having none, and the tutor says that the course has not set one. Activities that never have dates, a page or a folder, stay silent as before.
 - **The notice for a history that cannot be loaded reaches the screen** (MDL-E2E-019).
 - **Paging back never shows a message twice** (MDL-INT-022).
