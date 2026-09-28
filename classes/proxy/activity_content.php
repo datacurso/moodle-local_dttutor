@@ -38,6 +38,17 @@ class activity_content {
     /** @var string Marker that tells the model it is reading part of a longer text. */
     public const TRUNCATION_MARK = ' […]';
 
+    /** @var string Prefix of the summary the teaching side writes for the activity list. */
+    public const DESCRIPTION_LABEL = 'Description: ';
+
+    /**
+     * @var string Prefix of the text written inside the activity itself.
+     *
+     * Unlabelled, the material was one indented block with the description, and the tutor answered
+     * that it only had descriptions while holding the chapters of a book.
+     */
+    public const MATERIAL_LABEL = 'Material: ';
+
     /**
      * Activities whose body is written by the teaching side and can therefore be read.
      *
@@ -100,13 +111,13 @@ class activity_content {
 
         $intro = self::to_text($record->intro ?? '', (int)($record->introformat ?? FORMAT_HTML), $context);
         if ($intro !== '') {
-            $parts[] = $intro;
+            $parts[] = self::DESCRIPTION_LABEL . $intro;
         }
 
         if (in_array($cm->modname, self::READABLE_BODY, true)) {
             $body = self::extract_body($cm, $record, $context);
             if ($body !== '') {
-                $parts[] = $body;
+                $parts[] = self::MATERIAL_LABEL . $body;
             }
         }
 

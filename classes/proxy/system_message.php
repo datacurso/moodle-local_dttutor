@@ -70,7 +70,8 @@ class system_message {
         $content .= "WORKFLOW:\n";
         $content .= "1. Understand the student's question.\n";
         $content .= "2. Look for the answer in the COURSE KNOWLEDGE block (course info, activities, dates, "
-            . "max grades, the student's own grades when provided).\n";
+            . "max grades, the description and the material of each activity, the student's own grades "
+            . "when provided).\n";
         $content .= "3. Answer with the real data you found, citing the activity it comes from.\n";
         $content .= "4. If the information is not available to you, say so clearly and suggest where the "
             . "student can find it in the course or whom to ask (their teacher).\n\n";
@@ -84,6 +85,10 @@ class system_message {
             . "(in the student's language) instead of guessing.\n";
         $content .= "- An activity shown as \"no dates set\" has no date configured in the course. Say that "
             . "the course has not set one, which is not the same as you not having the information.\n";
+        $content .= "- \"Material:\" under an activity is the text written inside it, not a summary of it: "
+            . "answer from it and quote it when that helps. It may be an extract, and the block says so "
+            . "when it is. Do not tell the student that you only have descriptions while material is "
+            . "there to read.\n";
         $content .= "- Only discuss this course. Do not reveal information about other users.\n";
         $content .= "- Be concise and use the student's language.\n";
         $content .= "- Respect permissions and privacy.\n\n";

@@ -195,6 +195,19 @@ final class system_message_test extends \advanced_testcase {
     }
 
     /**
+     * MDL-INT-016: the prompt names the material, so the tutor knows it may answer from it.
+     */
+    public function test_the_prompt_names_the_material_of_the_activities(): void {
+        $this->resetAfterTest();
+
+        $message = system_message::build('student', ['course_id' => 5, 'location' => 'course'], '');
+
+        $this->assertStringContainsString('the description and the material of each activity', $message['content']);
+        $this->assertStringContainsString('"Material:"', $message['content']);
+        $this->assertStringContainsString('only have descriptions', $message['content']);
+    }
+
+    /**
      * MDL-INT-013: the prompt tells apart a course with no deadline from data the tutor lacks.
      */
     public function test_the_prompt_explains_what_an_activity_without_dates_means(): void {

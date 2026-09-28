@@ -105,6 +105,52 @@ final class activity_content_test extends \advanced_testcase {
     }
 
     /**
+     * MDL-INT-016: the description of an activity and the text inside it are told apart.
+     *
+     * Unlabelled, the tutor read one indented block and answered that it only had descriptions
+     * while it was holding the text of the activity.
+     */
+    public function test_the_description_and_the_material_are_told_apart(): void {
+        $this->enable_content();
+        [$course, $student] = $this->course_with_a_student();
+        $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'name' => 'Chapter one',
+            'content' => 'The mitochondria is the powerhouse of the cell',
+            'intro' => 'What this page covers',
+        ]);
+
+        $text = $this->knowledge($course, $student);
+
+        $this->assertStringContainsString(
+            activity_content::DESCRIPTION_LABEL . 'What this page covers',
+            $text
+        );
+        $this->assertStringContainsString(
+            activity_content::MATERIAL_LABEL . 'The mitochondria is the powerhouse of the cell',
+            $text
+        );
+    }
+
+    /**
+     * MDL-INT-016: an activity whose text is not read is not announced as carrying material.
+     */
+    public function test_an_activity_whose_text_is_not_read_announces_no_material(): void {
+        $this->enable_content();
+        [$course, $student] = $this->course_with_a_student();
+        $this->getDataGenerator()->create_module('glossary', [
+            'course' => $course->id,
+            'name' => 'Shared terms',
+            'intro' => 'Terms of the first unit',
+        ]);
+
+        $text = $this->knowledge($course, $student);
+
+        $this->assertStringContainsString(activity_content::DESCRIPTION_LABEL . 'Terms of the first unit', $text);
+        $this->assertStringNotContainsString(activity_content::MATERIAL_LABEL, $text);
+    }
+
+    /**
      * MDL-INT-016: the material reaches the model as it was written, not shouted.
      *
      * Turning HTML into text puts bold, headings and table headers in capitals, which the model
