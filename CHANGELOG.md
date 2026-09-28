@@ -57,6 +57,7 @@ Thirty-five of the thirty-seven gaps the scope listed as pending, plus the test 
 - **The question reaches the service whole** (MDL-UNIT-012): the less than and greater than signs are no longer stripped.
 - **A message of a single dot is treated like any other** single character (MDL-UNIT-013).
 - **Validation warnings appear next to the field** instead of as a bubble of the conversation (MDL-E2E-022).
+- **An activity with no dates says so** (MDL-INT-013): a course that set no deadline used to be indistinguishable from data the tutor had not been given, and the answer was that the information was not available. An activity whose type can carry dates and has none is now announced as having none, and the tutor says that the course has not set one. Activities that never have dates, a page or a folder, stay silent as before.
 - **The notice for a history that cannot be loaded reaches the screen** (MDL-E2E-019).
 - **Paging back never shows a message twice** (MDL-INT-022).
 - **A welcome message with quotes no longer breaks the chat** (MDL-E2E-015).
