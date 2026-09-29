@@ -133,6 +133,119 @@ final class activity_content_test extends \advanced_testcase {
     }
 
     /**
+     * MDL-INT-016: the pages a lesson is written with travel, in the order they are read.
+     */
+    public function test_the_content_pages_of_a_lesson_travel_in_reading_order(): void {
+        $this->enable_content();
+        [$course, $student] = $this->course_with_a_student();
+        $pages = $this->getDataGenerator()->get_plugin_generator('mod_lesson');
+        $lesson = $this->getDataGenerator()->create_module('lesson', [
+            'course' => $course->id,
+            'name' => 'Irrigation',
+        ]);
+        $first = $pages->create_content($lesson, [
+            'title' => 'First step',
+            'contents_editor' => ['text' => 'Measure the soil', 'format' => FORMAT_HTML, 'itemid' => 0],
+        ]);
+        $pages->create_content($lesson, [
+            'title' => 'Second step',
+            'contents_editor' => ['text' => 'Open the valve', 'format' => FORMAT_HTML, 'itemid' => 0],
+            'pageid' => $first->id,
+        ]);
+
+        $text = $this->knowledge($course, $student);
+
+        $this->assertStringContainsString('Measure the soil', $text);
+        $this->assertStringContainsString('Open the valve', $text);
+        $this->assertLessThan(
+            strpos($text, 'Open the valve'),
+            strpos($text, 'Measure the soil'),
+            'The pages have to travel in the order a student walks them.'
+        );
+    }
+
+    /**
+     * MDL-INT-016: what a lesson asks, and what it grades against, stays behind.
+     */
+    public function test_the_questions_of_a_lesson_never_travel(): void {
+        $this->enable_content();
+        [$course, $student] = $this->course_with_a_student();
+        $pages = $this->getDataGenerator()->get_plugin_generator('mod_lesson');
+        $lesson = $this->getDataGenerator()->create_module('lesson', [
+            'course' => $course->id,
+            'name' => 'Irrigation',
+        ]);
+        $pages->create_content($lesson, [
+            'title' => 'The material',
+            'contents_editor' => ['text' => 'Measure the soil', 'format' => FORMAT_HTML, 'itemid' => 0],
+        ]);
+        $pages->create_question_truefalse($lesson, [
+            'title' => 'The question',
+            'contents_editor' => ['text' => 'Watering at noon is best', 'format' => FORMAT_HTML, 'itemid' => 0],
+            'answer_editor' => [
+                0 => ['text' => 'Watering at noon wastes water', 'format' => FORMAT_HTML],
+                1 => ['text' => 'Watering at noon is efficient', 'format' => FORMAT_HTML],
+            ],
+        ]);
+
+        $text = $this->knowledge($course, $student);
+
+        $this->assertStringContainsString('Measure the soil', $text);
+        $this->assertStringNotContainsString('Watering at noon is best', $text);
+        $this->assertStringNotContainsString('Watering at noon wastes water', $text);
+    }
+
+    /**
+     * MDL-INT-016: a document attached to an activity is named, never read.
+     */
+    public function test_an_attached_document_is_named_but_not_read(): void {
+        $this->enable_content();
+        [$course, $student] = $this->course_with_a_student();
+        $resource = $this->getDataGenerator()->create_module('resource', [
+            'course' => $course->id,
+            'name' => 'Soil analysis guide',
+        ]);
+        get_file_storage()->create_file_from_string([
+            'contextid' => \context_module::instance($resource->cmid)->id,
+            'component' => 'mod_resource',
+            'filearea' => 'content',
+            'itemid' => 0,
+            'filepath' => '/',
+            'filename' => 'soil-analysis.pdf',
+        ], 'The text inside the document');
+
+        $text = $this->knowledge($course, $student);
+
+        $this->assertStringContainsString('files not readable by you: soil-analysis.pdf', $text);
+        $this->assertStringNotContainsString('The text inside the document', $text);
+    }
+
+    /**
+     * MDL-INT-016: what a student uploaded is never named to the tutor.
+     */
+    public function test_a_file_uploaded_by_a_student_is_never_named(): void {
+        $this->enable_content();
+        [$course, $student] = $this->course_with_a_student();
+        $assign = $this->getDataGenerator()->create_module('assign', [
+            'course' => $course->id,
+            'name' => 'Field report',
+        ]);
+        get_file_storage()->create_file_from_string([
+            'contextid' => \context_module::instance($assign->cmid)->id,
+            'component' => 'assignsubmission_file',
+            'filearea' => 'submission_files',
+            'itemid' => 1,
+            'filepath' => '/',
+            'filename' => 'my-own-report.pdf',
+        ], 'What the student wrote');
+
+        $text = $this->knowledge($course, $student);
+
+        $this->assertStringNotContainsString('my-own-report.pdf', $text);
+        $this->assertStringNotContainsString('What the student wrote', $text);
+    }
+
+    /**
      * MDL-INT-016: an activity whose text is not read is not announced as carrying material.
      */
     public function test_an_activity_whose_text_is_not_read_announces_no_material(): void {

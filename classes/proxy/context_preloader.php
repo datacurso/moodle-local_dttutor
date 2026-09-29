@@ -66,6 +66,18 @@ class context_preloader {
     ];
 
     /**
+     * @var array Areas holding the documents the teaching side attached, by activity type.
+     *
+     * Only areas written by whoever teaches the course are listed. A submission, a forum
+     * attachment or anything else a student uploads belongs to that person and is never named.
+     */
+    private const FILE_AREAS = [
+        'resource' => ['mod_resource', 'content'],
+        'folder' => ['mod_folder', 'content'],
+        'assign' => ['mod_assign', 'introattachment'],
+    ];
+
+    /**
      * @var string Said of an activity whose type carries dates when the course set none.
      *
      * Silence would be read as a gap in what the tutor was told, and it would answer that it does
@@ -340,7 +352,49 @@ class context_preloader {
             $parts[] = 'max grade ' . format_float((float)$item->grademax, (int)$item->get_decimals());
         }
 
+        $files = self::describe_files($cm);
+        if ($files !== '') {
+            $parts[] = $files;
+        }
+
         return $parts;
+    }
+
+    /**
+     * The documents attached to an activity, named but not read.
+     *
+     * Their text never travels: nothing in this plugin can read a PDF or a spreadsheet. Naming
+     * them is what lets the tutor answer that a question is about a document it cannot open,
+     * instead of guessing from the description of the activity.
+     *
+     * @param \cm_info $cm
+     * @return string
+     */
+    private static function describe_files(\cm_info $cm): string {
+        [$component, $filearea] = self::FILE_AREAS[$cm->modname] ?? [null, null];
+        if ($component === null) {
+            return '';
+        }
+
+        try {
+            $files = get_file_storage()->get_area_files(
+                \context_module::instance((int)$cm->id)->id,
+                $component,
+                $filearea,
+                false,
+                'filename',
+                false
+            );
+        } catch (\Throwable $e) {
+            return '';
+        }
+
+        $names = [];
+        foreach ($files as $file) {
+            $names[] = $file->get_filename() . ' (' . display_size($file->get_filesize()) . ')';
+        }
+
+        return empty($names) ? '' : 'files not readable by you: ' . implode(', ', $names);
     }
 
     /**

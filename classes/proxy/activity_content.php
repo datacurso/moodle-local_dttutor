@@ -57,7 +57,15 @@ class activity_content {
      *
      * @var string[]
      */
-    public const READABLE_BODY = ['page', 'book', 'assign', 'url'];
+    public const READABLE_BODY = ['page', 'book', 'assign', 'lesson', 'url'];
+
+    /**
+     * @var int Type of the lesson page the teaching side writes as material (LESSON_PAGE_BRANCHTABLE).
+     *
+     * Declared here rather than taken from mod/lesson, whose library would otherwise be loaded on
+     * every build of the knowledge block to read one number.
+     */
+    private const LESSON_CONTENT_PAGE = 20;
 
     /**
      * Whether the administrator has allowed the content of the course to reach the AI service.
@@ -160,6 +168,9 @@ class activity_content {
             case 'book':
                 return self::extract_book_chapters((int)$record->id, $context);
 
+            case 'lesson':
+                return self::extract_lesson_pages((int)$record->id, $context);
+
             default:
                 return '';
         }
@@ -199,6 +210,82 @@ class activity_content {
         }
 
         return implode("\n", $parts);
+    }
+
+    /**
+     * The content pages of a lesson, in the order a reader meets them.
+     *
+     * Only the pages written as material travel. A question page is assessment: its statement is
+     * worth little without the answers it is graded against, and those answers must never travel.
+     *
+     * @param int $lessonid
+     * @param \context $context
+     * @return string
+     */
+    private static function extract_lesson_pages(int $lessonid, \context $context): string {
+        global $DB;
+
+        try {
+            // Every page is read, question pages included: they are the links that hold the chain
+            // of the lesson together, and the reading order is lost without them.
+            $pages = $DB->get_records(
+                'lesson_pages',
+                ['lessonid' => $lessonid],
+                'id',
+                'id, prevpageid, nextpageid, qtype, title, contents, contentsformat'
+            );
+        } catch (\Throwable $e) {
+            return '';
+        }
+
+        $parts = [];
+        foreach (self::in_reading_order($pages) as $page) {
+            if ((int)$page->qtype !== self::LESSON_CONTENT_PAGE) {
+                continue;
+            }
+            $title = trim(format_string($page->title));
+            $text = self::to_text($page->contents ?? '', (int)($page->contentsformat ?? FORMAT_HTML), $context);
+            if ($title === '' && $text === '') {
+                continue;
+            }
+            $parts[] = trim($title . "\n" . $text);
+        }
+
+        return implode("\n", $parts);
+    }
+
+    /**
+     * Sort the pages of a lesson the way a student walks them.
+     *
+     * The pages are a linked list, not a numbered sequence, so the order comes from following it
+     * from the first page. A chain that does not lead anywhere falls back to the order of
+     * creation, which is what the teacher saw while writing the lesson.
+     *
+     * @param array<int, \stdClass> $pages
+     * @return array<int, \stdClass>
+     */
+    private static function in_reading_order(array $pages): array {
+        $bypage = [];
+        $first = null;
+        foreach ($pages as $page) {
+            $bypage[(int)$page->id] = $page;
+            if ($first === null && (int)$page->prevpageid === 0) {
+                $first = (int)$page->id;
+            }
+        }
+        if ($first === null) {
+            return array_values($pages);
+        }
+
+        $ordered = [];
+        $current = $first;
+        // The bound is the number of pages: a chain that loops back can never outrun it.
+        while ($current > 0 && isset($bypage[$current]) && count($ordered) < count($bypage)) {
+            $ordered[] = $bypage[$current];
+            $current = (int)$bypage[$current]->nextpageid;
+        }
+
+        return $ordered;
     }
 
     /**
