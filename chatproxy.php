@@ -133,6 +133,10 @@ for ($i = count($messages) - 1; $i >= 0; $i--) {
     }
 }
 
+// Every step of an answer is timed, so that a site can tell its own share of the wait from the
+// share that belongs to the model. See SYS-E2E-005 of the definition document.
+$timing = new \local_dttutor\local\response_time();
+
 try {
     $tutoriaapi = new tutoria_api();
     $session = $resetsession ?
@@ -155,6 +159,8 @@ try {
     \local_dttutor_log('SESSION_PERSIST_FAILED', ['exception' => get_class($e)], true);
 }
 
+$timing->step('session');
+
 // Pre-load deterministic course knowledge (structure, activities, dates, grades) visible to this user.
 $preloaded = '';
 try {
@@ -162,6 +168,8 @@ try {
 } catch (\Throwable $e) {
     \local_dttutor_log('CONTEXT_PRELOAD_FAILED', ['exception' => get_class($e)], true);
 }
+
+$timing->step('knowledge');
 
 // Build system message.
 $system = system_message::build($role, $context, $preloaded);
@@ -178,6 +186,7 @@ ob_implicit_flush(true);
 
 // Stream the model response.
 $responsetext = handler::run($model, $messages, $role);
+$timing->step('answer');
 
 // Post-response: save AI response to Redis.
 if ($sessionid !== null && $responsetext !== null && $tutoriaapi !== null) {
@@ -187,3 +196,6 @@ if ($sessionid !== null && $responsetext !== null && $tutoriaapi !== null) {
         \local_dttutor_log('RESPONSE_PERSIST_FAILED', ['exception' => get_class($e)], true);
     }
 }
+
+$timing->step('persist');
+$timing->record();

@@ -41,6 +41,7 @@ Thirty-five of the thirty-seven gaps the scope listed as pending, plus the test 
 - **The course page reports the state of the service**, the credits left and the questions asked in the course over the last thirty days (MDL-E2E-026).
 - **A new conversation action** in the chat, which empties it here and in the AI service (MDL-E2E-020). Its button is bound on the drawer, not on the body of the panel: the header where it sits is a sibling of that body, so the first wiring never reached it and the button did nothing when clicked. A Behat scenario now clicks it.
 - **A bound on the course knowledge** sent with each question, a hundred activities by default, with the omission announced to the tutor (MDL-INT-012).
+- **A response time target, and every answer measured against it** (SYS-E2E-005): an answer is made of steps that belong to different owners —opening the conversation, gathering the knowledge of the course, generating the text and storing the messages— and none of them had a committed time, so there was no criterion to accept or reject the performance of the tutor. A new setting holds the time a site commits to, twenty seconds by default, and every answer is now timed step by step and written to the developer log; one that goes over the target is written to the error log as well, so a site finds out without being told. Zero commits to no time and keeps only the measurement. Nothing but durations is recorded.
 
 ### Changed
 - **The answer is streamed as the model produces it** instead of being awaited whole and replayed at about six hundred characters a second (MDL-E2E-021).
@@ -67,7 +68,8 @@ Thirty-five of the thirty-seven gaps the scope listed as pending, plus the test 
 - **A welcome message with quotes no longer breaks the chat** (MDL-E2E-015).
 
 ### Known Issues
-- Two gaps of the scope remain, each waiting on something outside this plugin: the licence region resolved by the provider plugin (MDL-INT-039) and a response time target agreed with the client (SYS-E2E-005).
+- The licence region is resolved once in `aiprovider_datacurso` 1.5.2 (MDL-INT-039). Until a site runs that version, every call still asks the shop for it first and a shop that does not answer takes the tutor down with it.
+- The response time target is set here and every answer is measured against it (SYS-E2E-005), but the number itself is the site's to agree. The baseline measured on the pilot is in the milestone documents: about nine seconds for an answer, of which some seven and a half belong to the model.
 - The bulk deletion of conversations needs the matching endpoint deployed in the AI service. Until it is, the deletion falls back to the conversations this plugin has a handle for, which is what it did before.
 
 ## [2.0.9] - 2026-09-08

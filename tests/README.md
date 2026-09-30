@@ -30,19 +30,30 @@ php admin/tool/behat/cli/run.php --tags=@MDL-E2E-001
 
 ## Pending items of the scope
 
-The definition document classifies each `[Pendiente]` item of the scope by severity. Thirty-five of
-the thirty-seven are now implemented and their tests describe the behaviour that exists. The two
-left are skipped with their reason, and both are waiting on something outside this plugin:
+The definition document classifies each `[Pendiente]` item of the scope by severity. All
+thirty-seven are now implemented and their tests describe the behaviour that exists. No test is
+skipped for want of a feature any more.
 
-| Case | Waiting on |
+Two of them were closed outside this plugin, so what is checked here is only the half that lives
+here:
+
+| Case | Where the rest of it lives |
 |---|---|
-| MDL-INT-039 | The licence region is resolved inside the `aiprovider_datacurso` plugin |
-| SYS-E2E-005 | A response time target agreed with the client |
+| MDL-INT-039 | The licence region is resolved once inside `aiprovider_datacurso` |
+| API-CTR-005 | The bulk deletion of conversations belongs to the Datacurso AI service |
+
+`SYS-E2E-005` asks for a response time target, defined and measured step by step. The target is a
+setting with a default of twenty seconds, every answer is timed step by step against it, and one
+that goes over is written to the error log. Measuring the real service still belongs to a run
+against it, which no test stands in for: the baseline of the pilot site is in the milestone
+documents.
 
 API-CTR-005 is served by `POST /chat/sessions/purge` in the Datacurso AI service, which deletes the
 conversations of a person (or of a whole course) including the ones this plugin never registered.
 The endpoint has its own tests in that repository; the half that lives here, the privacy requests
-and the deletion observers that call it, is covered by `tests/purge_conversations_test.php`.
+and the deletion observers that call it, is covered by `tests/purge_conversations_test.php`. The
+reading of the documents of a course works the same way, with `tests/proxy/file_content_test.php`
+on this side.
 
 No test fails on purpose any more.
 

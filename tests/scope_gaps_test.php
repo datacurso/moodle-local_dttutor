@@ -57,11 +57,29 @@ final class scope_gaps_test extends \advanced_testcase {
 
     /**
      * SYS-E2E-005: a response time target is defined and measured step by step.
+     *
+     * The measurement of the real service belongs to a run against it, which no test can stand in
+     * for. What is guarded here is what made that run impossible to judge: that a committed time
+     * exists, and that an answer is timed step by step against it.
      */
     public function test_a_response_time_target_is_defined_and_measured(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] None of the steps that make up an answer has a committed time, so there '
-            . 'is no criterion to accept or reject the performance. Definition pending with the client.'
+        $this->assertGreaterThan(0, \local_dttutor\local\response_time::target_seconds());
+
+        $timing = new \local_dttutor\local\response_time();
+        $timing->step('session');
+        $timing->step('knowledge');
+        $timing->step('answer');
+        $timing->step('persist');
+
+        $this->assertSame(
+            ['session', 'knowledge', 'answer', 'persist'],
+            array_keys($timing->steps()),
+            'The four steps of an answer are measured apart, because they belong to different owners.'
+        );
+        $this->assertStringContainsString(
+            '$timing->record()',
+            file_get_contents(__DIR__ . '/../chatproxy.php'),
+            'The proxy has to record what each answer took, or the target has nothing to check.'
         );
     }
 }

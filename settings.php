@@ -156,6 +156,16 @@ if ($hassiteconfig) {
 
     // Send the student's own grades to the AI service (opt-in, data minimisation).
     $settings->add(
+        new admin_setting_configtext(
+            'local_dttutor/response_target_seconds',
+            get_string('response_target_seconds', 'local_dttutor'),
+            get_string('response_target_seconds_desc', 'local_dttutor'),
+            \local_dttutor\local\response_time::DEFAULT_TARGET_SECONDS,
+            PARAM_INT
+        )
+    );
+
+    $settings->add(
         new admin_setting_configcheckbox(
             'local_dttutor/include_grades',
             get_string('include_grades', 'local_dttutor'),
