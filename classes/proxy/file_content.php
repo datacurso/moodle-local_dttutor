@@ -115,13 +115,18 @@ class file_content {
         }
 
         try {
-            $response = \core\di::get(tutoria_api::class)->extract_material(
-                self::as_payload($pending),
-                self::chars_per_file()
-            );
+            $api = \core\di::get(tutoria_api::class);
         } catch (\Throwable $e) {
-            // The documents simply stay unread: the activity still travels with its name and its
-            // description, and the next build tries again.
+            // No client to ask with: the provider is not installed or has no licence, so the tutor
+            // is not answering anything either. Nothing to report that the chat will not report.
+            return;
+        }
+
+        try {
+            $response = $api->extract_material(self::as_payload($pending), self::chars_per_file());
+        } catch (\Throwable $e) {
+            // The service was asked and could not answer. The documents stay unread: the activity
+            // still travels with its name and its description, and the next build tries again.
             debugging('Reading the documents of the course failed: ' . get_class($e), DEBUG_DEVELOPER);
             return;
         }
