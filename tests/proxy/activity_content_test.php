@@ -205,6 +205,12 @@ final class activity_content_test extends \advanced_testcase {
             'course' => $course->id,
             'name' => 'Soil analysis guide',
         ]);
+        // The generator leaves a file of its own behind, and this is about the one added here.
+        get_file_storage()->delete_area_files(
+            \context_module::instance($resource->cmid)->id,
+            'mod_resource',
+            'content'
+        );
         get_file_storage()->create_file_from_string([
             'contextid' => \context_module::instance($resource->cmid)->id,
             'component' => 'mod_resource',
@@ -585,7 +591,7 @@ final class activity_content_test extends \advanced_testcase {
      */
     public function test_only_reviewed_activities_give_up_a_body(): void {
         $this->assertEqualsCanonicalizing(
-            ['page', 'book', 'assign', 'url'],
+            ['page', 'book', 'assign', 'lesson', 'url'],
             activity_content::READABLE_BODY
         );
     }

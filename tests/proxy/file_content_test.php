@@ -68,6 +68,12 @@ final class file_content_test extends \advanced_testcase {
         $course = $generator->create_course();
         $student = $generator->create_and_enrol($course, 'student');
         $resource = $generator->create_module('resource', ['course' => $course->id, 'name' => 'Handbook']);
+        // The generator leaves a file of its own behind, and every test here counts documents.
+        get_file_storage()->delete_area_files(
+            \context_module::instance($resource->cmid)->id,
+            'mod_resource',
+            'content'
+        );
         get_file_storage()->create_file_from_string([
             'contextid' => \context_module::instance($resource->cmid)->id,
             'component' => $component,

@@ -261,8 +261,8 @@ class activity_content {
      * from the first page. A chain that does not lead anywhere falls back to the order of
      * creation, which is what the teacher saw while writing the lesson.
      *
-     * @param array<int, \stdClass> $pages
-     * @return array<int, \stdClass>
+     * @param \stdClass[] $pages Pages of the lesson, by id.
+     * @return \stdClass[] The same pages, in reading order.
      */
     private static function in_reading_order(array $pages): array {
         $bypage = [];

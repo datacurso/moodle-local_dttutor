@@ -229,7 +229,7 @@ class file_content {
      * Turn the documents into what the service expects to receive.
      *
      * @param \stored_file[] $files Documents to read, by content hash.
-     * @return array<int, array<string, string>>
+     * @return array[] One entry per document, as the service expects it.
      */
     private static function as_payload(array $files): array {
         $payload = [];
