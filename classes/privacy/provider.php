@@ -76,6 +76,24 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'userid' => 'privacy:metadata:datacurso_ai:userid',
         ], 'privacy:metadata:datacurso_ai');
 
+        // The Datacurso AI service does not answer on its own: it hands the request to a large
+        // language model of a third party, which is where the text of the conversation and the
+        // material of the course actually end up. Whoever reads this declaration has to be able to
+        // see that second step, so it is declared as the separate recipient it is.
+        $collection->add_external_location_link('ai_model', [
+            'cmid' => 'privacy:metadata:datacurso_ai:cmid',
+            'course_content' => 'privacy:metadata:datacurso_ai:course_content',
+            'course_files' => 'privacy:metadata:datacurso_ai:course_files',
+            'course_id' => 'privacy:metadata:datacurso_ai:course_id',
+            'course_structure' => 'privacy:metadata:datacurso_ai:course_structure',
+            'custom_prompt' => 'privacy:metadata:datacurso_ai:custom_prompt',
+            'grades' => 'privacy:metadata:datacurso_ai:grades',
+            'messages' => 'privacy:metadata:datacurso_ai:messages',
+            'page_url' => 'privacy:metadata:datacurso_ai:page_url',
+            'selected_text' => 'privacy:metadata:datacurso_ai:selected_text',
+            'site_url' => 'privacy:metadata:datacurso_ai:site_url',
+        ], 'privacy:metadata:ai_model');
+
         return $collection;
     }
 

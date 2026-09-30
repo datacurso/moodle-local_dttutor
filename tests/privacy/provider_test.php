@@ -121,6 +121,19 @@ final class provider_test extends provider_testcase {
 
         $external = $this->get_items_by_type(external_location::class);
         $this->assertArrayHasKey('datacurso_ai', $external);
+        // The service hands the request on to a model of a third party, and that second step is
+        // declared on its own: a declaration that stops at Datacurso does not say where the text
+        // of a conversation ends up.
+        $this->assertArrayHasKey('ai_model', $external);
+        $this->assertEqualsCanonicalizing(
+            ['cmid', 'course_content', 'course_files', 'course_id', 'course_structure', 'custom_prompt',
+                'grades', 'messages', 'page_url', 'selected_text', 'site_url'],
+            array_keys($external['ai_model']->get_privacy_fields())
+        );
+        // What identifies the person or the site is stripped before the request reaches the model.
+        foreach (['userid', 'site_id', 'timezone'] as $stripped) {
+            $this->assertArrayNotHasKey($stripped, $external['ai_model']->get_privacy_fields());
+        }
         $this->assertEqualsCanonicalizing(
             ['cmid', 'course_content', 'course_files', 'course_id', 'course_structure', 'custom_prompt',
                 'grades', 'lang', 'messages', 'page_url', 'selected_text', 'site_id', 'site_url',

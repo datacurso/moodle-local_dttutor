@@ -150,11 +150,20 @@ if ($hassiteconfig) {
         )
     );
 
-    // What the tutor reads of a course, how much of it and how many documents are no longer
-    // asked of the administrator: the values in the code are the ones in force. They remain
-    // configuration, so a site that needs to depart from them can still set them.
+    // How much of a course travels, and how many documents, is no longer asked of the
+    // administrator: the values in the code are the ones in force. Whether the material travels
+    // at all stays on the page, because that one is not a matter of tuning: it decides whether the
+    // text of a course leaves the platform, and whoever answers for the data of a site has to be
+    // able to say no without editing code.
+    $settings->add(
+        new admin_setting_configcheckbox(
+            'local_dttutor/include_content',
+            get_string('include_content', 'local_dttutor'),
+            get_string('include_content_desc', 'local_dttutor'),
+            '1'
+        )
+    );
 
-    // Send the student's own grades to the AI service (opt-in, data minimisation).
     $settings->add(
         new admin_setting_configtext(
             'local_dttutor/response_target_seconds',
@@ -165,6 +174,7 @@ if ($hassiteconfig) {
         )
     );
 
+    // Send the student's own grades to the AI service (opt-in, data minimisation).
     $settings->add(
         new admin_setting_configcheckbox(
             'local_dttutor/include_grades',
