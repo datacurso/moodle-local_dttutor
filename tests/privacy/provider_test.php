@@ -122,8 +122,9 @@ final class provider_test extends provider_testcase {
         $external = $this->get_items_by_type(external_location::class);
         $this->assertArrayHasKey('datacurso_ai', $external);
         $this->assertEqualsCanonicalizing(
-            ['cmid', 'course_content', 'course_id', 'course_structure', 'custom_prompt', 'grades', 'lang',
-                'messages', 'page_url', 'selected_text', 'site_id', 'site_url', 'timezone', 'userid'],
+            ['cmid', 'course_content', 'course_files', 'course_id', 'course_structure', 'custom_prompt',
+                'grades', 'lang', 'messages', 'page_url', 'selected_text', 'site_id', 'site_url',
+                'timezone', 'userid'],
             array_keys($external['datacurso_ai']->get_privacy_fields())
         );
     }

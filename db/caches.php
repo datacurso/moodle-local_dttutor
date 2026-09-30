@@ -47,4 +47,13 @@ $definitions = [
         'simplekeys' => true,
         'simpledata' => true,
     ],
+    // Text read out of the documents a course hands out, keyed by the content hash of the file.
+    // A document that never changes is read once: the hash changes with the file, so a corrected
+    // document is read again on its own. What could not be read is kept too, with its reason, so
+    // a scanned PDF is not sent again on every rebuild.
+    'file_text' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'ttl' => 604800, // A week: long enough that a stable course pays the reading once.
+        'simplekeys' => true,
+    ],
 ];

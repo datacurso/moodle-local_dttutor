@@ -85,6 +85,9 @@ class system_message {
             . "(in the student's language) instead of guessing.\n";
         $content .= "- An activity shown as \"no dates set\" has no date configured in the course. Say that "
             . "the course has not set one, which is not the same as you not having the information.\n";
+        $content .= "- \"Document <name>:\" is the text read out of a document the course hands out. It is "
+            . "yours to answer from, and worth naming in the answer so the student knows where it comes "
+            . "from.\n";
         $content .= "- \"files not readable by you:\" names documents attached to an activity. You have "
             . "their names and sizes and nothing else: say that the document itself is not available to "
             . "you, and never guess what it says from the description of the activity.\n";

@@ -209,6 +209,32 @@ class tutoria_api {
     }
 
     /**
+     * Read the documents a course hands out, so their text can travel with the course knowledge.
+     *
+     * Nothing in Moodle reads a PDF. The documents are sent once, addressed by their content
+     * hash, and the caller keeps what comes back against that hash: a document is read once and
+     * never once per question.
+     *
+     * @param array $files Entries with filename, mimetype, sha1 and content_base64.
+     * @param int $charsperfile Characters one document may contribute.
+     * @return array Response with the text of each document read, and the reason for each one
+     *               that was not.
+     * @throws moodle_exception If the request fails.
+     * @since Moodle 4.5
+     */
+    public function extract_material(array $files, int $charsperfile): array {
+        if ($files === []) {
+            return ['extracted' => [], 'skipped' => []];
+        }
+
+        return $this->client->request('POST', '/chat/material/extract', [
+            'files' => array_values($files),
+            'max_chars_per_file' => $charsperfile,
+            'max_chars_total' => $charsperfile * count($files),
+        ]) ?? ['extracted' => [], 'skipped' => []];
+    }
+
+    /**
      * Delete every conversation of a user, or of a whole course, in the AI service.
      *
      * The service is asked by user and course instead of by session handle, so the

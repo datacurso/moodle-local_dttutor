@@ -226,6 +226,8 @@ class context_preloader {
         $activitycount = 0;
         $contentcut = false;
 
+        file_content::prefetch($modinfo, self::activities_with_documents($modinfo));
+
         foreach ($modinfo->get_cms() as $cm) {
             if ($cm->deletioninprogress || $cm->modname === 'label') {
                 continue;
@@ -262,6 +264,14 @@ class context_preloader {
             }
 
             $content = activity_content::extract($cm, $record, $budget);
+            $documents = file_content::text_of(
+                $modinfo,
+                (int)$cm->id,
+                $budget - \core_text::strlen($content)
+            );
+            if ($documents !== '') {
+                $content = $content === '' ? $documents : $content . "\n" . $documents;
+            }
             if ($content === '') {
                 continue;
             }
@@ -287,6 +297,23 @@ class context_preloader {
         }
 
         return implode("\n", $lines) . "\n";
+    }
+
+    /**
+     * The activities of a course that keep documents, in the order they are listed.
+     *
+     * @param \course_modinfo $modinfo
+     * @return int[] Course module ids.
+     */
+    private static function activities_with_documents(\course_modinfo $modinfo): array {
+        $cmids = [];
+        foreach ($modinfo->get_cms() as $cm) {
+            [$component] = self::file_area_of($cm->modname);
+            if ($component !== null && $cm->uservisible && !$cm->deletioninprogress) {
+                $cmids[] = (int)$cm->id;
+            }
+        }
+        return $cmids;
     }
 
     /**
@@ -361,6 +388,17 @@ class context_preloader {
     }
 
     /**
+     * Where an activity keeps the documents the teaching side attached.
+     *
+     * @param string $modname Activity type.
+     * @return array{0: string|null, 1: string|null} Component and file area, or nulls when the
+     *                                               type keeps no documents of its own.
+     */
+    public static function file_area_of(string $modname): array {
+        return self::FILE_AREAS[$modname] ?? [null, null];
+    }
+
+    /**
      * The documents attached to an activity, named but not read.
      *
      * Their text never travels: nothing in this plugin can read a PDF or a spreadsheet. Naming
@@ -371,7 +409,7 @@ class context_preloader {
      * @return string
      */
     private static function describe_files(\cm_info $cm): string {
-        [$component, $filearea] = self::FILE_AREAS[$cm->modname] ?? [null, null];
+        [$component, $filearea] = self::file_area_of($cm->modname);
         if ($component === null) {
             return '';
         }
@@ -389,8 +427,16 @@ class context_preloader {
             return '';
         }
 
+        $read = \cache::make('local_dttutor', 'file_text');
         $names = [];
         foreach ($files as $file) {
+            if (file_content::is_enabled()) {
+                $cached = $read->get($file->get_contenthash());
+                if (is_array($cached) && trim((string)($cached['text'] ?? '')) !== '') {
+                    // Its text travels further down, so naming it here as unreadable would lie.
+                    continue;
+                }
+            }
             $names[] = $file->get_filename() . ' (' . display_size($file->get_filesize()) . ')';
         }
 

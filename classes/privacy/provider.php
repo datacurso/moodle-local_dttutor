@@ -61,6 +61,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         $collection->add_external_location_link('datacurso_ai', [
             'cmid' => 'privacy:metadata:datacurso_ai:cmid',
             'course_content' => 'privacy:metadata:datacurso_ai:course_content',
+            'course_files' => 'privacy:metadata:datacurso_ai:course_files',
             'course_id' => 'privacy:metadata:datacurso_ai:course_id',
             'course_structure' => 'privacy:metadata:datacurso_ai:course_structure',
             'custom_prompt' => 'privacy:metadata:datacurso_ai:custom_prompt',
