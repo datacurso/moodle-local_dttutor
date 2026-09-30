@@ -34,11 +34,13 @@ final class upgrade_schema_test extends \advanced_testcase {
 
         $columns = array_keys($DB->get_columns('local_dttutor_course_config'));
 
-        foreach (['last_indexed_at', 'indexing_status', 'indexing_task_id', 'indexing_error', 'custom_prompt'] as $dead) {
+        $dropped = ['last_indexed_at', 'indexing_status', 'indexing_task_id', 'indexing_error',
+            'custom_prompt', 'tutorname', 'welcomemessage'];
+        foreach ($dropped as $dead) {
             $this->assertNotContains($dead, $columns, "Column {$dead} should have been dropped");
         }
         $this->assertEqualsCanonicalizing(
-            ['id', 'courseid', 'indexing_enabled', 'tutorname', 'welcomemessage',
+            ['id', 'courseid', 'indexing_enabled',
                 'timecreated', 'timemodified', 'usermodified'],
             $columns
         );

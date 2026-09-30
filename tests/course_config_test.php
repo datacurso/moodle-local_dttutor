@@ -212,87 +212,19 @@ final class course_config_test extends \advanced_testcase {
     }
 
     /**
-     * MDL-INT-043: with nothing set in the course, the value of the site is the one in force.
-     */
-    public function test_a_course_without_its_own_value_follows_the_site(): void {
-        $this->setAdminUser();
-        set_config('tutorname', 'Site tutor', 'local_dttutor');
-        set_config('welcomemessage', 'Hello from the site', 'local_dttutor');
-        $course = $this->getDataGenerator()->create_course();
-
-        $this->assertSame('Site tutor', course_config::get_setting((int)$course->id, 'tutorname'));
-        $this->assertSame('Hello from the site', course_config::get_setting((int)$course->id, 'welcomemessage'));
-    }
-
-    /**
-     * MDL-INT-043: the value of the course wins over the value of the site.
-     */
-    public function test_the_value_of_the_course_wins(): void {
-        $this->setAdminUser();
-        set_config('tutorname', 'Site tutor', 'local_dttutor');
-        $course = $this->getDataGenerator()->create_course();
-
-        course_config::update((int)$course->id, ['tutorname' => 'Tutor of biology']);
-
-        $this->assertSame('Tutor of biology', course_config::get_setting((int)$course->id, 'tutorname'));
-    }
-
-    /**
-     * MDL-INT-043: clearing the field of a course goes back to the value of the site.
-     */
-    public function test_clearing_the_value_of_the_course_goes_back_to_the_site(): void {
-        $this->setAdminUser();
-        set_config('tutorname', 'Site tutor', 'local_dttutor');
-        $course = $this->getDataGenerator()->create_course();
-        course_config::update((int)$course->id, ['tutorname' => 'Tutor of biology']);
-
-        course_config::update((int)$course->id, ['tutorname' => '']);
-
-        $this->assertSame('Site tutor', course_config::get_setting((int)$course->id, 'tutorname'));
-    }
-
-    /**
-     * MDL-INT-043: two courses of the same site can introduce the tutor differently.
-     */
-    public function test_two_courses_can_differ(): void {
-        $this->setAdminUser();
-        set_config('tutorname', 'Site tutor', 'local_dttutor');
-        $biology = $this->getDataGenerator()->create_course();
-        $history = $this->getDataGenerator()->create_course();
-
-        course_config::update((int)$biology->id, ['tutorname' => 'Tutor of biology']);
-
-        $this->assertSame('Tutor of biology', course_config::get_setting((int)$biology->id, 'tutorname'));
-        $this->assertSame('Site tutor', course_config::get_setting((int)$history->id, 'tutorname'));
-    }
-
-    /**
-     * MDL-INT-043: a setting that belongs to the site cannot be asked for as if it were per course.
+     * MDL-INT-043: the identity of the tutor belongs to the site, not to a course.
      *
-     * The institutional instructions are the case this guards: the scope keeps them site wide.
+     * The feature was withdrawn: a course sets whether the tutor is on, and nothing else about
+     * how it introduces itself. This guards the boundary rather than the behaviour that went.
      */
-    public function test_a_setting_of_the_site_is_not_resolved_per_course(): void {
-        $this->setAdminUser();
-        $course = $this->getDataGenerator()->create_course();
-
-        $this->expectException(\coding_exception::class);
-        course_config::get_setting((int)$course->id, 'custom_prompt');
-    }
-
-    /**
-     * MDL-INT-043: the first save of a course keeps what it was given.
-     *
-     * The record of a course that had none is built in memory before it is written, and a field
-     * missing from it used to be dropped without a word.
-     */
-    public function test_the_first_save_of_a_course_keeps_the_value(): void {
+    public function test_a_course_cannot_give_the_tutor_a_name_of_its_own(): void {
         global $DB;
-        $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
-        $this->assertFalse($DB->record_exists('local_dttutor_course_config', ['courseid' => $course->id]));
 
         course_config::update((int)$course->id, ['tutorname' => 'Tutor of biology']);
 
-        $this->assertSame('Tutor of biology', course_config::get_setting((int)$course->id, 'tutorname'));
+        $record = $DB->get_record('local_dttutor_course_config', ['courseid' => $course->id]);
+        $this->assertObjectNotHasProperty('tutorname', $record);
+        $this->assertObjectNotHasProperty('welcomemessage', $record);
     }
 }

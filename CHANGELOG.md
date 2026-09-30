@@ -24,10 +24,6 @@ Thirty-five of the thirty-seven gaps the scope listed as pending, plus the test 
 - **The privacy declaration matches the behaviour** (MDL-INT-034): the selected text was declared as transferred and never was. It travels now, so the declaration is true.
 
 ### Added
-- **A course can introduce the tutor in its own words** (MDL-INT-043): whoever can edit a course now sets the name of the tutor and its welcome message on the management page of that course. An empty field means the value configured for the site, so a course opts in rather than having to repeat what the site already says, and two courses of the same site can read differently. The placeholders work the same in both.
-  - The institutional instructions of tone and limits stay site wide on purpose. The scope calls them institutional, and a course loosening them would defeat what they are for.
-  - Saving writes only the fields the request carries. The per-course prompt was removed in 2.0.9 because the enablement toggle sent an empty value with every change and wiped it; a test now holds that door shut.
-
 - **The course material can reach the tutor** (MDL-INT-016): a new setting, off by default, lets the tutor read the text written by the teaching side, so it can explain or summarise what the course says instead of only naming its activities. It receives the description of every activity, the body of a page, the visible chapters of a book, the instructions of an assignment and the address of a URL.
   - Nothing written by the people taking the course ever travels: forum posts, glossary entries, database records, wiki pages and submissions live in tables the extractor never opens. Material under assessment is left out too, so the questions of a quiz and the pages of a lesson never reach the model.
   - Only the material of activities the user can already open travels. An activity that is hidden, or that a restriction has not released yet, gives up its name and the condition and nothing else.
@@ -51,6 +47,9 @@ Thirty-five of the thirty-seven gaps the scope listed as pending, plus the test 
 - **The grades of the user are read once for the whole course** rather than once per gradable activity and message (MDL-INT-011).
 - **The panel adapts to the screen** and shifting the page aside no longer depends on the classes of the Boost theme (MDL-E2E-023, MDL-E2E-024).
 - **The position configurator answers to touch and to the keyboard**, and warns when the chosen corner is where the platform keeps its own floating controls (MDL-E2E-013).
+
+### Removed
+- **The identity of the tutor is no longer set per course** (MDL-INT-043): the section that let a course give the tutor its own name and welcome message is gone from the management page, and so are the two columns that held them. The tutor introduces itself the same way everywhere, with what the site configures. Upgrading drops the columns, so a course that had written its own is back to the values of the site.
 
 ### Fixed
 - **No failure ends in silence** (MDL-E2E-017): a provider that cannot be built used to leave the user with neither an answer nor an error.

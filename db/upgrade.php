@@ -170,5 +170,21 @@ function xmldb_local_dttutor_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026092301, 'local', 'dttutor');
     }
 
+    if ($oldversion < 2026093001) {
+        // The name and the welcome message go back to being set once for the site. A course that
+        // had given itself one loses it here, which is what removing the feature means.
+        $table = new xmldb_table('local_dttutor_course_config');
+
+        foreach (['tutorname', 'welcomemessage'] as $name) {
+            $field = new xmldb_field($name);
+            if ($dbman->field_exists($table, $field)) {
+                $dbman->drop_field($table, $field);
+            }
+        }
+
+        // Dttutor savepoint reached.
+        upgrade_plugin_savepoint(true, 2026093001, 'local', 'dttutor');
+    }
+
     return true;
 }

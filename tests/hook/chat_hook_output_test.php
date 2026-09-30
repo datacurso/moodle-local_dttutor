@@ -493,63 +493,29 @@ final class chat_hook_output_test extends \advanced_testcase {
     }
 
     /**
-     * MDL-INT-043: the chat of a course shows the name and the greeting that course set.
+     * MDL-INT-043: the identity of the tutor is the one the site set, in every course.
+     *
+     * A course used to be able to give the tutor a name and a greeting of its own. The feature
+     * was withdrawn, so two courses of the same site introduce the tutor the same way.
      */
-    public function test_the_chat_shows_the_identity_of_the_course(): void {
-        $course = $this->create_enabled_course();
+    public function test_every_course_shows_the_identity_of_the_site(): void {
         set_config('tutorname', 'Site tutor', 'local_dttutor');
         set_config('welcomemessage', 'Hello from the site', 'local_dttutor');
-        course_config::update((int)$course->id, [
-            'tutorname' => 'Tutor of biology',
-            'welcomemessage' => 'Welcome to biology',
-        ]);
-        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $biology = $this->create_enabled_course();
+        $history = $this->create_enabled_course();
+        $student = $this->getDataGenerator()->create_and_enrol($biology, 'student');
+        $this->getDataGenerator()->enrol_user($student->id, $history->id, 'student');
         $this->setUser($student);
-        $this->set_course_page($course);
 
-        $output = $this->footer_output();
-        $this->assertStringContainsString('Tutor of biology', $output);
-        $this->assertStringContainsString('Welcome to biology', $output);
-        $this->assertStringNotContainsString('Site tutor', $output);
-        $this->assertStringNotContainsString('Hello from the site', $output);
-    }
+        $this->set_course_page($biology);
+        $first = $this->footer_output();
+        $this->set_course_page($history);
+        $second = $this->footer_output();
 
-    /**
-     * MDL-INT-043: a course that set nothing shows what the site says.
-     */
-    public function test_the_chat_falls_back_to_the_identity_of_the_site(): void {
-        $course = $this->create_enabled_course();
-        set_config('tutorname', 'Site tutor', 'local_dttutor');
-        set_config('welcomemessage', 'Hello from the site', 'local_dttutor');
-        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
-        $this->setUser($student);
-        $this->set_course_page($course);
-
-        $output = $this->footer_output();
-        $this->assertStringContainsString('Site tutor', $output);
-        $this->assertStringContainsString('Hello from the site', $output);
-    }
-
-    /**
-     * MDL-INT-043: the placeholders keep working in what a course wrote.
-     */
-    public function test_the_placeholders_work_in_what_the_course_wrote(): void {
-        $course = $this->create_enabled_course();
-        course_config::update((int)$course->id, [
-            'welcomemessage' => 'Hi {firstname}, welcome to {coursename}',
-        ]);
-        $student = $this->getDataGenerator()->create_and_enrol(
-            $course,
-            'student',
-            ['firstname' => 'Grace', 'lastname' => 'Hopper']
-        );
-        $this->setUser($student);
-        $this->set_course_page($course);
-
-        $this->assertStringContainsString(
-            'Hi Grace, welcome to ' . $course->fullname,
-            $this->footer_output()
-        );
+        foreach ([$first, $second] as $output) {
+            $this->assertStringContainsString('Site tutor', $output);
+            $this->assertStringContainsString('Hello from the site', $output);
+        }
     }
 
     /**

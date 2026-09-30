@@ -48,18 +48,6 @@ class save_course_config extends external_api {
         return new external_function_parameters([
             'courseid' => new external_value(PARAM_INT, 'Course ID', VALUE_REQUIRED),
             'enabled' => new external_value(PARAM_BOOL, 'Enable tutor for this course', VALUE_DEFAULT, true),
-            'tutorname' => new external_value(
-                PARAM_TEXT,
-                'Name of the tutor in this course, empty to follow the site. Omitted leaves it as it is.',
-                VALUE_DEFAULT,
-                null
-            ),
-            'welcomemessage' => new external_value(
-                PARAM_TEXT,
-                'Welcome message in this course, empty to follow the site. Omitted leaves it as it is.',
-                VALUE_DEFAULT,
-                null
-            ),
         ]);
     }
 
@@ -68,23 +56,14 @@ class save_course_config extends external_api {
      *
      * @param int $courseid Course ID
      * @param bool $enabled Enable tutor for course
-     * @param string|null $tutorname Name of the tutor in this course, or null to leave it as it is
-     * @param string|null $welcomemessage Welcome message in this course, or null to leave it as it is
      * @return array Save status
      * @since Moodle 4.5
      */
-    public static function execute(
-        int $courseid,
-        bool $enabled = true,
-        ?string $tutorname = null,
-        ?string $welcomemessage = null
-    ): array {
+    public static function execute(int $courseid, bool $enabled = true): array {
         // 1. Validate parameters.
         $params = self::validate_parameters(self::execute_parameters(), [
             'courseid' => $courseid,
             'enabled' => $enabled,
-            'tutorname' => $tutorname,
-            'welcomemessage' => $welcomemessage,
         ]);
 
         // 2. Check authentication.
@@ -100,21 +79,11 @@ class save_course_config extends external_api {
         self::validate_context($context);
         require_capability('moodle/course:update', $context);
 
-        // 5. Update configuration.
-        $data = [
+        // 5. Update configuration. The switch is all a course decides about the tutor: its name
+        // and its welcome message belong to the site.
+        $success = course_config::update($params['courseid'], [
             'indexing_enabled' => $params['enabled'] ? 1 : 0,
-        ];
-
-        // Only what the request carries is written. A caller that leaves a field out keeps what the
-        // course already had: the toggle used to send an empty prompt with every change and wiped
-        // it, which is why that feature was removed in 2.0.9, and this is the guard against it.
-        foreach (course_config::OVERRIDABLE as $name) {
-            if ($params[$name] !== null) {
-                $data[$name] = trim((string)$params[$name]);
-            }
-        }
-
-        $success = course_config::update($params['courseid'], $data);
+        ]);
 
         return [
             'success' => $success,

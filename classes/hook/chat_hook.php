@@ -210,13 +210,13 @@ class chat_hook {
         $avatarurl = self::get_avatar_url();
         $positiondata = self::get_position_data();
 
-        $tutorname = \local_dttutor\course_config::get_setting($courseid, 'tutorname');
+        $tutorname = trim((string)get_config('local_dttutor', 'tutorname'));
         if ($tutorname === '') {
             $tutorname = get_string('tutorname_default', 'local_dttutor');
         }
         $tutorname = self::replace_placeholders($tutorname, $courseid);
 
-        $welcomemessage = \local_dttutor\course_config::get_setting($courseid, 'welcomemessage');
+        $welcomemessage = trim((string)get_config('local_dttutor', 'welcomemessage'));
         if ($welcomemessage === '') {
             $welcomemessage = get_string('welcomemessage_default', 'local_dttutor');
         }
