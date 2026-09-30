@@ -27,6 +27,16 @@ use local_dttutor\session_store;
  */
 class purge_old_conversations extends \core\task\scheduled_task {
     /**
+     * @var int Days the AI service keeps a conversation before it expires on its own.
+     *
+     * The service is what actually holds the conversations, so a period longer than this one is a
+     * promise Moodle cannot keep: by the time the task came to delete them the service had done it
+     * already. It is the default of this plugin so that both say the same thing, and a site that
+     * changes the retention of its service changes it here too.
+     */
+    public const SERVICE_RETENTION_DAYS = 7;
+
+    /**
      * Name of the task, as the administration shows it.
      *
      * @return string

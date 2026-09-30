@@ -437,11 +437,10 @@ final class provider_test extends provider_testcase {
     }
 
     /**
-     * MDL-INT-016: a site that switches the material off transfers none of it.
+     * MDL-INT-016: with the setting off, nothing of the declared material travels.
      */
-    public function test_the_course_content_does_not_travel_when_switched_off(): void {
+    public function test_the_course_content_does_not_travel_unless_enabled(): void {
         $this->setAdminUser();
-        set_config('include_content', 0, 'local_dttutor');
         $course = $this->getDataGenerator()->create_course();
         $this->getDataGenerator()->create_module('page', [
             'course' => $course->id,

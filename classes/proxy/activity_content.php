@@ -68,17 +68,16 @@ class activity_content {
     private const LESSON_CONTENT_PAGE = 20;
 
     /**
-     * Whether the content of the course reaches the AI service.
+     * Whether the administrator has allowed the content of the course to reach the AI service.
      *
-     * On unless a site says otherwise. It is no longer asked of the administrator, because a tutor
-     * that cannot read the course answers almost nothing; it stays configuration, so a site bound
-     * by a stricter reading of its data protection duties can still turn it off.
+     * Off unless asked for. A tutor that cannot read the course answers less, and that is the
+     * trade a site makes knowingly: the text of a course leaving the platform for a third party
+     * is a decision about data protection, not a default.
      *
      * @return bool
      */
     public static function is_enabled(): bool {
-        $configured = get_config('local_dttutor', 'include_content');
-        return $configured === false ? true : (bool)$configured;
+        return (bool)get_config('local_dttutor', 'include_content');
     }
 
     /**

@@ -66,12 +66,9 @@ final class activity_content_test extends \advanced_testcase {
     }
 
     /**
-     * MDL-INT-016: a site that switches the material off keeps it at home.
-     *
-     * Reading the course is on unless a site says otherwise, and this is the setting that says so.
+     * MDL-INT-016: no material travels until the administrator asks for it.
      */
-    public function test_a_site_can_still_keep_the_material_at_home(): void {
-        set_config('include_content', 0, 'local_dttutor');
+    public function test_no_material_travels_by_default(): void {
         [$course, $student] = $this->course_with_a_student();
         $this->getDataGenerator()->create_module('page', [
             'course' => $course->id,
@@ -85,20 +82,6 @@ final class activity_content_test extends \advanced_testcase {
         $this->assertStringContainsString('Chapter one', $text);
         $this->assertStringNotContainsString('powerhouse', $text);
         $this->assertStringNotContainsString('A short description', $text);
-    }
-
-    /**
-     * MDL-INT-016: the material of the course travels without anyone turning it on.
-     */
-    public function test_the_material_travels_without_being_asked_for(): void {
-        [$course, $student] = $this->course_with_a_student();
-        $this->getDataGenerator()->create_module('page', [
-            'course' => $course->id,
-            'name' => 'Chapter one',
-            'content' => 'The mitochondria is the powerhouse of the cell',
-        ]);
-
-        $this->assertStringContainsString('powerhouse', $this->knowledge($course, $student));
     }
 
     /**

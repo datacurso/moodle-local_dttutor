@@ -70,7 +70,7 @@ if ($hassiteconfig) {
             'local_dttutor/retention_days',
             get_string('retention_days', 'local_dttutor'),
             get_string('retention_days_desc', 'local_dttutor'),
-            '0',
+            \local_dttutor\task\purge_old_conversations::SERVICE_RETENTION_DAYS,
             PARAM_INT
         )
     );
@@ -160,7 +160,7 @@ if ($hassiteconfig) {
             'local_dttutor/include_content',
             get_string('include_content', 'local_dttutor'),
             get_string('include_content_desc', 'local_dttutor'),
-            '1'
+            '0'
         )
     );
 

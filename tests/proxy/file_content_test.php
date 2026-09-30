@@ -47,7 +47,6 @@ final class file_content_test extends \advanced_testcase {
      * Turn both settings on: documents ride on the material of the course.
      */
     private function enable_files(): void {
-        // Both are on by default; setting them keeps each test honest about what it relies on.
         set_config('include_content', 1, 'local_dttutor');
         set_config('include_files', 1, 'local_dttutor');
     }
@@ -129,10 +128,11 @@ final class file_content_test extends \advanced_testcase {
     }
 
     /**
-     * MDL-INT-016: a site that switches the documents off sends none of them.
+     * MDL-INT-016: with the material of the course switched off, no document leaves either.
      */
-    public function test_a_site_can_keep_its_documents_at_home(): void {
-        set_config('include_files', 0, 'local_dttutor');
+    public function test_no_document_is_sent_until_the_administrator_asks(): void {
+        set_config('include_content', 0, 'local_dttutor');
+        set_config('include_files', 1, 'local_dttutor');
         [$course, $student] = $this->course_with_a_document();
         $fake = new fake_ai_client();
         \core\di::set(ai_client::class, $fake);
