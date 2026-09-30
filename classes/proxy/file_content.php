@@ -16,6 +16,7 @@
 
 namespace local_dttutor\proxy;
 
+use local_dttutor\httpclient\client_factory;
 use local_dttutor\httpclient\tutoria_api;
 
 /**
@@ -115,10 +116,13 @@ class file_content {
         }
 
         try {
+            // The client is resolved here on purpose. Asking the API for it would resolve it deep
+            // inside the request, where a provider that is not installed arrives as a failure of
+            // the reading rather than as what it is: a site where the tutor answers nothing at all.
+            client_factory::get();
             $api = \core\di::get(tutoria_api::class);
         } catch (\Throwable $e) {
-            // No client to ask with: the provider is not installed or has no licence, so the tutor
-            // is not answering anything either. Nothing to report that the chat will not report.
+            // Nothing to report that the chat will not report first.
             return;
         }
 
