@@ -35,6 +35,12 @@ use local_dttutor\httpclient\client_factory;
  * SSE streaming handler.
  */
 class handler {
+    /** @var array Refusals of the AI service, mapped to the message the user is given. */
+    private const REFUSALS = [
+        'license_not_allowed' => 'error_license_not_allowed',
+        'tokens_not_sufficient' => 'error_insufficient_tokens',
+    ];
+
     /**
      * Run a single streaming completion and relay it to the client.
      *
@@ -49,7 +55,15 @@ class handler {
         echo ": thinking\n\n";
         self::flush();
 
-        $response = self::call_ai_api_buffer($model, $messages);
+        try {
+            $response = self::call_ai_api_buffer($model, $messages);
+        } catch (\Throwable $e) {
+            // The provider could not even be built (no licence key, licence store unreachable).
+            // The stream is already open, so the failure has to leave through it.
+            \local_dttutor_log('AI_API_UNAVAILABLE', ['exception' => get_class($e)], true);
+            \local_dttutor\event\service_failed::record('provider_unavailable');
+            $response = ['type' => 'error', 'error' => get_string('error_unexpected', 'local_dttutor')];
+        }
 
         if ($response['type'] === 'error') {
             // The client only dispatches frames that carry an explicit event name.
@@ -64,7 +78,9 @@ class handler {
             return $response['message'];
         }
 
-        self::stream_sse_content($response['content']);
+        // The text already left as the model produced it; only the end of the answer is left to say.
+        echo self::format_sse_event('done', []);
+        self::flush();
         return $response['content'];
     }
 
@@ -154,6 +170,9 @@ class handler {
         $headers = self::build_request_headers($client);
 
         $buffer = '';
+        $pending = '';
+        $streamed = '';
+
         $ch = curl_init($apiurl);
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
@@ -162,8 +181,15 @@ class handler {
             CURLOPT_RETURNTRANSFER => false,
             CURLOPT_TIMEOUT        => 180,
             CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_WRITEFUNCTION  => function ($ch, $data) use (&$buffer) {
+            CURLOPT_WRITEFUNCTION  => function ($ch, $data) use (&$buffer, &$pending, &$streamed) {
                 $buffer .= $data;
+
+                // Only a successful answer is forwarded as it arrives. Anything else is kept back
+                // so that it can be classified once the request is over and told properly.
+                if ((int)curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200) {
+                    $streamed .= self::stream_chunk($data, $pending);
+                }
+
                 return strlen($data);
             },
         ]);
@@ -173,7 +199,58 @@ class handler {
         $curlerrno = curl_errno($ch);
         curl_close($ch);
 
+        if ((int)$httpcode === 200 && $streamed !== '') {
+            \local_dttutor_log('AI_API_RESPONSE_TEXT', self::summarize_response_for_log($streamed));
+            return ['type' => 'text', 'content' => $streamed];
+        }
+
         return self::classify_response((int)$httpcode, $curlerrno, $buffer);
+    }
+
+    /**
+     * Forward the complete lines of a fragment of the answer, and report the text they carried.
+     *
+     * The service writes the answer in pieces that do not respect line boundaries, so whatever is
+     * left half written stays in $pending until the rest of it arrives.
+     *
+     * @param string $chunk Fragment just received.
+     * @param string $pending Carries the half-written line between fragments.
+     * @return string The text forwarded out of this fragment.
+     */
+    public static function stream_chunk(string $chunk, string &$pending): string {
+        $pending .= $chunk;
+
+        $text = '';
+        while (($breakat = strpos($pending, "\n")) !== false) {
+            $line = trim(substr($pending, 0, $breakat));
+            $pending = substr($pending, $breakat + 1);
+
+            if (!str_starts_with($line, 'data: ')) {
+                continue;
+            }
+
+            $raw = trim(substr($line, 6));
+            if ($raw === '[DONE]') {
+                $pending = '';
+                break;
+            }
+
+            $json = json_decode($raw, true);
+            if (!$json) {
+                continue;
+            }
+
+            $delta = $json['choices'][0]['delta']['content'] ?? null;
+            if ($delta === null || $delta === '') {
+                continue;
+            }
+
+            $text .= $delta;
+            echo self::format_sse_event('token', ['t' => $delta]);
+            self::flush();
+        }
+
+        return $text;
     }
 
     /**
@@ -217,7 +294,9 @@ class handler {
         // Rate limit reached: show the student a clear, friendly message (not a generic error).
         if ($httpcode === 403) {
             $err = json_decode($buffer, true);
-            if (is_array($err) && ($err['detail'] ?? '') === 'rate_limit_exceeded') {
+            $detail = is_array($err) ? (string)($err['detail'] ?? '') : '';
+
+            if ($detail === 'rate_limit_exceeded') {
                 $resetat = (int)($err['reset_at'] ?? 0);
                 $retryat = $resetat > 0
                     ? userdate($resetat, get_string('strftimedatetime', 'langconfig'))
@@ -225,6 +304,13 @@ class handler {
                 $message = get_string('error_ratelimit_exceeded', 'local_dttutor', $retryat);
                 \local_dttutor_log('AI_API_RATE_LIMITED', ['reset_at' => $resetat], true);
                 return ['type' => 'notice', 'message' => $message];
+            }
+
+            // A refusal the administrator can act on: say which one it is instead of a generic error.
+            if (isset(self::REFUSALS[$detail])) {
+                \local_dttutor_log('AI_API_REFUSED', ['detail' => $detail], true);
+                \local_dttutor\event\service_failed::record($detail);
+                return ['type' => 'error', 'error' => get_string(self::REFUSALS[$detail], 'local_dttutor')];
             }
         }
 
@@ -234,6 +320,7 @@ class handler {
                 'curl_errno' => $curlerrno,
                 'body_length' => strlen($buffer),
             ], true);
+            \local_dttutor\event\service_failed::record($curlerrno !== 0 ? 'transport' : 'http_' . $httpcode);
             return ['type' => 'error', 'error' => 'ai_api_error'];
         }
 
@@ -311,12 +398,8 @@ class handler {
             return;
         }
 
-        $chunks = mb_str_split($content, 15);
-        foreach ($chunks as $chunk) {
-            echo self::format_sse_event('token', ['t' => $chunk]);
-            self::flush();
-            usleep(25000);
-        }
+        echo self::format_sse_event('token', ['t' => $content]);
+        self::flush();
 
         echo self::format_sse_event('done', []);
         self::flush();

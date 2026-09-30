@@ -45,6 +45,9 @@ final class upgrade_roles_test extends \advanced_testcase {
         return $systemcontext;
     }
 
+    /**
+     * MDL-INT-046: revoking site-level permissions.
+     */
     public function test_course_view_is_revoked_from_teacher_archetypes_at_system_context(): void {
         global $DB;
         $this->resetAfterTest();
@@ -71,6 +74,9 @@ final class upgrade_roles_test extends \advanced_testcase {
         }
     }
 
+    /**
+     * MDL-INT-046: revoking site-level permissions.
+     */
     public function test_dttutor_use_is_revoked_from_user_archetype_at_system_context(): void {
         global $DB;
         $this->resetAfterTest();
@@ -92,6 +98,9 @@ final class upgrade_roles_test extends \advanced_testcase {
         }
     }
 
+    /**
+     * MDL-INT-046, MDL-INT-005: revoking site-level permissions.
+     */
     public function test_enrolled_student_keeps_dttutor_use_after_revocation(): void {
         $this->resetAfterTest();
         $this->apply_legacy_grants();
@@ -103,6 +112,9 @@ final class upgrade_roles_test extends \advanced_testcase {
         $this->assertTrue(has_capability('local/dttutor:use', \context_course::instance($course->id), $student));
     }
 
+    /**
+     * MDL-INT-046: revoking site-level permissions.
+     */
     public function test_explicit_prohibit_is_preserved_and_call_is_idempotent(): void {
         global $DB;
         $this->resetAfterTest();
@@ -120,6 +132,9 @@ final class upgrade_roles_test extends \advanced_testcase {
         ]));
     }
 
+    /**
+     * MDL-INT-005: permission to use the tutor.
+     */
     public function test_capability_definition_no_longer_targets_user_archetype(): void {
         global $CFG;
         $capabilities = [];

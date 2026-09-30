@@ -43,6 +43,9 @@ final class handler_logging_test extends \advanced_testcase {
         ];
     }
 
+    /**
+     * MDL-INT-033: what the plugin stores and what it declares.
+     */
     public function test_request_log_summary_carries_counts_but_no_content(): void {
         $summary = handler::summarize_request_for_log('gemini-2.5-flash', $this->messages());
 
@@ -57,6 +60,9 @@ final class handler_logging_test extends \advanced_testcase {
         $this->assertStringNotContainsString('Hello', $json);
     }
 
+    /**
+     * MDL-INT-033: what the plugin stores and what it declares.
+     */
     public function test_response_log_summary_carries_lengths_but_no_text(): void {
         $answer = 'Your exam is on Friday; the maximum grade is 10.';
 
@@ -68,6 +74,9 @@ final class handler_logging_test extends \advanced_testcase {
         $this->assertStringNotContainsString('Friday', json_encode($summary));
     }
 
+    /**
+     * MDL-INT-033: what the plugin stores and what it declares.
+     */
     public function test_log_helper_emits_a_single_metadata_only_debugging_line(): void {
         global $CFG;
         require_once($CFG->dirroot . '/local/dttutor/lib.php');
@@ -89,6 +98,9 @@ final class handler_logging_test extends \advanced_testcase {
         }
     }
 
+    /**
+     * MDL-INT-033: what the plugin stores and what it declares.
+     */
     public function test_error_events_also_reach_the_php_error_log_without_content(): void {
         global $CFG;
         require_once($CFG->dirroot . '/local/dttutor/lib.php');

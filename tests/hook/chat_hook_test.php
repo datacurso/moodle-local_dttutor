@@ -26,6 +26,9 @@ namespace local_dttutor\hook;
  * @covers     \local_dttutor\hook\chat_hook
  */
 final class chat_hook_test extends \advanced_testcase {
+    /**
+     * MDL-INT-005: permission to use the tutor.
+     */
     public function test_enrolled_student_can_use_the_tutor(): void {
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();
@@ -34,6 +37,9 @@ final class chat_hook_test extends \advanced_testcase {
         $this->assertTrue(chat_hook::can_use_tutor((int)$course->id, (int)$student->id));
     }
 
+    /**
+     * MDL-INT-005: permission to use the tutor.
+     */
     public function test_authenticated_user_without_enrolment_cannot_use_the_tutor(): void {
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();
@@ -42,6 +48,9 @@ final class chat_hook_test extends \advanced_testcase {
         $this->assertFalse(chat_hook::can_use_tutor((int)$course->id, (int)$visitor->id));
     }
 
+    /**
+     * MDL-INT-005: permission to use the tutor.
+     */
     public function test_site_administrator_can_use_the_tutor_without_enrolment(): void {
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();
@@ -49,6 +58,9 @@ final class chat_hook_test extends \advanced_testcase {
         $this->assertTrue(chat_hook::can_use_tutor((int)$course->id, (int)get_admin()->id));
     }
 
+    /**
+     * MDL-INT-005: permission to use the tutor.
+     */
     public function test_defaults_to_the_current_user(): void {
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();

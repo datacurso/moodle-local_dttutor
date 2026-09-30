@@ -71,7 +71,7 @@ class save_course_config extends external_api {
 
         // 3. Verify plugin is enabled.
         if (!get_config('local_dttutor', 'enabled')) {
-            throw new \moodle_exception('error_api_not_configured', 'local_dttutor');
+            throw new \moodle_exception('error_tutor_disabled_site', 'local_dttutor');
         }
 
         // 4. Validate course context and check capabilities.
@@ -79,12 +79,11 @@ class save_course_config extends external_api {
         self::validate_context($context);
         require_capability('moodle/course:update', $context);
 
-        // 5. Update configuration.
-        $data = [
+        // 5. Update configuration. The switch is all a course decides about the tutor: its name
+        // and its welcome message belong to the site.
+        $success = course_config::update($params['courseid'], [
             'indexing_enabled' => $params['enabled'] ? 1 : 0,
-        ];
-
-        $success = course_config::update($params['courseid'], $data);
+        ]);
 
         return [
             'success' => $success,

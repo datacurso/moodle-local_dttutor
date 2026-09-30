@@ -34,6 +34,18 @@ if ($hassiteconfig) {
     $ADMIN->add('localplugins', $settings);
 
     // Enable/Disable Chat.
+    $failures = \local_dttutor\local\service_status::get_recent_failures();
+    if (!empty($failures)) {
+        $settings->add(new admin_setting_description(
+            'local_dttutor/recentfailures',
+            get_string('recent_failures', 'local_dttutor'),
+            html_writer::div(
+                get_string('recent_failures_desc', 'local_dttutor', $failures),
+                'alert alert-warning'
+            )
+        ));
+    }
+
     $settings->add(
         new admin_setting_configcheckbox(
             'local_dttutor/enabled',
@@ -44,6 +56,25 @@ if ($hassiteconfig) {
     );
 
     // Avatar Selection.
+    $settings->add(
+        new admin_setting_configcheckbox(
+            'local_dttutor/enabled_by_default',
+            get_string('enabled_by_default', 'local_dttutor'),
+            get_string('enabled_by_default_desc', 'local_dttutor'),
+            '0'
+        )
+    );
+
+    $settings->add(
+        new admin_setting_configtext(
+            'local_dttutor/retention_days',
+            get_string('retention_days', 'local_dttutor'),
+            get_string('retention_days_desc', 'local_dttutor'),
+            \local_dttutor\task\purge_old_conversations::SERVICE_RETENTION_DAYS,
+            PARAM_INT
+        )
+    );
+
     $settings->add(new admin_setting_heading(
         'local_dttutor/avatarsettings',
         get_string('avatar', 'local_dttutor'),
@@ -116,6 +147,30 @@ if ($hassiteconfig) {
             get_string('custom_prompt_desc', 'local_dttutor'),
             '',
             PARAM_TEXT
+        )
+    );
+
+    // How much of a course travels, and how many documents, is no longer asked of the
+    // administrator: the values in the code are the ones in force. Whether the material travels
+    // at all stays on the page, because that one is not a matter of tuning: it decides whether the
+    // text of a course leaves the platform, and whoever answers for the data of a site has to be
+    // able to say no without editing code.
+    $settings->add(
+        new admin_setting_configcheckbox(
+            'local_dttutor/include_content',
+            get_string('include_content', 'local_dttutor'),
+            get_string('include_content_desc', 'local_dttutor'),
+            '0'
+        )
+    );
+
+    $settings->add(
+        new admin_setting_configtext(
+            'local_dttutor/response_target_seconds',
+            get_string('response_target_seconds', 'local_dttutor'),
+            get_string('response_target_seconds_desc', 'local_dttutor'),
+            \local_dttutor\local\response_time::DEFAULT_TARGET_SECONDS,
+            PARAM_INT
         )
     );
 

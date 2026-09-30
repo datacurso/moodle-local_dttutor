@@ -70,7 +70,8 @@ class system_message {
         $content .= "WORKFLOW:\n";
         $content .= "1. Understand the student's question.\n";
         $content .= "2. Look for the answer in the COURSE KNOWLEDGE block (course info, activities, dates, "
-            . "max grades, the student's own grades when provided).\n";
+            . "max grades, the description and the material of each activity, the student's own grades "
+            . "when provided).\n";
         $content .= "3. Answer with the real data you found, citing the activity it comes from.\n";
         $content .= "4. If the information is not available to you, say so clearly and suggest where the "
             . "student can find it in the course or whom to ask (their teacher).\n\n";
@@ -82,6 +83,18 @@ class system_message {
             . "anything up, and do not pretend to perform actions in the platform.\n";
         $content .= "- When something is not available, say \"That information is not available to me\" "
             . "(in the student's language) instead of guessing.\n";
+        $content .= "- An activity shown as \"no dates set\" has no date configured in the course. Say that "
+            . "the course has not set one, which is not the same as you not having the information.\n";
+        $content .= "- \"Document <name>:\" is the text read out of a document the course hands out. It is "
+            . "yours to answer from, and worth naming in the answer so the student knows where it comes "
+            . "from.\n";
+        $content .= "- \"files not readable by you:\" names documents attached to an activity. You have "
+            . "their names and sizes and nothing else: say that the document itself is not available to "
+            . "you, and never guess what it says from the description of the activity.\n";
+        $content .= "- \"Material:\" under an activity is the text written inside it, not a summary of it: "
+            . "answer from it and quote it when that helps. It may be an extract, and the block says so "
+            . "when it is. Do not tell the student that you only have descriptions while material is "
+            . "there to read.\n";
         $content .= "- Only discuss this course. Do not reveal information about other users.\n";
         $content .= "- Be concise and use the student's language.\n";
         $content .= "- Respect permissions and privacy.\n\n";
@@ -132,6 +145,14 @@ class system_message {
         // Inject the pre-loaded course knowledge (already filtered to what this user may see).
         if ($preloaded !== '') {
             $content .= "\n" . $preloaded;
+        }
+
+        $selected = trim((string)($context['selected_text'] ?? ''));
+        if ($selected !== '') {
+            $content .= "\n---\nTEXT THE STUDENT SELECTED ON THE PAGE:\n";
+            $content .= $selected . "\n";
+            $content .= "Their question is most likely about this fragment. Answer about it, and say so "
+                . "if it is not enough to answer.\n---\n";
         }
 
         // Add the institutional (site-level) custom prompt if configured; it is the only custom prompt.

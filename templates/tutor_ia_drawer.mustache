@@ -52,6 +52,10 @@
                 <span class="tutor-ia-role">{{userrole}}</span>
             </div>
         </div>
+        <button class="btn tutor-ia-new-conversation" type="button" data-action="new-conversation"
+            aria-label="{{#str}}new_conversation, local_dttutor{{/str}}" title="{{#str}}new_conversation, local_dttutor{{/str}}">
+            {{#pix}}t/reload, core{{/pix}}
+        </button>
         <button id="tutor-ia-drawer-close-{{uniqid}}" class="btn tutor-ia-close-button" type="button">
             {{#pix}}e/cancel, core{{/pix}}
             <span class="sr-only">{{#str}}close, local_dttutor{{/str}}</span>
@@ -62,7 +66,7 @@
 
         {{! Contenedor de mensajes }}
         <div class="tutor-ia-messages-container" data-region="tutor-ia-messages">
-            <div class="tutor-ia-message ai">{{welcomemessage}}</div>
+            <div class="tutor-ia-message ai" data-region="tutor-ia-welcome">{{welcomemessage}}</div>
         </div>
 
         {{! Footer con input }}
@@ -77,6 +81,7 @@
                     </button>
                 </div>
             </div>
+            <div class="tutor-ia-input-error" data-region="tutor-ia-input-error" role="alert" style="display: none;"></div>
             <div class="tutor-ia-input-wrapper">
                 <textarea
                     class="form-control tutor-ia-input"

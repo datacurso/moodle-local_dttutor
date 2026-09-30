@@ -27,6 +27,9 @@ use local_dttutor\course_config;
  * @covers     \local_dttutor\proxy\system_message
  */
 final class system_message_test extends \advanced_testcase {
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_system_message_does_not_reference_web_service_tools(): void {
         $this->resetAfterTest();
         $context = ['course_id' => 5, 'course_name' => 'Algebra', 'location' => 'course', 'page_url' => 'x'];
@@ -40,6 +43,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringContainsString('COURSE KNOWLEDGE', $message['content']);
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_system_message_instructs_to_admit_missing_information(): void {
         $this->resetAfterTest();
 
@@ -48,6 +54,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringContainsStringIgnoringCase('not available', $message['content']);
     }
 
+    /**
+     * MDL-UNIT-007, MDL-INT-033: headers and payload of the request to the AI service.
+     */
     public function test_system_message_never_contains_the_users_fullname(): void {
         $this->resetAfterTest();
         $user = $this->getDataGenerator()->create_user(['firstname' => 'Ximena', 'lastname' => 'Quintanilla']);
@@ -70,6 +79,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringNotContainsString('Quintanilla', $message['content']);
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_page_context_helper_no_longer_exists(): void {
         global $CFG;
         require_once($CFG->dirroot . '/local/dttutor/lib.php');
@@ -77,6 +89,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertFalse(function_exists('local_dttutor_get_page_context'));
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_system_message_contains_only_the_site_level_prompt(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
@@ -94,6 +109,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringNotContainsString('Course custom instructions', $content);
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_system_message_has_no_prompt_section_when_the_site_prompt_is_empty(): void {
         $this->resetAfterTest();
         unset_config('custom_prompt', 'local_dttutor');
@@ -103,6 +121,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringNotContainsString('custom instructions', $message['content']);
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_location_hint_is_included_for_a_known_location(): void {
         $this->resetAfterTest();
         $context = ['course_id' => 5, 'course_name' => 'Algebra', 'location' => 'course'];
@@ -113,6 +134,9 @@ final class system_message_test extends \advanced_testcase {
         $this->assertStringContainsString('- Location: course', $message['content']);
     }
 
+    /**
+     * MDL-UNIT-003: composing the system message of the tutor.
+     */
     public function test_no_location_hint_for_an_unknown_location(): void {
         $this->resetAfterTest();
 
@@ -122,5 +146,76 @@ final class system_message_test extends \advanced_testcase {
         foreach (['course', 'activity', 'gradebook', 'admin', 'dashboard', 'messages', 'profile', 'calendar', 'files'] as $key) {
             $this->assertStringNotContainsString(get_string('ctx_loc_' . $key, 'local_dttutor'), $message['content']);
         }
+    }
+
+    /**
+     * MDL-E2E-008: the fragment selected on the page travels with the question.
+     */
+    public function test_the_selected_fragment_travels_with_the_question(): void {
+        $this->resetAfterTest();
+        $fragment = 'The mitochondria is the powerhouse of the cell';
+
+        $message = system_message::build('student', [
+            'course_id' => 5,
+            'location' => 'course',
+            'selected_text' => $fragment,
+        ], '');
+
+        $this->assertStringContainsString(
+            $fragment,
+            $message['content'],
+            'The fragment the user selected on the page must reach the AI service with the question.'
+        );
+    }
+
+    /**
+     * MDL-E2E-008: with nothing selected the prompt says nothing about a fragment.
+     */
+    public function test_no_fragment_section_when_nothing_is_selected(): void {
+        $this->resetAfterTest();
+
+        $message = system_message::build('student', ['course_id' => 5, 'location' => 'course'], '');
+
+        $this->assertStringNotContainsString('SELECTED ON THE PAGE', $message['content']);
+    }
+
+    /**
+     * MDL-E2E-008: a fragment of only spaces is treated as no fragment at all.
+     */
+    public function test_a_blank_fragment_is_ignored(): void {
+        $this->resetAfterTest();
+
+        $message = system_message::build('student', [
+            'course_id' => 5,
+            'location' => 'course',
+            'selected_text' => "   \n  ",
+        ], '');
+
+        $this->assertStringNotContainsString('SELECTED ON THE PAGE', $message['content']);
+    }
+
+    /**
+     * MDL-INT-016: the prompt names the material, so the tutor knows it may answer from it.
+     */
+    public function test_the_prompt_names_the_material_of_the_activities(): void {
+        $this->resetAfterTest();
+
+        $message = system_message::build('student', ['course_id' => 5, 'location' => 'course'], '');
+
+        $this->assertStringContainsString('the description and the material of each activity', $message['content']);
+        $this->assertStringContainsString('"Material:"', $message['content']);
+        $this->assertStringContainsString('only have descriptions', $message['content']);
+    }
+
+    /**
+     * MDL-INT-013: the prompt tells apart a course with no deadline from data the tutor lacks.
+     */
+    public function test_the_prompt_explains_what_an_activity_without_dates_means(): void {
+        $this->resetAfterTest();
+
+        $message = system_message::build('student', ['course_id' => 5, 'location' => 'course'], '');
+
+        $this->assertStringContainsString('no dates set', $message['content']);
+        $this->assertStringContainsString('the course has not set one', $message['content']);
     }
 }

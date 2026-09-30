@@ -26,20 +26,29 @@ namespace local_dttutor;
  * @covers     \local_dttutor\course_config
  */
 final class upgrade_schema_test extends \advanced_testcase {
+    /**
+     * MDL-INT-047: installation, dependency and schema.
+     */
     public function test_course_config_table_has_no_indexing_or_prompt_columns(): void {
         global $DB;
 
         $columns = array_keys($DB->get_columns('local_dttutor_course_config'));
 
-        foreach (['last_indexed_at', 'indexing_status', 'indexing_task_id', 'indexing_error', 'custom_prompt'] as $dead) {
+        $dropped = ['last_indexed_at', 'indexing_status', 'indexing_task_id', 'indexing_error',
+            'custom_prompt', 'tutorname', 'welcomemessage'];
+        foreach ($dropped as $dead) {
             $this->assertNotContains($dead, $columns, "Column {$dead} should have been dropped");
         }
         $this->assertEqualsCanonicalizing(
-            ['id', 'courseid', 'indexing_enabled', 'timecreated', 'timemodified', 'usermodified'],
+            ['id', 'courseid', 'indexing_enabled',
+                'timecreated', 'timemodified', 'usermodified'],
             $columns
         );
     }
 
+    /**
+     * MDL-INT-001: global and per-course enablement of the tutor.
+     */
     public function test_course_config_still_creates_and_updates_rows(): void {
         global $DB;
         $this->resetAfterTest();

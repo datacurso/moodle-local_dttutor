@@ -54,6 +54,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      */
     private function enrolled_student_in_enabled_course(): array {
         set_config('enabled', 1, 'local_dttutor');
+        set_config('enabled', 1, 'aiprovider_datacurso');
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         course_config::update($course->id, ['indexing_enabled' => 1]);
@@ -63,6 +64,9 @@ final class delete_chat_session_test extends \advanced_testcase {
         return [$course, $student];
     }
 
+    /**
+     * MDL-INT-024: deleting the conversation of the user.
+     */
     public function test_tutor_disabled_for_the_course_is_refused(): void {
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
@@ -81,6 +85,9 @@ final class delete_chat_session_test extends \advanced_testcase {
         }
     }
 
+    /**
+     * MDL-INT-024: deleting the conversation of the user.
+     */
     public function test_module_from_another_course_is_refused(): void {
         $this->resetAfterTest();
         [$course] = $this->enrolled_student_in_enabled_course();
@@ -92,6 +99,9 @@ final class delete_chat_session_test extends \advanced_testcase {
         delete_chat_session::execute((int)$course->id, (int)$foreignpage->cmid);
     }
 
+    /**
+     * MDL-INT-024: deleting the conversation of the user.
+     */
     public function test_delete_without_a_stored_session_makes_no_remote_call(): void {
         $this->resetAfterTest();
         [$course] = $this->enrolled_student_in_enabled_course();
@@ -104,6 +114,9 @@ final class delete_chat_session_test extends \advanced_testcase {
         $this->assertSame([], $fake->get_call_signatures(), 'No request (in particular no /chat/start) may be issued');
     }
 
+    /**
+     * MDL-INT-024: deleting the conversation of the user.
+     */
     public function test_delete_with_a_stored_session_issues_exactly_one_delete_and_forgets_the_row(): void {
         global $DB;
         $this->resetAfterTest();
@@ -122,6 +135,9 @@ final class delete_chat_session_test extends \advanced_testcase {
         $this->assertFalse($cache->get("session_v2_{$course->id}_{$student->id}"));
     }
 
+    /**
+     * MDL-INT-024: deleting the conversation of the user.
+     */
     public function test_delete_targets_the_module_scoped_session_only(): void {
         global $DB;
         $this->resetAfterTest();
@@ -140,6 +156,9 @@ final class delete_chat_session_test extends \advanced_testcase {
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-module']));
     }
 
+    /**
+     * MDL-INT-024: deleting the conversation of the user.
+     */
     public function test_remote_failure_is_swallowed_and_reported_as_not_deleted(): void {
         global $DB;
         $this->resetAfterTest();
@@ -156,6 +175,9 @@ final class delete_chat_session_test extends \advanced_testcase {
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-broken']));
     }
 
+    /**
+     * MDL-INT-024: deleting the conversation of the user.
+     */
     public function test_client_construction_failure_is_swallowed_and_drops_the_stored_handle(): void {
         global $DB;
         $this->resetAfterTest();
@@ -176,6 +198,9 @@ final class delete_chat_session_test extends \advanced_testcase {
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-unreachable']));
     }
 
+    /**
+     * MDL-INT-017: local reference of the conversation.
+     */
     public function test_stored_session_lookup_distinguishes_course_and_module_scope(): void {
         $this->resetAfterTest();
         session_store::upsert(3, 7, null, 'course-level');

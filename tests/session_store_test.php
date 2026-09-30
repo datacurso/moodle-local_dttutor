@@ -34,6 +34,9 @@ require_once(__DIR__ . '/fixtures/racing_session_store.php');
  * @covers     \local_dttutor\session_store
  */
 final class session_store_test extends \advanced_testcase {
+    /**
+     * MDL-INT-036: deleting personal data on a privacy request.
+     */
     public function test_purge_removes_local_rows_when_the_remote_client_cannot_be_built(): void {
         global $DB;
         $this->resetAfterTest();
@@ -54,6 +57,9 @@ final class session_store_test extends \advanced_testcase {
         $this->assertSame(1, $DB->count_records(session_store::TABLE, ['courseid' => 8]));
     }
 
+    /**
+     * MDL-INT-036: deleting personal data on a privacy request.
+     */
     public function test_purge_without_matching_rows_never_resolves_the_remote_client(): void {
         $this->resetAfterTest();
         fake_ai_client::bind_unavailable();
@@ -63,6 +69,9 @@ final class session_store_test extends \advanced_testcase {
         $this->assertDebuggingNotCalled();
     }
 
+    /**
+     * MDL-INT-017: local reference of the conversation.
+     */
     public function test_upsert_recovers_when_a_concurrent_request_inserts_the_same_key_first(): void {
         global $DB;
         $this->resetAfterTest();
@@ -76,6 +85,9 @@ final class session_store_test extends \advanced_testcase {
         $this->assertSame('remote-second', reset($rows)->remotesessionid, 'Last writer wins, as for a plain update');
     }
 
+    /**
+     * MDL-INT-017: local reference of the conversation.
+     */
     public function test_upsert_treats_a_null_cmid_and_zero_as_the_same_key(): void {
         global $DB;
         $this->resetAfterTest();

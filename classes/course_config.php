@@ -63,7 +63,8 @@ class course_config {
 
         $record = new \stdClass();
         $record->courseid = $courseid;
-        $record->indexing_enabled = 0; // Tutor disabled by default (column kept for schema compat).
+        // Disabled unless the administrator asked for the tutor to be on in new courses.
+        $record->indexing_enabled = (int)(bool)get_config('local_dttutor', 'enabled_by_default');
         $record->timecreated = time();
         $record->timemodified = time();
         $record->usermodified = $USER->id;
@@ -87,12 +88,10 @@ class course_config {
         $record = self::get_by_course($courseid);
 
         // Only update allowed fields.
-        $allowedfields = [
-            'indexing_enabled',
-        ];
+        $allowedfields = ['indexing_enabled'];
 
         foreach ($data as $key => $value) {
-            if (in_array($key, $allowedfields) && property_exists($record, $key)) {
+            if (in_array($key, $allowedfields, true)) {
                 $record->$key = $value;
             }
         }
@@ -104,10 +103,10 @@ class course_config {
     }
 
     /**
-     * Check if the tutor is enabled for a course.
+     * Whether the tutor is switched on for a course.
      *
      * @param int $courseid Course ID
-     * @return bool True if tutor is enabled
+     * @return bool True when the tutor is enabled for that course
      * @since Moodle 4.5
      */
     public static function is_enabled_for_course(int $courseid): bool {

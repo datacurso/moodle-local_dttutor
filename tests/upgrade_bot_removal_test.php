@@ -46,6 +46,9 @@ final class upgrade_bot_removal_test extends \advanced_testcase {
         return [$bot, $coursea, $courseb];
     }
 
+    /**
+     * MDL-INT-045: retiring the legacy service account.
+     */
     public function test_bot_is_suspended_unenrolled_and_config_removed(): void {
         global $DB;
         $this->resetAfterTest();
@@ -64,6 +67,9 @@ final class upgrade_bot_removal_test extends \advanced_testcase {
         $this->assertFalse(get_config('local_dttutor', 'serviceuserid'));
     }
 
+    /**
+     * MDL-INT-045: retiring the legacy service account.
+     */
     public function test_bot_is_found_by_username_when_config_is_missing(): void {
         global $DB;
         $this->resetAfterTest();
@@ -75,6 +81,9 @@ final class upgrade_bot_removal_test extends \advanced_testcase {
         $this->assertFalse($DB->record_exists('user_enrolments', ['userid' => $bot->id]));
     }
 
+    /**
+     * MDL-INT-045: retiring the legacy service account.
+     */
     public function test_other_users_are_untouched(): void {
         global $DB;
         $this->resetAfterTest();
@@ -87,6 +96,9 @@ final class upgrade_bot_removal_test extends \advanced_testcase {
         $this->assertEquals(0, $DB->get_field('user', 'suspended', ['id' => $student->id]));
     }
 
+    /**
+     * MDL-INT-045: retiring the legacy service account.
+     */
     public function test_retire_is_a_noop_when_bot_is_absent(): void {
         global $DB;
         $this->resetAfterTest();

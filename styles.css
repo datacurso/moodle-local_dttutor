@@ -42,12 +42,25 @@
     border-radius: 50%;
 }
 
+/* Drawer width: one value, so the panel and the shift of the page never disagree. */
+:root {
+    --tutor-ia-drawer-width: 380px;
+}
+
+/* On a narrow screen the panel leaves a strip of the page visible instead of covering it. */
+@media (max-width: 576px) {
+    :root {
+        --tutor-ia-drawer-width: calc(100vw - 2.5rem);
+    }
+}
+
 /* Drawer Container */
 .tutor-ia-drawer {
     position: fixed;
     top: var(--tutor-ia-drawer-top, 60px); /* Default 60px, adjusted by JavaScript */
     bottom: 0;
-    width: 380px;
+    width: var(--tutor-ia-drawer-width);
+    max-width: 100vw;
     background-color: #f8f9fa;
     z-index: 1016;
     visibility: hidden;
@@ -57,7 +70,7 @@
 
 /* Drawer Position: Right (default) */
 .tutor-ia-drawer-right {
-    right: calc(-380px - 10px);
+    right: calc(-1 * var(--tutor-ia-drawer-width) - 10px);
     transition: right 0.2s ease, visibility 0.2s ease;
 }
 
@@ -68,13 +81,49 @@
 
 /* Drawer Position: Left */
 .tutor-ia-drawer-left {
-    left: calc(-380px - 10px);
+    left: calc(-1 * var(--tutor-ia-drawer-width) - 10px);
     transition: left 0.2s ease, visibility 0.2s ease;
 }
 
 .tutor-ia-drawer-left.show {
     left: 0;
     visibility: visible;
+}
+
+/* Shifting the page aside is ours, so it does not depend on the classes of one theme. */
+.tutor-ia-shifted-right {
+    padding-right: var(--tutor-ia-drawer-width);
+    transition: padding 0.2s ease;
+}
+
+.tutor-ia-shifted-left {
+    padding-left: var(--tutor-ia-drawer-width);
+    transition: padding 0.2s ease;
+}
+
+/* Too narrow to shift anything: the panel takes the screen while it is open. */
+@media (max-width: 576px) {
+    .tutor-ia-shifted-right,
+    .tutor-ia-shifted-left {
+        padding-right: 0;
+        padding-left: 0;
+    }
+}
+
+/* A notice of the chat itself, never a message of the tutor. */
+.tutor-ia-notice {
+    margin: 0.5rem 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    background-color: #fff3cd;
+    color: #664d03;
+    font-size: 0.875rem;
+}
+
+.tutor-ia-input-error {
+    margin: 0 1rem 0.5rem;
+    color: #842029;
+    font-size: 0.875rem;
 }
 
 /* ============================================

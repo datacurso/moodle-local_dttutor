@@ -36,9 +36,24 @@ $definitions = [
     // Remote chat session handles (session id, TTL, validation timestamps) keyed by
     // "session_v2_{courseid}_{userid}[_{cmid}]", so a session is reused instead of being
     // re-created on every request. The durable copy lives in local_dttutor_session.
+    'service_status' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'ttl' => 300, // Five minutes: enough to spare a call on every page load.
+        'simplekeys' => true,
+        'simpledata' => true,
+    ],
     'sessions' => [
         'mode' => cache_store::MODE_APPLICATION,
         'simplekeys' => true,
         'simpledata' => true,
+    ],
+    // Text read out of the documents a course hands out, keyed by the content hash of the file.
+    // A document that never changes is read once: the hash changes with the file, so a corrected
+    // document is read again on its own. What could not be read is kept too, with its reason, so
+    // a scanned PDF is not sent again on every rebuild.
+    'file_text' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'ttl' => 604800, // A week: long enough that a stable course pays the reading once.
+        'simplekeys' => true,
     ],
 ];
