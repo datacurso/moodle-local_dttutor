@@ -68,15 +68,17 @@ class activity_content {
     private const LESSON_CONTENT_PAGE = 20;
 
     /**
-     * Whether the administrator has allowed the content of the course to reach the AI service.
+     * Whether the content of the course reaches the AI service.
      *
-     * Off unless asked for: sending the material of a course to an external service is a decision
-     * about data protection, not a default.
+     * On unless a site says otherwise. It is no longer asked of the administrator, because a tutor
+     * that cannot read the course answers almost nothing; it stays configuration, so a site bound
+     * by a stricter reading of its data protection duties can still turn it off.
      *
      * @return bool
      */
     public static function is_enabled(): bool {
-        return (bool)get_config('local_dttutor', 'include_content');
+        $configured = get_config('local_dttutor', 'include_content');
+        return $configured === false ? true : (bool)$configured;
     }
 
     /**

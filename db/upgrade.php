@@ -186,5 +186,16 @@ function xmldb_local_dttutor_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026093001, 'local', 'dttutor');
     }
 
+    if ($oldversion < 2026093002) {
+        // Reading the course and its documents is no longer asked of the administrator, and both
+        // are on. A site that had them off is brought to the new default, which is the point of
+        // the change: a tutor that cannot read the course answers almost nothing.
+        set_config('include_content', 1, 'local_dttutor');
+        set_config('include_files', 1, 'local_dttutor');
+
+        // Dttutor savepoint reached.
+        upgrade_plugin_savepoint(true, 2026093002, 'local', 'dttutor');
+    }
+
     return true;
 }

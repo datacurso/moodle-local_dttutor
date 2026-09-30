@@ -150,65 +150,11 @@ if ($hassiteconfig) {
         )
     );
 
+    // What the tutor reads of a course, how much of it and how many documents are no longer
+    // asked of the administrator: the values in the code are the ones in force. They remain
+    // configuration, so a site that needs to depart from them can still set them.
+
     // Send the student's own grades to the AI service (opt-in, data minimisation).
-    $settings->add(
-        new admin_setting_configtext(
-            'local_dttutor/max_activities',
-            get_string('max_activities', 'local_dttutor'),
-            get_string('max_activities_desc', 'local_dttutor'),
-            \local_dttutor\proxy\context_preloader::DEFAULT_MAX_ACTIVITIES,
-            PARAM_INT
-        )
-    );
-
-    $settings->add(
-        new admin_setting_configcheckbox(
-            'local_dttutor/include_content',
-            get_string('include_content', 'local_dttutor'),
-            get_string('include_content_desc', 'local_dttutor'),
-            '0'
-        )
-    );
-
-    $settings->add(
-        new admin_setting_configtext(
-            'local_dttutor/content_chars_per_activity',
-            get_string('content_chars_per_activity', 'local_dttutor'),
-            get_string('content_chars_per_activity_desc', 'local_dttutor'),
-            \local_dttutor\proxy\activity_content::DEFAULT_CHARS_PER_ACTIVITY,
-            PARAM_INT
-        )
-    );
-
-    $settings->add(
-        new admin_setting_configtext(
-            'local_dttutor/content_chars_total',
-            get_string('content_chars_total', 'local_dttutor'),
-            get_string('content_chars_total_desc', 'local_dttutor'),
-            \local_dttutor\proxy\activity_content::DEFAULT_CHARS_TOTAL,
-            PARAM_INT
-        )
-    );
-
-    $settings->add(
-        new admin_setting_configcheckbox(
-            'local_dttutor/include_files',
-            get_string('include_files', 'local_dttutor'),
-            get_string('include_files_desc', 'local_dttutor'),
-            '0'
-        )
-    );
-
-    $settings->add(
-        new admin_setting_configtext(
-            'local_dttutor/file_chars',
-            get_string('file_chars', 'local_dttutor'),
-            get_string('file_chars_desc', 'local_dttutor'),
-            \local_dttutor\proxy\file_content::DEFAULT_CHARS_PER_FILE,
-            PARAM_INT
-        )
-    );
-
     $settings->add(
         new admin_setting_configcheckbox(
             'local_dttutor/include_grades',

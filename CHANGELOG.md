@@ -49,6 +49,7 @@ Thirty-five of the thirty-seven gaps the scope listed as pending, plus the test 
 - **The position configurator answers to touch and to the keyboard**, and warns when the chosen corner is where the platform keeps its own floating controls (MDL-E2E-013).
 
 ### Removed
+- **The reading of the course is no longer asked of the administrator**: the six settings that governed it —how many activities travel, whether the material travels and its two character limits, whether the documents are read and their limit— are gone from the settings page, and the values in the code are the ones in force. Reading the course and its documents is now **on**, where both used to be off, and upgrading turns them on for a site that had them off. They remain configuration, so a site bound by a stricter reading of its data protection duties can still set them, but nothing in the interface offers it.
 - **The identity of the tutor is no longer set per course** (MDL-INT-043): the section that let a course give the tutor its own name and welcome message is gone from the management page, and so are the two columns that held them. The tutor introduces itself the same way everywhere, with what the site configures. Upgrading drops the columns, so a course that had written its own is back to the values of the site.
 
 ### Fixed

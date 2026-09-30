@@ -52,16 +52,18 @@ class file_content {
     public const READABLE_EXTENSIONS = ['pdf', 'docx', 'pptx', 'txt', 'md', 'csv', 'html', 'htm'];
 
     /**
-     * Whether the administrator has allowed the documents of the course to be read.
+     * Whether the documents of the course are read.
      *
-     * Off unless asked for. Sending a whole document to an external service is a wider step than
-     * sending the text written in the activity itself, so it is a decision of its own.
+     * On unless a site says otherwise, like the material they belong to, and off whenever that is:
+     * a document is material, and reading one when the rest of the course stays behind would make
+     * no sense.
      *
      * @return bool
      */
     public static function is_enabled(): bool {
-        return (bool)get_config('local_dttutor', 'include_files')
-            && activity_content::is_enabled();
+        $configured = get_config('local_dttutor', 'include_files');
+        $wanted = $configured === false ? true : (bool)$configured;
+        return $wanted && activity_content::is_enabled();
     }
 
     /**
