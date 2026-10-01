@@ -62,6 +62,15 @@ final class provider_config_test extends \advanced_testcase {
     }
 
     /**
+     * Skip the test unless the provider itself is installed, which not every test site has.
+     */
+    private function require_installed_provider(): void {
+        if (!class_exists(provider_config::PROVIDER_CLASS)) {
+            $this->markTestSkipped('The aiprovider_datacurso plugin is not installed on this site.');
+        }
+    }
+
+    /**
      * A site where nobody configured the provider has it switched off.
      */
     public function test_the_provider_is_off_until_it_is_configured(): void {
@@ -99,6 +108,7 @@ final class provider_config_test extends \advanced_testcase {
      */
     public function test_moodle_50_reads_the_enabled_instance(): void {
         $this->require_instances();
+        $this->require_installed_provider();
 
         $this->generator()->create_ai_provider(['licensekey' => 'instance-key']);
 
@@ -127,6 +137,7 @@ final class provider_config_test extends \advanced_testcase {
      */
     public function test_moodle_50_counts_an_enabled_instance_without_a_key(): void {
         $this->require_instances();
+        $this->require_installed_provider();
 
         $this->generator()->create_ai_provider(['licensekey' => '']);
 
@@ -140,6 +151,7 @@ final class provider_config_test extends \advanced_testcase {
      */
     public function test_moodle_50_prefers_the_instance_that_holds_a_key(): void {
         $this->require_instances();
+        $this->require_installed_provider();
 
         $this->generator()->create_ai_provider(['licensekey' => '']);
         $this->generator()->create_ai_provider(['licensekey' => 'second-key']);
@@ -151,6 +163,7 @@ final class provider_config_test extends \advanced_testcase {
      * The adapter sends the key and builds the rate limiter the way the installed provider expects.
      */
     public function test_the_adapter_reads_the_key_and_the_rate_limit_on_this_release(): void {
+        $this->require_installed_provider();
         $this->generator()->create_ai_provider(['licensekey' => 'adapter-key']);
 
         $client = new datacurso_ai_client();

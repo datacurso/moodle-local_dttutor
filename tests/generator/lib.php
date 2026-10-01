@@ -70,7 +70,10 @@ class local_dttutor_generator extends component_generator_base {
     /**
      * Configure the AI provider the tutor depends on, the way the running Moodle release keeps it.
      *
-     * Moodle 4.5 switches the provider on as a plugin; Moodle 5.0+ needs an instance of it.
+     * Moodle 4.5 switches the provider on as a plugin; Moodle 5.0+ needs an instance of it. The
+     * instance is written as the AI subsystem stores it rather than through its API, which refuses
+     * a provider that is not installed: the tests of this plugin never reach the provider itself,
+     * and the sites that run them do not always have it.
      *
      * @param array $data Keys, all optional: enabled (defaults to on) and licensekey.
      */
@@ -86,12 +89,13 @@ class local_dttutor_generator extends component_generator_base {
             return;
         }
 
-        (new \core_ai\manager($DB))->create_provider_instance(
-            classname: provider_config::PROVIDER_CLASS,
-            name: 'Datacurso',
-            enabled: $enabled,
-            config: ['licensekey' => $licensekey],
-        );
+        $DB->insert_record('ai_providers', [
+            'name' => 'Datacurso',
+            'provider' => provider_config::PROVIDER_CLASS,
+            'enabled' => (int)$enabled,
+            'config' => json_encode(['licensekey' => $licensekey]),
+            'actionconfig' => json_encode([]),
+        ]);
     }
 
     /**
@@ -105,9 +109,6 @@ class local_dttutor_generator extends component_generator_base {
             return;
         }
 
-        $manager = new \core_ai\manager($DB);
-        foreach ($manager->get_provider_instances(['provider' => provider_config::PROVIDER_CLASS]) as $instance) {
-            $manager->disable_provider_instance($instance);
-        }
+        $DB->set_field('ai_providers', 'enabled', 0, ['provider' => provider_config::PROVIDER_CLASS]);
     }
 }
