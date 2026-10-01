@@ -5,6 +5,16 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.11] - 2026-09-30
+
+### Fixed
+- **The tutor works on Moodle 5.0 again, without breaking Moodle 4.5**: Moodle 5.0 moved the configuration of AI providers out of the plugin settings and into instances (the `ai_providers` table), each one switched on and off on its own and carrying its own licence key, and `aiprovider_datacurso` followed. The tutor still read the 4.5 model, which broke it in three ways:
+  - Every page with the tutor on ended in a fatal error, and so did every chat request and the course management page: the check that follows the AI provider being switched off (MDL-INT-038) called `\core\plugininfo\aiprovider::is_plugin_enabled()`, which Moodle 5.0 removed. On Moodle 5.0+ the provider now counts as enabled when one of its instances is, and on Moodle 4.5 when its plugin is.
+  - The chat request went out without its `License-Key` header and was rejected, because the key was read from `get_config('aiprovider_datacurso', 'licensekey')`, empty on Moodle 5.0. It is now read from the enabled instance.
+  - The answer never arrived: the provider rate limiter was built with `new ratelimiter()`, whose constructor now requires the provider instance, and the resulting `ArgumentCountError` ended the stream with no frame at all. The rate limiter is now built for whichever provider release is installed, and a rate limit that cannot be resolved only omits the headers instead of failing the request.
+- **A single place knows where the provider keeps its configuration**: `provider_config` recognises the release by the API the AI subsystem offers rather than by its version number, so the rest of the plugin never has to know which one is running.
+- **The tests configure the provider on either release**: they go through the generator of the plugin, which creates an instance on Moodle 5.0+ and switches the plugin on Moodle 4.5. The Behat scenarios that expect the tutor to show now configure the provider too; without it the button could not appear on either release.
+
 ## [2.0.10] - 2026-09-28
 
 Thirty-five of the thirty-seven gaps the scope listed as pending, plus the test suite that checks them.
