@@ -37,7 +37,7 @@ final class request_guard_test extends \advanced_testcase {
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course($courseoptions);
         set_config('enabled', 1, 'local_dttutor');
-        set_config('enabled', 1, 'aiprovider_datacurso');
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         course_config::update($course->id, ['indexing_enabled' => 1]);
         return $course;
     }

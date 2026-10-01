@@ -20,6 +20,9 @@ Feature: Opening and closing the chat panel
       | enabled        | 1                                                  | local_dttutor |
       | tutorname      | Tutor of {coursename}                              | local_dttutor |
       | welcomemessage | Hello {firstname}, I am {teachername}. Ask me away. | local_dttutor |
+    And the following "local_dttutor > ai providers" exist:
+      | enabled |
+      | 1       |
     And the following "local_dttutor > course settings" exist:
       | course | enabled |
       | C1     | 1       |

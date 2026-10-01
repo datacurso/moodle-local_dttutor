@@ -18,6 +18,9 @@ Feature: Managing the tutor inside a course
       | teacher1 | C1     | editingteacher |
     And the following config values are set as admin:
       | enabled | 1 | local_dttutor |
+    And the following "local_dttutor > ai providers" exist:
+      | enabled |
+      | 1       |
 
   @MDL-E2E-009
   Scenario: The page warns that the students are not seeing the chat

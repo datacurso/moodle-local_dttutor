@@ -36,6 +36,11 @@ class behat_local_dttutor_generator extends behat_generator_base {
                 'required' => ['course'],
                 'switchids' => ['course' => 'courseid'],
             ],
+            'ai providers' => [
+                'singular' => 'ai provider',
+                'datagenerator' => 'ai_provider',
+                'required' => [],
+            ],
             'conversations' => [
                 'singular' => 'conversation',
                 'datagenerator' => 'conversation',

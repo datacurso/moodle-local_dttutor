@@ -50,7 +50,7 @@ final class service_status_test extends \advanced_testcase {
      * MDL-E2E-026: with the provider disabled the page says the service is not available.
      */
     public function test_the_service_is_reported_as_unavailable_without_the_provider(): void {
-        unset_config('enabled', 'aiprovider_datacurso');
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->disable_ai_provider();
 
         $status = service_status::get();
 
@@ -62,7 +62,7 @@ final class service_status_test extends \advanced_testcase {
      * MDL-E2E-026: with the provider enabled the page says the service is available.
      */
     public function test_the_service_is_reported_as_available_with_the_provider(): void {
-        set_config('enabled', 1, 'aiprovider_datacurso');
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
 
         $status = service_status::get();
 

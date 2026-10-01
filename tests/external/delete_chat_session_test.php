@@ -54,7 +54,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      */
     private function enrolled_student_in_enabled_course(): array {
         set_config('enabled', 1, 'local_dttutor');
-        set_config('enabled', 1, 'aiprovider_datacurso');
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         course_config::update($course->id, ['indexing_enabled' => 1]);

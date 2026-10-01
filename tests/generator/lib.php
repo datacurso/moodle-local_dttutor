@@ -24,6 +24,8 @@
  */
 
 use local_dttutor\course_config;
+use local_dttutor\httpclient\client_factory;
+use local_dttutor\httpclient\provider_config;
 use local_dttutor\session_store;
 
 /**
@@ -63,5 +65,49 @@ class local_dttutor_generator extends component_generator_base {
             isset($data['cmid']) ? (int)$data['cmid'] : null,
             (string)($data['remotesessionid'] ?? 'behat-session')
         );
+    }
+
+    /**
+     * Configure the AI provider the tutor depends on, the way the running Moodle release keeps it.
+     *
+     * Moodle 4.5 switches the provider on as a plugin; Moodle 5.0+ needs an instance of it.
+     *
+     * @param array $data Keys, all optional: enabled (defaults to on) and licensekey.
+     */
+    public function create_ai_provider(array $data = []): void {
+        global $DB;
+
+        $enabled = !array_key_exists('enabled', $data) || (bool)$data['enabled'];
+        $licensekey = (string)($data['licensekey'] ?? 'test-licence-key');
+
+        if (!provider_config::has_instances()) {
+            \core\plugininfo\aiprovider::enable_plugin(client_factory::PROVIDER, (int)$enabled);
+            set_config('licensekey', $licensekey, provider_config::COMPONENT);
+            return;
+        }
+
+        (new \core_ai\manager($DB))->create_provider_instance(
+            classname: provider_config::PROVIDER_CLASS,
+            name: 'Datacurso',
+            enabled: $enabled,
+            config: ['licensekey' => $licensekey],
+        );
+    }
+
+    /**
+     * Switch the AI provider off, as an administrator does in the AI administration of Moodle.
+     */
+    public function disable_ai_provider(): void {
+        global $DB;
+
+        if (!provider_config::has_instances()) {
+            \core\plugininfo\aiprovider::enable_plugin(client_factory::PROVIDER, 0);
+            return;
+        }
+
+        $manager = new \core_ai\manager($DB);
+        foreach ($manager->get_provider_instances(['provider' => provider_config::PROVIDER_CLASS]) as $instance) {
+            $manager->disable_provider_instance($instance);
+        }
     }
 }

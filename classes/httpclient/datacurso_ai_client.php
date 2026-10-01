@@ -27,13 +27,10 @@ use aiprovider_datacurso\local\ratelimiter;
  * fails (an exception, or an \Error when the provider is not installed) when the provider
  * client cannot be built, exactly like instantiating the provider client directly.
  *
- * The provider stores its configuration differently depending on the Moodle release, and this
- * adapter absorbs that difference so the rest of the plugin never has to know about it:
- *  - Moodle 4.5: the license key and the rate limit live in the plugin configuration, and
- *    {@see ratelimiter} is built without arguments.
- *  - Moodle 5.0+: the AI subsystem stores provider configuration in per-instance records
- *    (the ai_providers table), so both are read from the enabled provider instance, which
- *    {@see ratelimiter} also requires as a constructor argument.
+ * The provider stores its configuration differently depending on the Moodle release; where it
+ * lives is resolved by {@see provider_config}, and this adapter only builds {@see ratelimiter}
+ * the way the installed provider expects it: without arguments on Moodle 4.5, with the enabled
+ * provider instance on Moodle 5.0+.
  *
  * @package    local_dttutor
  * @copyright  2026 Datacurso
@@ -43,14 +40,11 @@ final class datacurso_ai_client implements ai_client {
     /** @var string Service identifier declared to the provider rate limiter. */
     private const SERVICE_ID = 'local_dttutor';
 
-    /** @var string Frankenstyle name of the provider this adapter talks to. */
-    private const PROVIDER_NAME = 'aiprovider_datacurso';
-
     /** @var ai_services_api Provider HTTP client. */
     private ai_services_api $api;
 
-    /** @var object|null The enabled provider instance on Moodle 5.0+, null on Moodle 4.5 or when there is none. */
-    private ?object $instance = null;
+    /** @var \core_ai\provider|null The enabled provider instance on Moodle 5.0+, null on Moodle 4.5 or when there is none. */
+    private ?\core_ai\provider $instance = null;
 
     /** @var bool Whether the provider instance lookup has already been attempted. */
     private bool $instanceresolved = false;
@@ -88,22 +82,13 @@ final class datacurso_ai_client implements ai_client {
     /**
      * License key configured in the provider.
      *
-     * Reads the enabled provider instance first (Moodle 5.0+) and falls back to the plugin
-     * configuration (Moodle 4.5), so the License-Key header is sent on every supported release.
+     * Read from the enabled provider instance on Moodle 5.0+ and from the plugin configuration on
+     * Moodle 4.5, so the License-Key header is sent on every supported release.
      *
      * @return string
      */
     public function get_license_key(): string {
-        $instance = $this->get_provider_instance();
-        if ($instance !== null) {
-            $config = (array)($instance->config ?? []);
-            $licensekey = $config['licensekey'] ?? '';
-            if (is_string($licensekey) && $licensekey !== '') {
-                return $licensekey;
-            }
-        }
-
-        return (string)(get_config(self::PROVIDER_NAME, 'licensekey') ?: '');
+        return provider_config::get_license_key($this->get_provider_instance());
     }
 
     /**
@@ -166,50 +151,14 @@ final class datacurso_ai_client implements ai_client {
     }
 
     /**
-     * Resolve the enabled Datacurso provider instance, if this Moodle release has provider instances.
+     * Resolve the enabled provider instance, at most once per adapter.
      *
-     * Moodle 5.0 moved AI provider configuration out of the plugin settings and into per-instance
-     * records; Moodle 4.5 has no provider instances, so this returns null there and the callers
-     * fall back to the plugin configuration. The lookup is performed at most once per adapter.
-     *
-     * @return object|null The enabled aiprovider_datacurso instance, or null when there is none.
+     * @return \core_ai\provider|null The instance, or null on Moodle 4.5 or when none is enabled.
      */
-    private function get_provider_instance(): ?object {
-        global $DB;
-
-        if ($this->instanceresolved) {
-            return $this->instance;
-        }
-        $this->instanceresolved = true;
-
-        if (!class_exists('\core_ai\manager') || !method_exists('\core_ai\manager', 'get_provider_instances')) {
-            // Moodle 4.5: provider configuration lives in the plugin settings.
-            return null;
-        }
-
-        try {
-            $manager = new \core_ai\manager($DB);
-            $fallback = null;
-            foreach ($manager->get_provider_instances() as $instance) {
-                if ($instance->get_name() !== self::PROVIDER_NAME || empty($instance->enabled)) {
-                    continue;
-                }
-                $config = (array)($instance->config ?? []);
-                if (!empty($config['licensekey'])) {
-                    $this->instance = $instance;
-                    return $this->instance;
-                }
-                $fallback ??= $instance;
-            }
-            // No enabled instance carries a license key: keep the first enabled one, which is
-            // still enough for the rate limit configuration.
-            $this->instance = $fallback;
-        } catch (\Throwable $e) {
-            debugging(
-                '[local_dttutor] AI_PROVIDER_INSTANCE_LOOKUP_FAILED ' . get_class($e),
-                DEBUG_DEVELOPER
-            );
-            $this->instance = null;
+    private function get_provider_instance(): ?\core_ai\provider {
+        if (!$this->instanceresolved) {
+            $this->instance = provider_config::get_instance();
+            $this->instanceresolved = true;
         }
 
         return $this->instance;
