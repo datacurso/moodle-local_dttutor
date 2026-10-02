@@ -107,6 +107,53 @@ final class file_content_test extends \advanced_testcase {
     }
 
     /**
+     * MDL-INT-016: the first activity holding documents does not take the whole budget.
+     */
+    public function test_documents_share_the_budget_between_activities(): void {
+        $this->enable_files();
+        set_config('content_chars_total', 2000, 'local_dttutor');
+        [$course, $student] = $this->course_with_a_document('first.pdf');
+        $second = $this->getDataGenerator()->create_module('resource', ['course' => $course->id, 'name' => 'Annex']);
+        $context = \context_module::instance($second->cmid);
+        get_file_storage()->delete_area_files($context->id, 'mod_resource', 'content');
+        get_file_storage()->create_file_from_string([
+            'contextid' => $context->id, 'component' => 'mod_resource', 'filearea' => 'content',
+            'itemid' => 0, 'filepath' => '/', 'filename' => 'second.pdf',
+        ], 'the bytes of second.pdf');
+        $fake = new fake_ai_client();
+        $fake->enqueue(['extracted' => [
+            ['filename' => 'first.pdf', 'sha1' => sha1('the bytes of first.pdf'), 'text' => str_repeat('a', 4000)],
+            ['filename' => 'second.pdf', 'sha1' => sha1('the bytes of second.pdf'), 'text' => 'Harvest in autumn'],
+        ], 'skipped' => []]);
+        \core\di::set(ai_client::class, $fake);
+
+        $text = context_preloader::build((int)$course->id, (int)$student->id);
+
+        $this->assertStringContainsString('Document first.pdf: aaa', $text);
+        $this->assertStringContainsString('Document second.pdf: Harvest in autumn', $text);
+        $this->assertStringNotContainsString('files not readable by you', $text);
+    }
+
+    /**
+     * MDL-INT-016: a document read but left out for want of budget is still named.
+     */
+    public function test_a_document_left_out_of_the_budget_is_named(): void {
+        $this->enable_files();
+        set_config('content_chars_total', 1, 'local_dttutor');
+        [$course, $student] = $this->course_with_a_document();
+        $fake = new fake_ai_client();
+        $fake->enqueue(['extracted' => [
+            ['filename' => 'guide.pdf', 'sha1' => sha1('the bytes of guide.pdf'), 'text' => 'Prune the vine in winter'],
+        ], 'skipped' => []]);
+        \core\di::set(ai_client::class, $fake);
+
+        $text = context_preloader::build((int)$course->id, (int)$student->id);
+
+        $this->assertStringNotContainsString('Prune the vine in winter', $text);
+        $this->assertStringContainsString('files not readable by you: guide.pdf', $text);
+    }
+
+    /**
      * MDL-INT-016: a document is read once, however many times the knowledge is built.
      */
     public function test_a_document_already_read_is_not_sent_again(): void {

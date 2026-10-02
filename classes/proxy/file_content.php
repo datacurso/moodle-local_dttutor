@@ -164,30 +164,74 @@ class file_content {
      * @return string The text of each document, or an empty string when none could be read.
      */
     public static function text_of(\course_modinfo $modinfo, int $cmid, int $budget): string {
+        return implode("\n", self::documents_of($modinfo, $cmid, $budget));
+    }
+
+    /**
+     * The text read out of each document of one activity, sharing the budget between them.
+     *
+     * Each document gets an equal share of what is left, and what one leaves unused passes on
+     * to the next. Handing the whole budget to the first document would leave the others of a
+     * folder with nothing, however short the first one is.
+     *
+     * @param \course_modinfo $modinfo Course the activity belongs to.
+     * @param int $cmid Activity whose documents are wanted.
+     * @param int $budget Characters available for the documents of this activity.
+     * @return string[] The text of each document that travels, by file name.
+     */
+    public static function documents_of(\course_modinfo $modinfo, int $cmid, int $budget): array {
         if (!self::is_enabled() || $budget <= 0) {
-            return '';
+            return [];
         }
 
-        $cache = \cache::make('local_dttutor', 'file_text');
+        $texts = self::readable_texts($modinfo, $cmid);
         $parts = [];
-        foreach (self::files_of($modinfo, $cmid) as $file) {
-            if ($budget <= 0) {
+        $left = count($texts);
+        foreach ($texts as $filename => $text) {
+            $share = intdiv($budget, $left--);
+            if ($share <= 0) {
                 break;
             }
-            $cached = $cache->get($file->get_contenthash());
-            if (!is_array($cached) || trim((string)($cached['text'] ?? '')) === '') {
-                continue;
-            }
 
-            $line = self::DOCUMENT_LABEL . $file->get_filename() . ': ' . $cached['text'];
-            if (\core_text::strlen($line) > $budget) {
-                $line = \core_text::substr($line, 0, $budget) . activity_content::TRUNCATION_MARK;
+            $line = self::DOCUMENT_LABEL . $filename . ': ' . $text;
+            if (\core_text::strlen($line) > $share) {
+                $line = \core_text::substr($line, 0, $share) . activity_content::TRUNCATION_MARK;
             }
             $budget -= \core_text::strlen($line);
-            $parts[] = $line;
+            $parts[$filename] = $line;
         }
 
-        return implode("\n", $parts);
+        return $parts;
+    }
+
+    /**
+     * Whether any document of an activity has text that could travel.
+     *
+     * @param \course_modinfo $modinfo Course the activity belongs to.
+     * @param int $cmid Activity whose documents are checked.
+     * @return bool
+     */
+    public static function has_text(\course_modinfo $modinfo, int $cmid): bool {
+        return self::is_enabled() && self::readable_texts($modinfo, $cmid) !== [];
+    }
+
+    /**
+     * The text already read out of the documents of an activity.
+     *
+     * @param \course_modinfo $modinfo Course the activity belongs to.
+     * @param int $cmid Activity whose documents are wanted.
+     * @return string[] Text of each document that has any, by file name.
+     */
+    private static function readable_texts(\course_modinfo $modinfo, int $cmid): array {
+        $cache = \cache::make('local_dttutor', 'file_text');
+        $texts = [];
+        foreach (self::files_of($modinfo, $cmid) as $file) {
+            $cached = $cache->get($file->get_contenthash());
+            if (is_array($cached) && trim((string)($cached['text'] ?? '')) !== '') {
+                $texts[$file->get_filename()] = (string)$cached['text'];
+            }
+        }
+        return $texts;
     }
 
     /**
