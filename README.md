@@ -23,29 +23,35 @@ The chat interface features:
 
 ### Admin Settings
 
-![Admin Settings - Chat Configuration](pix/screenshots/1.png)
+![General settings and avatar selection](pix/screenshots/1.png)
 
-**Configuration panel** showing the global chat enable toggle and the avatar selection with 10 built-in avatar options.
-
----
-
-![Avatar Position Configuration](pix/screenshots/2.png)
-
-**Avatar positioning** with preset corner positions (bottom-right/bottom-left), custom positioning options, drawer side selection, and live preview showing how the avatar will appear on course pages.
+**General settings and avatar**: the global *Enable Chat* toggle, *Enable the tutor in new courses*, *Days conversations are kept* (default 7), and the gallery of 10 built-in avatars.
 
 ---
 
-![Tutor Customization](pix/screenshots/3.png)
+![Custom avatar and avatar position](pix/screenshots/2.png)
 
-**Tutor customization settings** allowing you to personalize the welcome message, tutor name, and custom AI behavior prompts. Supports placeholders like {teachername}, {coursename}, {username}, and {firstname}.
+**Custom avatar and position**: upload your own avatar image, pick a position preset (bottom-right corner, bottom-left corner or custom position), choose the side the drawer opens from, and check the result in the live preview.
+
+---
+
+![Tutor customization](pix/screenshots/3.png)
+
+**Tutor customization**: the welcome message, the tutor name and a custom prompt for institutional instructions. The welcome message supports the `{teachername}`, `{coursename}`, `{username}` and `{firstname}` placeholders.
+
+---
+
+![Course material, response time and grades](pix/screenshots/4.png)
+
+**Data sent to the AI and response time**: *Send the course material to the AI tutor* (off by default), *Response time target* (default 20 seconds) and *Send the student's grades to the AI tutor* (off by default).
 
 ---
 
 ### Chat Interface
 
-![Chat Drawer in Action](pix/screenshots/4.png)
+![Chat drawer on a course page](pix/screenshots/5.png)
 
-**Live chat interface** showing the AI tutor drawer open on a course page, with real-time conversation support, role detection (Teacher), and personalized welcome message.
+**Chat drawer on a course page**: the AI tutor drawer open next to the course content, with the tutor name, the detected role (Teacher), the welcome message, and buttons to reset the conversation and close the drawer.
 
 ## Explore the suite
 
@@ -103,8 +109,10 @@ After installation, configure the plugin:
 
 1. Navigate to **Site administration > Plugins > Local plugins > AI Tutor**
 
-2. **Enable the Chat**:
-   - Check "Enable Chat" to activate the floating chat globally
+2. **General settings**:
+   - **Enable Chat** (enabled by default): turns the floating chat on or off for the whole site
+   - **Enable the tutor in new courses** (disabled by default): new courses start with the tutor switched on, so a site-wide rollout does not have to be done course by course. Teachers can still switch it off in their own course
+   - **Days conversations are kept** (default `7`): conversations older than this are deleted in Moodle and in the AI service. Seven days matches what the AI service keeps. `0` keeps them until the user or the course is deleted, or a privacy request removes them
 
 3. **Customize Appearance**:
    - **Avatar**: Choose from 10 available avatars (01-10) or upload a custom image
@@ -115,7 +123,10 @@ After installation, configure the plugin:
    - **Tutor name**: The name shown in the chat header (`{teachername}` shows the course teacher's name)
    - **Custom prompt**: Institutional instructions appended to the tutor's system prompt
 
-5. **Send the student's grades to the AI tutor** (`include_grades`, disabled by default): when enabled, the student's own grades for the course are added to the context sent to the Datacurso AI service so the tutor can answer questions about them
+5. **Data sent to the AI and response time**:
+   - **Send the course material to the AI tutor** (`include_content`, disabled by default): when enabled, the text written by the teaching side (activity descriptions, pages, visible book chapters, assignment instructions, URLs, lesson content pages and course documents) is sent to the Datacurso AI service. Nothing written by learners (forum posts, submissions, etc.) and no quiz questions are ever sent. When disabled, the tutor answers from the course structure alone
+   - **Response time target** (`response_target_seconds`, default `20`): the number of seconds after which an answer counts as late. Every answer is timed step by step (session, course knowledge, answer, storage). The measurement goes to the developer log, and answers over the target also go to the error log. `0` disables the target and only keeps the measurement
+   - **Send the student's grades to the AI tutor** (`include_grades`, disabled by default): when enabled, the student's own grades for the course are added to the context sent to the Datacurso AI service so the tutor can answer questions about them
 
 6. The plugin automatically uses your Datacurso AI Provider configuration for API connectivity
 
@@ -176,6 +187,7 @@ Every request made through the Datacurso AI Provider carries the site URL, an an
 - the course structure visible to that user (activities, sections, dates, maximum grades) and the URL of the page the message was sent from;
 - the ID of the activity being viewed and any text the user selected on the page to ask about;
 - the institutional custom prompt configured by the administrator;
+- the course material written by the teaching side, **only** when the administrator enables *Send the course material to the AI tutor* (disabled by default);
 - the student's own grades in the course, **only** when the administrator enables *Send the student's grades to the AI tutor* (disabled by default).
 
 Nothing else from the client (for example the user's name or arbitrary page metadata) is forwarded: the plugin builds the context server-side and only accepts an allowlisted set of keys from the browser.
