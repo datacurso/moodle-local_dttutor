@@ -16,8 +16,6 @@
 
 namespace local_dttutor\proxy;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Base of the tests that read the documents a course hands out.
  *
@@ -27,6 +25,9 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class course_documents_testcase extends \advanced_testcase {
+    /**
+     * Every test starts as an administrator on a database that is reset afterwards.
+     */
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest();
