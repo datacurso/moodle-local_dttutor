@@ -5,7 +5,7 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.11] - 2026-09-30
+## [2.0.11] - 2026-10-02
 
 ### Fixed
 - **The tutor works on Moodle 5.0 again, without breaking Moodle 4.5**: Moodle 5.0 moved the configuration of AI providers out of the plugin settings and into instances (the `ai_providers` table), each one switched on and off on its own and carrying its own licence key, and `aiprovider_datacurso` followed. The tutor still read the 4.5 model, which broke it in three ways:
@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The answer never arrived: the provider rate limiter was built with `new ratelimiter()`, whose constructor now requires the provider instance, and the resulting `ArgumentCountError` ended the stream with no frame at all. The rate limiter is now built for whichever provider release is installed, and a rate limit that cannot be resolved only omits the headers instead of failing the request.
 - **A single place knows where the provider keeps its configuration**: `provider_config` recognises the release by the API the AI subsystem offers rather than by its version number, so the rest of the plugin never has to know which one is running.
 - **The tests configure the provider on either release**: they go through the generator of the plugin, which creates an instance on Moodle 5.0+ and switches the plugin on Moodle 4.5. The Behat scenarios that expect the tutor to show now configure the provider too; without it the button could not appear on either release.
+- **Every document of the course reaches the tutor**: the text read out of the documents spent the material budget in the order the activities are listed, so a folder of several PDFs took almost all of it and every activity after it travelled with no material, documents included. Half of the budget is now kept for the documents and shared between the activities holding them, and between the files of each one. A document whose text is left out is named again among the files the tutor cannot read, instead of disappearing from what it knows about the course.
 
 ## [2.0.10] - 2026-09-28
 
