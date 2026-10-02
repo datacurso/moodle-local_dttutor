@@ -27,6 +27,12 @@ namespace local_dttutor\event;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class service_failed extends \core\event\base {
+    /** @var string Operation of a failure while answering in the chat. */
+    public const OPERATION_CHAT = 'chat';
+
+    /** @var string Operation of a failure while reading the documents of a course. */
+    public const OPERATION_DOCUMENTS = 'document_read';
+
     /**
      * Set the basic properties of the event.
      */
@@ -51,23 +57,50 @@ class service_failed extends \core\event\base {
      */
     public function get_description() {
         $reason = (string)($this->other['reason'] ?? 'unknown');
-        return "A request to the AI tutor service failed with the reason '{$reason}'.";
+        $operation = (string)($this->other['operation'] ?? self::OPERATION_CHAT);
+        return "A request to the AI tutor service ({$operation}) failed with the reason '{$reason}'.";
     }
 
     /**
      * Record a failure of the service, without ever getting in the way of answering the user.
      *
+     * Recorded against the course when there is one, so that the log report of the course shows
+     * it as well.
+     *
      * @param string $reason Short machine-readable reason.
+     * @param string $operation What the tutor was doing: one of the OPERATION_* constants.
+     * @param int $courseid Course the request was made for, or 0 when it belongs to none.
      */
-    public static function record(string $reason): void {
+    public static function record(string $reason, string $operation = self::OPERATION_CHAT, int $courseid = 0): void {
         try {
-            self::create([
-                'context' => \context_system::instance(),
-                'other' => ['reason' => $reason],
-            ])->trigger();
+            $context = self::context_of($courseid);
+            $event = self::create([
+                'context' => $context,
+                'other' => ['reason' => $reason, 'operation' => $operation],
+            ]);
+            $event->trigger();
         } catch (\Throwable $e) {
             // Reporting a failure must never become one.
             unset($e);
         }
+    }
+
+    /**
+     * Context a failure is recorded against.
+     *
+     * A course that is gone by then is no reason to lose the failure: it goes to the site instead.
+     *
+     * @param int $courseid Course the request was made for, or 0 when it belongs to none.
+     * @return \context
+     */
+    private static function context_of(int $courseid): \context {
+        if ($courseid <= 0) {
+            return \context_system::instance();
+        }
+        $context = \context_course::instance($courseid, IGNORE_MISSING);
+        if ($context === false) {
+            return \context_system::instance();
+        }
+        return $context;
     }
 }
