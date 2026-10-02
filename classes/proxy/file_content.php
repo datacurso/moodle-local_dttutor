@@ -16,16 +16,12 @@
 
 namespace local_dttutor\proxy;
 
-use local_dttutor\httpclient\client_factory;
-use local_dttutor\httpclient\tutoria_api;
-
 /**
  * The text of the documents a course hands out.
  *
  * Nothing in Moodle reads a PDF, so the document is sent to the Datacurso AI service, which
- * reads it and hands the text back. The text is then kept against the content hash of the file:
- * a document is read once and not once per question, and a file that never changes is never
- * sent twice.
+ * reads it and hands the text back ({@see document_reader}). What it read is handed out here,
+ * within the budget of the message.
  *
  * @package    local_dttutor
  * @copyright  2026 Datacurso
@@ -35,22 +31,8 @@ class file_content {
     /** @var int Characters one document may contribute, unless configured otherwise. */
     public const DEFAULT_CHARS_PER_FILE = 4000;
 
-    /** @var int Documents read in one request, which is also what one course may contribute. */
-    public const MAX_FILES = 25;
-
     /** @var string Prefix of the text read out of a document. */
     public const DOCUMENT_LABEL = 'Document ';
-
-    /** @var int Bytes one document may weigh to be worth sending. */
-    public const MAX_BYTES = 10485760;
-
-    /**
-     * @var string[] Extensions the service can read.
-     *
-     * Checked here as well as there: a folder may hold a video of half a gigabyte, and encoding
-     * it to send it away only to be told that it cannot be read would be a poor trade.
-     */
-    public const READABLE_EXTENSIONS = ['pdf', 'docx', 'pptx', 'txt', 'md', 'csv', 'html', 'htm'];
 
     /**
      * Whether the documents of the course are read.
@@ -63,8 +45,10 @@ class file_content {
      */
     public static function is_enabled(): bool {
         $configured = get_config('local_dttutor', 'include_files');
-        $wanted = $configured === false ? true : (bool)$configured;
-        return $wanted && activity_content::is_enabled();
+        if ($configured !== false && !(bool)$configured) {
+            return false;
+        }
+        return activity_content::is_enabled();
     }
 
     /**
@@ -74,82 +58,24 @@ class file_content {
      */
     public static function chars_per_file(): int {
         $configured = (int)get_config('local_dttutor', 'file_chars');
-        return $configured > 0 ? $configured : self::DEFAULT_CHARS_PER_FILE;
+        if ($configured > 0) {
+            return $configured;
+        }
+        return self::DEFAULT_CHARS_PER_FILE;
     }
 
     /**
      * Read the documents of a course that are not read yet, in one request.
      *
      * Called before the knowledge block is built so that the whole course costs a single call
-     * instead of one per activity. Whatever cannot be read is remembered as well, so a document
-     * that has no text in it is not sent again with every rebuild.
+     * instead of one per activity.
      *
      * @param \course_modinfo $modinfo Course the documents belong to.
      * @param int[] $cmids Activities whose documents may be read, in the order they are listed.
+     * @return bool False when the service could not be asked, so the documents are still unread.
      */
-    public static function prefetch(\course_modinfo $modinfo, array $cmids): void {
-        if (!self::is_enabled()) {
-            return;
-        }
-
-        $cache = \cache::make('local_dttutor', 'file_text');
-        $pending = [];
-        foreach ($cmids as $cmid) {
-            foreach (self::files_of($modinfo, (int)$cmid) as $file) {
-                $hash = $file->get_contenthash();
-                if (isset($pending[$hash]) || $cache->get($hash) !== false) {
-                    continue;
-                }
-                if (!self::is_worth_sending($file)) {
-                    $cache->set($hash, ['text' => '', 'reason' => 'unsupported_type']);
-                    continue;
-                }
-                if (count($pending) >= self::MAX_FILES) {
-                    break 2;
-                }
-                $pending[$hash] = $file;
-            }
-        }
-
-        if ($pending === []) {
-            return;
-        }
-
-        try {
-            // The client is resolved here on purpose. Asking the API for it would resolve it deep
-            // inside the request, where a provider that is not installed arrives as a failure of
-            // the reading rather than as what it is: a site where the tutor answers nothing at all.
-            client_factory::get();
-            $api = \core\di::get(tutoria_api::class);
-        } catch (\Throwable $e) {
-            // Nothing to report that the chat will not report first.
-            return;
-        }
-
-        try {
-            $response = $api->extract_material(self::as_payload($pending), self::chars_per_file());
-        } catch (\Throwable $e) {
-            // The service was asked and could not answer. The documents stay unread: the activity
-            // still travels with its name and its description, and the next build tries again.
-            debugging('Reading the documents of the course failed: ' . get_class($e), DEBUG_DEVELOPER);
-            return;
-        }
-
-        foreach (($response['extracted'] ?? []) as $entry) {
-            $hash = (string)($entry['sha1'] ?? '');
-            if ($hash !== '') {
-                $cache->set($hash, ['text' => (string)($entry['text'] ?? ''), 'reason' => '']);
-            }
-        }
-        foreach (($response['skipped'] ?? []) as $entry) {
-            $hash = (string)($entry['sha1'] ?? '');
-            $reason = (string)($entry['reason'] ?? 'unknown');
-            // A document left out for want of budget is not remembered: the next build, with a
-            // budget of its own, has to try it again.
-            if ($hash !== '' && $reason !== 'no_budget_left' && $reason !== 'too_many_files') {
-                $cache->set($hash, ['text' => '', 'reason' => $reason]);
-            }
-        }
+    public static function prefetch(\course_modinfo $modinfo, array $cmids): bool {
+        return document_reader::prefetch($modinfo, $cmids);
     }
 
     /**
@@ -164,30 +90,74 @@ class file_content {
      * @return string The text of each document, or an empty string when none could be read.
      */
     public static function text_of(\course_modinfo $modinfo, int $cmid, int $budget): string {
+        return implode("\n", self::documents_of($modinfo, $cmid, $budget));
+    }
+
+    /**
+     * The text read out of each document of one activity, sharing the budget between them.
+     *
+     * Each document gets an equal share of what is left, and what one leaves unused passes on
+     * to the next. Handing the whole budget to the first document would leave the others of a
+     * folder with nothing, however short the first one is.
+     *
+     * @param \course_modinfo $modinfo Course the activity belongs to.
+     * @param int $cmid Activity whose documents are wanted.
+     * @param int $budget Characters available for the documents of this activity.
+     * @return string[] The text of each document that travels, by file name.
+     */
+    public static function documents_of(\course_modinfo $modinfo, int $cmid, int $budget): array {
         if (!self::is_enabled() || $budget <= 0) {
-            return '';
+            return [];
         }
 
-        $cache = \cache::make('local_dttutor', 'file_text');
+        $texts = self::readable_texts($modinfo, $cmid);
         $parts = [];
-        foreach (self::files_of($modinfo, $cmid) as $file) {
-            if ($budget <= 0) {
+        $left = count($texts);
+        foreach ($texts as $filename => $text) {
+            $share = intdiv($budget, $left--);
+            if ($share <= 0) {
                 break;
             }
-            $cached = $cache->get($file->get_contenthash());
-            if (!is_array($cached) || trim((string)($cached['text'] ?? '')) === '') {
-                continue;
-            }
 
-            $line = self::DOCUMENT_LABEL . $file->get_filename() . ': ' . $cached['text'];
-            if (\core_text::strlen($line) > $budget) {
-                $line = \core_text::substr($line, 0, $budget) . activity_content::TRUNCATION_MARK;
+            $line = self::DOCUMENT_LABEL . $filename . ': ' . $text;
+            if (\core_text::strlen($line) > $share) {
+                $line = \core_text::substr($line, 0, $share) . activity_content::TRUNCATION_MARK;
             }
             $budget -= \core_text::strlen($line);
-            $parts[] = $line;
+            $parts[$filename] = $line;
         }
 
-        return implode("\n", $parts);
+        return $parts;
+    }
+
+    /**
+     * Whether any document of an activity has text that could travel.
+     *
+     * @param \course_modinfo $modinfo Course the activity belongs to.
+     * @param int $cmid Activity whose documents are checked.
+     * @return bool
+     */
+    public static function has_text(\course_modinfo $modinfo, int $cmid): bool {
+        return self::is_enabled() && self::readable_texts($modinfo, $cmid) !== [];
+    }
+
+    /**
+     * The text already read out of the documents of an activity.
+     *
+     * @param \course_modinfo $modinfo Course the activity belongs to.
+     * @param int $cmid Activity whose documents are wanted.
+     * @return string[] Text of each document that has any, by file name.
+     */
+    private static function readable_texts(\course_modinfo $modinfo, int $cmid): array {
+        $cache = \cache::make('local_dttutor', 'file_text');
+        $texts = [];
+        foreach (self::files_of($modinfo, $cmid) as $file) {
+            $cached = $cache->get($file->get_contenthash());
+            if (is_array($cached) && trim((string)($cached['text'] ?? '')) !== '') {
+                $texts[$file->get_filename()] = (string)$cached['text'];
+            }
+        }
+        return $texts;
     }
 
     /**
@@ -220,38 +190,5 @@ class file_content {
         } catch (\Throwable $e) {
             return [];
         }
-    }
-
-    /**
-     * Whether a document is worth the journey.
-     *
-     * @param \stored_file $file
-     * @return bool
-     */
-    private static function is_worth_sending(\stored_file $file): bool {
-        if ($file->get_filesize() <= 0 || $file->get_filesize() > self::MAX_BYTES) {
-            return false;
-        }
-        $extension = \core_text::strtolower(pathinfo($file->get_filename(), PATHINFO_EXTENSION));
-        return in_array($extension, self::READABLE_EXTENSIONS, true);
-    }
-
-    /**
-     * Turn the documents into what the service expects to receive.
-     *
-     * @param \stored_file[] $files Documents to read, by content hash.
-     * @return array[] One entry per document, as the service expects it.
-     */
-    private static function as_payload(array $files): array {
-        $payload = [];
-        foreach ($files as $hash => $file) {
-            $payload[] = [
-                'filename' => $file->get_filename(),
-                'mimetype' => (string)$file->get_mimetype(),
-                'sha1' => (string)$hash,
-                'content_base64' => base64_encode($file->get_content()),
-            ];
-        }
-        return $payload;
     }
 }

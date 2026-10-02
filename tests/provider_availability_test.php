@@ -52,7 +52,7 @@ final class provider_availability_test extends \advanced_testcase {
     private function course_with_the_tutor_on(): array {
         $this->setAdminUser();
         set_config('enabled', 1, 'local_dttutor');
-        set_config('enabled', 1, 'aiprovider_datacurso');
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $course = $this->getDataGenerator()->create_course();
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
@@ -64,7 +64,7 @@ final class provider_availability_test extends \advanced_testcase {
      * Switch the AI provider off, as an administrator does in the AI administration of Moodle.
      */
     private function disable_the_provider(): void {
-        unset_config('enabled', 'aiprovider_' . client_factory::PROVIDER);
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->disable_ai_provider();
     }
 
     /**
@@ -143,7 +143,7 @@ final class provider_availability_test extends \advanced_testcase {
     public function test_switching_the_provider_back_on_restores_the_tutor(): void {
         [$course] = $this->course_with_the_tutor_on();
         $this->disable_the_provider();
-        set_config('enabled', 1, 'aiprovider_' . client_factory::PROVIDER);
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
 
         $this->assertNotEmpty(request_guard::authorize($this->chat_request((int)$course->id)));
     }

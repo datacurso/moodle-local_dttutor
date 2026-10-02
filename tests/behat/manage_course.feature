@@ -18,6 +18,9 @@ Feature: Managing the tutor inside a course
       | teacher1 | C1     | editingteacher |
     And the following config values are set as admin:
       | enabled | 1 | local_dttutor |
+    And the following "local_dttutor > ai providers" exist:
+      | enabled |
+      | 1       |
 
   @MDL-E2E-009
   Scenario: The page warns that the students are not seeing the chat
@@ -33,7 +36,8 @@ Feature: Managing the tutor inside a course
       | C1     | 1       |
     When I am on the "C1" "local_dttutor > course management" page logged in as "teacher1"
     Then I should not see "Students will not see the chat interface."
-    And the field "Enable AI Tutor for this course" matches value "1"
+    # The switch is saved by AJAX and sits outside a form, where a field cannot be read without JavaScript.
+    And "#tutor-enabled:checked" "css_element" should exist
 
   @MDL-E2E-009 @javascript
   Scenario: Switching the tutor on reaches the students of the course

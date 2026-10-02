@@ -38,6 +38,9 @@ class context_preloader {
     /** @var int Activities listed at most, unless the administrator configures another limit. */
     public const DEFAULT_MAX_ACTIVITIES = 100;
 
+    /** @var int Seconds a block built without the documents of the course is kept before retrying. */
+    public const INCOMPLETE_TTL = 300;
+
     /**
      * Instance fields that represent activity dates, mapped to a short label.
      *
@@ -146,20 +149,27 @@ class context_preloader {
         $cachekey = $course->id . '_' . $userid;
         $stamp    = self::content_stamp((int)$course->id);
 
+        $now = \core\di::get(\core\clock::class)->time();
+
         $cached = $cache->get($cachekey);
         if (
             is_array($cached)
             && (int)($cached['cacherev'] ?? -1) === (int)$course->cacherev
             && (int)($cached['contentstamp'] ?? -1) === $stamp
+            && ((int)($cached['expires'] ?? 0) === 0 || (int)$cached['expires'] > $now)
         ) {
             return (string)$cached['text'];
         }
 
-        $text = self::build_static_block($course, $userid);
+        $text = self::build_static_block($course, $userid, $complete);
         $cache->set($cachekey, [
             'cacherev' => (int)$course->cacherev,
             'contentstamp' => $stamp,
             'text' => $text,
+            // The documents could not be read. Kept for a day, the block would leave them out long
+            // after the service is back; not kept at all, every question would send them again
+            // only to fail. It is kept for a few minutes and then built again.
+            'expires' => $complete ? 0 : $now + self::INCOMPLETE_TTL,
         ]);
         return $text;
     }
@@ -198,9 +208,10 @@ class context_preloader {
      *
      * @param \stdClass $course
      * @param int $userid
+     * @param bool|null $complete Set to false when the documents of the course could not be read.
      * @return string
      */
-    private static function build_static_block(\stdClass $course, int $userid): string {
+    private static function build_static_block(\stdClass $course, int $userid, ?bool &$complete = null): string {
         global $DB, $CFG;
         require_once($CFG->libdir . '/gradelib.php');
 
@@ -226,7 +237,20 @@ class context_preloader {
         $activitycount = 0;
         $contentcut = false;
 
-        file_content::prefetch($modinfo, self::activities_with_documents($modinfo));
+        $withdocuments = self::activities_with_documents($modinfo);
+        $complete = file_content::prefetch($modinfo, $withdocuments);
+
+        // Half of the budget is kept for the documents and shared out between the activities
+        // holding them. Handed out in order, the descriptions before a document, or the first
+        // folder of a course, would take it all and leave the rest unread.
+        $documentholders = 0;
+        foreach ($withdocuments as $cmid) {
+            if (file_content::has_text($modinfo, $cmid)) {
+                $documentholders++;
+            }
+        }
+        $documentbudget = $documentholders > 0 ? intdiv($budget, 2) : 0;
+        $budget -= $documentbudget;
 
         foreach ($modinfo->get_cms() as $cm) {
             if ($cm->deletioninprogress || $cm->modname === 'label') {
@@ -248,35 +272,38 @@ class context_preloader {
 
             $record = self::get_instance_record($DB, $cm->modname, (int)$cm->instance);
 
+            // The material of an activity the user cannot open yet never travels: what is announced
+            // about it is its name and the condition that releases it.
+            $content = '';
+            $documents = [];
+            if ($withcontent && !$locked) {
+                $content = activity_content::extract($cm, $record, $budget);
+                $budget -= \core_text::strlen($content);
+                if ($documentholders > 0 && file_content::has_text($modinfo, (int)$cm->id)) {
+                    $share = intdiv($documentbudget, $documentholders--);
+                    $documents = file_content::documents_of($modinfo, (int)$cm->id, $share);
+                }
+                if ($documents !== []) {
+                    $documenttext = implode("\n", $documents);
+                    $documentbudget -= \core_text::strlen($documenttext);
+                    $content = $content === '' ? $documenttext : $content . "\n" . $documenttext;
+                }
+            }
+
             $activitylines[] = '  - ' . implode(' | ', self::describe_activity(
                 $course,
                 $modinfo,
                 $cm,
                 $locked,
                 $gradeitems,
-                $record
+                $record,
+                array_keys($documents)
             ));
 
-            // The material of an activity the user cannot open yet never travels: what is announced
-            // about it is its name and the condition that releases it.
-            if (!$withcontent || $locked) {
-                continue;
-            }
-
-            $content = activity_content::extract($cm, $record, $budget);
-            $documents = file_content::text_of(
-                $modinfo,
-                (int)$cm->id,
-                $budget - \core_text::strlen($content)
-            );
-            if ($documents !== '') {
-                $content = $content === '' ? $documents : $content . "\n" . $documents;
-            }
             if ($content === '') {
                 continue;
             }
 
-            $budget -= \core_text::strlen($content);
             $contentcut = $contentcut || str_ends_with($content, activity_content::TRUNCATION_MARK);
             foreach (explode("\n", $content) as $contentline) {
                 $activitylines[] = '      ' . $contentline;
@@ -291,7 +318,7 @@ class context_preloader {
             $lines[] = '- ' . $omitted . ' further activities are not listed here. Say so if the answer '
                 . 'might be among them, and point the student at the course page.';
         }
-        if ($withcontent && ($contentcut || $budget <= 0)) {
+        if ($withcontent && ($contentcut || $budget + $documentbudget <= 0)) {
             $lines[] = '- The material above is abridged. Answer from what is here, and say that you '
                 . 'are working from an extract when the question needs more of it.';
         }
@@ -335,6 +362,7 @@ class context_preloader {
      * @param bool $locked Whether the user cannot open the activity yet.
      * @param array $gradeitems Grade items of the course indexed by module and instance.
      * @param \stdClass|null $record The instance record of the activity, or null when unreadable.
+     * @param string[] $readfiles Names of the documents whose text travels with the activity.
      * @return string[]
      */
     private static function describe_activity(
@@ -343,7 +371,8 @@ class context_preloader {
         \cm_info $cm,
         bool $locked,
         array $gradeitems,
-        ?\stdClass $record
+        ?\stdClass $record,
+        array $readfiles = []
     ): array {
         $parts = [];
         $parts[] = '[' . $cm->modname . ']';
@@ -379,7 +408,7 @@ class context_preloader {
             $parts[] = 'max grade ' . format_float((float)$item->grademax, (int)$item->get_decimals());
         }
 
-        $files = self::describe_files($cm);
+        $files = self::describe_files($cm, $readfiles);
         if ($files !== '') {
             $parts[] = $files;
         }
@@ -399,16 +428,17 @@ class context_preloader {
     }
 
     /**
-     * The documents attached to an activity, named but not read.
+     * The documents attached to an activity whose text does not travel, named but not read.
      *
-     * Their text never travels: nothing in this plugin can read a PDF or a spreadsheet. Naming
-     * them is what lets the tutor answer that a question is about a document it cannot open,
-     * instead of guessing from the description of the activity.
+     * Naming them is what lets the tutor answer that a question is about a document it cannot
+     * open, instead of guessing from the description of the activity. A document that was read
+     * but left out for want of budget is named too: keeping quiet about it would hide it.
      *
      * @param \cm_info $cm
+     * @param string[] $readfiles Names of the documents whose text travels with the activity.
      * @return string
      */
-    private static function describe_files(\cm_info $cm): string {
+    private static function describe_files(\cm_info $cm, array $readfiles): string {
         [$component, $filearea] = self::file_area_of($cm->modname);
         if ($component === null) {
             return '';
@@ -427,15 +457,11 @@ class context_preloader {
             return '';
         }
 
-        $read = \cache::make('local_dttutor', 'file_text');
         $names = [];
         foreach ($files as $file) {
-            if (file_content::is_enabled()) {
-                $cached = $read->get($file->get_contenthash());
-                if (is_array($cached) && trim((string)($cached['text'] ?? '')) !== '') {
-                    // Its text travels further down, so naming it here as unreadable would lie.
-                    continue;
-                }
+            if (in_array($file->get_filename(), $readfiles, true)) {
+                // Its text travels further down, so naming it here as unreadable would lie.
+                continue;
             }
             $names[] = $file->get_filename() . ' (' . display_size($file->get_filesize()) . ')';
         }

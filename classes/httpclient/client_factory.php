@@ -36,7 +36,7 @@ final class client_factory {
      * @return bool
      */
     public static function is_provider_enabled(): bool {
-        return \core\plugininfo\aiprovider::is_plugin_enabled(self::PROVIDER);
+        return provider_config::is_enabled();
     }
 
     /**

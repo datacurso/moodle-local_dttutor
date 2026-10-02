@@ -27,6 +27,11 @@ use aiprovider_datacurso\local\ratelimiter;
  * fails (an exception, or an \Error when the provider is not installed) when the provider
  * client cannot be built, exactly like instantiating the provider client directly.
  *
+ * The provider stores its configuration differently depending on the Moodle release; where it
+ * lives is resolved by {@see provider_config}, and this adapter only builds {@see ratelimiter}
+ * the way the installed provider expects it: without arguments on Moodle 4.5, with the enabled
+ * provider instance on Moodle 5.0+.
+ *
  * @package    local_dttutor
  * @copyright  2026 Datacurso
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -37,6 +42,12 @@ final class datacurso_ai_client implements ai_client {
 
     /** @var ai_services_api Provider HTTP client. */
     private ai_services_api $api;
+
+    /** @var \core_ai\provider|null The enabled provider instance on Moodle 5.0+, null on Moodle 4.5 or when there is none. */
+    private ?\core_ai\provider $instance = null;
+
+    /** @var bool Whether the provider instance lookup has already been attempted. */
+    private bool $instanceresolved = false;
 
     /**
      * Build the provider client eagerly so that misconfiguration surfaces at resolution time.
@@ -71,10 +82,13 @@ final class datacurso_ai_client implements ai_client {
     /**
      * License key configured in the provider.
      *
+     * Read from the enabled provider instance on Moodle 5.0+ and from the plugin configuration on
+     * Moodle 4.5, so the License-Key header is sent on every supported release.
+     *
      * @return string
      */
     public function get_license_key(): string {
-        return (string)(get_config('aiprovider_datacurso', 'licensekey') ?: '');
+        return provider_config::get_license_key($this->get_provider_instance());
     }
 
     /**
@@ -89,9 +103,64 @@ final class datacurso_ai_client implements ai_client {
     /**
      * Rate limit headers configured in the provider for this plugin.
      *
+     * The rate limit is an optional refinement of the request: when it cannot be resolved the
+     * headers are simply omitted, never letting the chat request fail because of it.
+     *
      * @return string[]
      */
     public function get_rate_limit_headers(): array {
-        return (new ratelimiter())->get_rate_limit_headers(self::SERVICE_ID);
+        try {
+            $ratelimiter = $this->build_rate_limiter();
+            if ($ratelimiter === null) {
+                return [];
+            }
+            return $ratelimiter->get_rate_limit_headers(self::SERVICE_ID);
+        } catch (\Throwable $e) {
+            debugging(
+                '[local_dttutor] RATE_LIMIT_HEADERS_UNAVAILABLE ' . get_class($e),
+                DEBUG_DEVELOPER
+            );
+            return [];
+        }
+    }
+
+    /**
+     * Build the provider rate limiter for whichever provider release is installed.
+     *
+     * The Moodle 5.0 provider requires the AI provider instance in the constructor; the
+     * Moodle 4.5 one takes no arguments. The constructor is inspected instead of the Moodle
+     * version so the adapter follows the provider actually installed on the site.
+     *
+     * @return ratelimiter|null The rate limiter, or null when the provider instance it needs is unavailable.
+     */
+    private function build_rate_limiter(): ?ratelimiter {
+        $constructor = (new \ReflectionClass(ratelimiter::class))->getConstructor();
+        $required = $constructor === null ? 0 : $constructor->getNumberOfRequiredParameters();
+
+        if ($required === 0) {
+            // Moodle 4.5 provider: the rate limit is read from the plugin configuration.
+            return new ratelimiter();
+        }
+
+        $instance = $this->get_provider_instance();
+        if ($instance === null) {
+            return null;
+        }
+
+        return new ratelimiter($instance);
+    }
+
+    /**
+     * Resolve the enabled provider instance, at most once per adapter.
+     *
+     * @return \core_ai\provider|null The instance, or null on Moodle 4.5 or when none is enabled.
+     */
+    private function get_provider_instance(): ?\core_ai\provider {
+        if (!$this->instanceresolved) {
+            $this->instance = provider_config::get_instance();
+            $this->instanceresolved = true;
+        }
+
+        return $this->instance;
     }
 }

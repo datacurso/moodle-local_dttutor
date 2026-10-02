@@ -18,6 +18,9 @@ Feature: Where the floating tutor button appears
       | teacher1 | C1     | editingteacher |
     And the following config values are set as admin:
       | enabled | 1 | local_dttutor |
+    And the following "local_dttutor > ai providers" exist:
+      | enabled |
+      | 1       |
     And the following "local_dttutor > course settings" exist:
       | course | enabled |
       | C1     | 1       |

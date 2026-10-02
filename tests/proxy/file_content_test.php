@@ -22,13 +22,14 @@ use local_dttutor\httpclient\ai_client;
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
+require_once(__DIR__ . '/course_documents_testcase.php');
 
 /**
- * Reading the documents a course hands out.
+ * The text of the documents a course hands out, as it reaches the tutor.
  *
  * See MDL-INT-016 of cases_data/dttutor/dttutor-2.0.10.md. Nothing in Moodle reads a PDF, so the
- * documents are sent to the AI service and the text that comes back is kept against the content
- * hash of the file.
+ * documents are sent to the AI service and the text that comes back travels with the knowledge
+ * of the course, within its budget.
  *
  * @package    local_dttutor
  * @category   test
@@ -36,56 +37,7 @@ require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \local_dttutor\proxy\file_content
  */
-final class file_content_test extends \advanced_testcase {
-    protected function setUp(): void {
-        parent::setUp();
-        $this->resetAfterTest();
-        $this->setAdminUser();
-    }
-
-    /**
-     * Turn both settings on: documents ride on the material of the course.
-     */
-    private function enable_files(): void {
-        set_config('include_content', 1, 'local_dttutor');
-        set_config('include_files', 1, 'local_dttutor');
-    }
-
-    /**
-     * A course with a student and a file resource holding one document.
-     *
-     * @param string $filename Name of the document.
-     * @param string $component Area the document is stored in.
-     * @param string $filearea Area the document is stored in.
-     * @return array{0: \stdClass, 1: \stdClass, 2: \stdClass} Course, student and activity.
-     */
-    private function course_with_a_document(
-        string $filename = 'guide.pdf',
-        string $component = 'mod_resource',
-        string $filearea = 'content'
-    ): array {
-        $generator = $this->getDataGenerator();
-        $course = $generator->create_course();
-        $student = $generator->create_and_enrol($course, 'student');
-        $resource = $generator->create_module('resource', ['course' => $course->id, 'name' => 'Handbook']);
-        // The generator leaves a file of its own behind, and every test here counts documents.
-        get_file_storage()->delete_area_files(
-            \context_module::instance($resource->cmid)->id,
-            'mod_resource',
-            'content'
-        );
-        get_file_storage()->create_file_from_string([
-            'contextid' => \context_module::instance($resource->cmid)->id,
-            'component' => $component,
-            'filearea' => $filearea,
-            'itemid' => 0,
-            'filepath' => '/',
-            'filename' => $filename,
-        ], 'the bytes of ' . $filename);
-
-        return [$course, $student, $resource];
-    }
-
+final class file_content_test extends course_documents_testcase {
     /**
      * MDL-INT-016: the documents of the course are sent once and their text travels.
      */
@@ -93,10 +45,7 @@ final class file_content_test extends \advanced_testcase {
         $this->enable_files();
         [$course, $student] = $this->course_with_a_document();
         $fake = new fake_ai_client();
-        $fake->enqueue(['extracted' => [
-            ['filename' => 'guide.pdf', 'sha1' => sha1('the bytes of guide.pdf'), 'kind' => 'pdf',
-                'chars' => 20, 'truncated' => false, 'text' => 'Prune the vine in winter'],
-        ], 'skipped' => []]);
+        $fake->enqueue($this->read_response('guide.pdf', 'Prune the vine in winter'));
         \core\di::set(ai_client::class, $fake);
 
         $text = context_preloader::build((int)$course->id, (int)$student->id);
@@ -107,24 +56,42 @@ final class file_content_test extends \advanced_testcase {
     }
 
     /**
-     * MDL-INT-016: a document is read once, however many times the knowledge is built.
+     * MDL-INT-016: the first activity holding documents does not take the whole budget.
      */
-    public function test_a_document_already_read_is_not_sent_again(): void {
+    public function test_documents_share_the_budget_between_activities(): void {
         $this->enable_files();
-        [$course, $student] = $this->course_with_a_document();
+        set_config('content_chars_total', 2000, 'local_dttutor');
+        [$course, $student] = $this->course_with_a_document('first.pdf');
+        $this->add_document($course, 'Annex', 'second.pdf');
         $fake = new fake_ai_client();
         $fake->enqueue(['extracted' => [
-            ['filename' => 'guide.pdf', 'sha1' => sha1('the bytes of guide.pdf'), 'kind' => 'pdf',
-                'chars' => 20, 'truncated' => false, 'text' => 'Prune the vine in winter'],
+            $this->read_entry('first.pdf', str_repeat('a', 4000)),
+            $this->read_entry('second.pdf', 'Harvest in autumn'),
         ], 'skipped' => []]);
         \core\di::set(ai_client::class, $fake);
 
-        context_preloader::build((int)$course->id, (int)$student->id);
-        \cache::make('local_dttutor', 'course_knowledge')->purge();
         $text = context_preloader::build((int)$course->id, (int)$student->id);
 
-        $this->assertCount(1, $fake->calls, 'The document is read once and kept by its content hash.');
-        $this->assertStringContainsString('Prune the vine in winter', $text);
+        $this->assertStringContainsString('Document first.pdf: aaa', $text);
+        $this->assertStringContainsString('Document second.pdf: Harvest in autumn', $text);
+        $this->assertStringNotContainsString('files not readable by you', $text);
+    }
+
+    /**
+     * MDL-INT-016: a document read but left out for want of budget is still named.
+     */
+    public function test_a_document_left_out_of_the_budget_is_named(): void {
+        $this->enable_files();
+        set_config('content_chars_total', 1, 'local_dttutor');
+        [$course, $student] = $this->course_with_a_document();
+        $fake = new fake_ai_client();
+        $fake->enqueue($this->read_response('guide.pdf', 'Prune the vine in winter'));
+        \core\di::set(ai_client::class, $fake);
+
+        $text = context_preloader::build((int)$course->id, (int)$student->id);
+
+        $this->assertStringNotContainsString('Prune the vine in winter', $text);
+        $this->assertStringContainsString('files not readable by you: guide.pdf', $text);
     }
 
     /**
@@ -141,6 +108,23 @@ final class file_content_test extends \advanced_testcase {
 
         $this->assertSame([], $fake->get_call_signatures());
         $this->assertStringContainsString('files not readable by you: guide.pdf', $text);
+    }
+
+    /**
+     * MDL-INT-016: with the documents switched off, the rest of the material still travels alone.
+     */
+    public function test_no_document_is_sent_when_documents_are_switched_off(): void {
+        set_config('include_content', 1, 'local_dttutor');
+        set_config('include_files', 0, 'local_dttutor');
+        [$course, $student] = $this->course_with_a_document();
+        $fake = new fake_ai_client();
+        \core\di::set(ai_client::class, $fake);
+
+        $text = context_preloader::build((int)$course->id, (int)$student->id);
+
+        $this->assertFalse(file_content::is_enabled());
+        $this->assertSame([], $fake->get_call_signatures());
+        $this->assertStringContainsString('Handbook', $text);
     }
 
     /**
@@ -162,38 +146,6 @@ final class file_content_test extends \advanced_testcase {
     }
 
     /**
-     * MDL-INT-016: a service that cannot be reached leaves the course readable.
-     */
-    public function test_a_failure_to_read_never_breaks_the_knowledge(): void {
-        $this->enable_files();
-        [$course, $student] = $this->course_with_a_document();
-        $fake = new fake_ai_client();
-        $fake->enqueue(new \moodle_exception('error_unexpected', 'local_dttutor'));
-        \core\di::set(ai_client::class, $fake);
-
-        $text = context_preloader::build((int)$course->id, (int)$student->id);
-
-        $this->assertDebuggingCalled();
-        $this->assertStringContainsString('Handbook', $text);
-        $this->assertStringContainsString('files not readable by you: guide.pdf', $text);
-    }
-
-    /**
-     * MDL-INT-016: a file the service could not read anyway never leaves the platform.
-     */
-    public function test_a_file_of_a_kind_that_cannot_be_read_is_not_sent(): void {
-        $this->enable_files();
-        [$course, $student] = $this->course_with_a_document('lecture.mp4');
-        $fake = new fake_ai_client();
-        \core\di::set(ai_client::class, $fake);
-
-        $text = context_preloader::build((int)$course->id, (int)$student->id);
-
-        $this->assertSame([], $fake->get_call_signatures(), 'Encoding a video to be refused is a poor trade.');
-        $this->assertStringContainsString('files not readable by you: lecture.mp4', $text);
-    }
-
-    /**
      * MDL-INT-016: what a student uploaded is never sent to be read.
      */
     public function test_a_document_uploaded_by_a_student_is_never_sent(): void {
@@ -210,5 +162,18 @@ final class file_content_test extends \advanced_testcase {
 
         $this->assertSame([], $fake->get_call_signatures());
         $this->assertStringNotContainsString('mine.pdf', $text);
+    }
+
+    /**
+     * The characters one document may contribute follow the setting, and its default otherwise.
+     */
+    public function test_the_characters_per_document_follow_the_setting(): void {
+        $this->assertSame(file_content::DEFAULT_CHARS_PER_FILE, file_content::chars_per_file());
+
+        set_config('file_chars', 0, 'local_dttutor');
+        $this->assertSame(file_content::DEFAULT_CHARS_PER_FILE, file_content::chars_per_file());
+
+        set_config('file_chars', 1500, 'local_dttutor');
+        $this->assertSame(1500, file_content::chars_per_file());
     }
 }
