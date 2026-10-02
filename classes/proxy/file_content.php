@@ -86,10 +86,11 @@ class file_content {
      *
      * @param \course_modinfo $modinfo Course the documents belong to.
      * @param int[] $cmids Activities whose documents may be read, in the order they are listed.
+     * @return bool False when the service could not be asked, so the documents are still unread.
      */
-    public static function prefetch(\course_modinfo $modinfo, array $cmids): void {
+    public static function prefetch(\course_modinfo $modinfo, array $cmids): bool {
         if (!self::is_enabled()) {
-            return;
+            return true;
         }
 
         $cache = \cache::make('local_dttutor', 'file_text');
@@ -112,7 +113,7 @@ class file_content {
         }
 
         if ($pending === []) {
-            return;
+            return true;
         }
 
         try {
@@ -123,7 +124,7 @@ class file_content {
             $api = \core\di::get(tutoria_api::class);
         } catch (\Throwable $e) {
             // Nothing to report that the chat will not report first.
-            return;
+            return false;
         }
 
         try {
@@ -132,7 +133,7 @@ class file_content {
             // The service was asked and could not answer. The documents stay unread: the activity
             // still travels with its name and its description, and the next build tries again.
             debugging('Reading the documents of the course failed: ' . get_class($e), DEBUG_DEVELOPER);
-            return;
+            return false;
         }
 
         foreach (($response['extracted'] ?? []) as $entry) {
@@ -150,6 +151,7 @@ class file_content {
                 $cache->set($hash, ['text' => '', 'reason' => $reason]);
             }
         }
+        return true;
     }
 
     /**

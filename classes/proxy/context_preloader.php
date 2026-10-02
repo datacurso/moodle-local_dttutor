@@ -38,6 +38,9 @@ class context_preloader {
     /** @var int Activities listed at most, unless the administrator configures another limit. */
     public const DEFAULT_MAX_ACTIVITIES = 100;
 
+    /** @var int Seconds a block built without the documents of the course is kept before retrying. */
+    public const INCOMPLETE_TTL = 300;
+
     /**
      * Instance fields that represent activity dates, mapped to a short label.
      *
@@ -146,20 +149,27 @@ class context_preloader {
         $cachekey = $course->id . '_' . $userid;
         $stamp    = self::content_stamp((int)$course->id);
 
+        $now = \core\di::get(\core\clock::class)->time();
+
         $cached = $cache->get($cachekey);
         if (
             is_array($cached)
             && (int)($cached['cacherev'] ?? -1) === (int)$course->cacherev
             && (int)($cached['contentstamp'] ?? -1) === $stamp
+            && ((int)($cached['expires'] ?? 0) === 0 || (int)$cached['expires'] > $now)
         ) {
             return (string)$cached['text'];
         }
 
-        $text = self::build_static_block($course, $userid);
+        $text = self::build_static_block($course, $userid, $complete);
         $cache->set($cachekey, [
             'cacherev' => (int)$course->cacherev,
             'contentstamp' => $stamp,
             'text' => $text,
+            // The documents could not be read. Kept for a day, the block would leave them out long
+            // after the service is back; not kept at all, every question would send them again
+            // only to fail. It is kept for a few minutes and then built again.
+            'expires' => $complete ? 0 : $now + self::INCOMPLETE_TTL,
         ]);
         return $text;
     }
@@ -198,9 +208,10 @@ class context_preloader {
      *
      * @param \stdClass $course
      * @param int $userid
+     * @param bool|null $complete Set to false when the documents of the course could not be read.
      * @return string
      */
-    private static function build_static_block(\stdClass $course, int $userid): string {
+    private static function build_static_block(\stdClass $course, int $userid, ?bool &$complete = null): string {
         global $DB, $CFG;
         require_once($CFG->libdir . '/gradelib.php');
 
@@ -227,7 +238,7 @@ class context_preloader {
         $contentcut = false;
 
         $withdocuments = self::activities_with_documents($modinfo);
-        file_content::prefetch($modinfo, $withdocuments);
+        $complete = file_content::prefetch($modinfo, $withdocuments);
 
         // Half of the budget is kept for the documents and shared out between the activities
         // holding them. Handed out in order, the descriptions before a document, or the first

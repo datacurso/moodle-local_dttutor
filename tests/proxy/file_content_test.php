@@ -226,6 +226,56 @@ final class file_content_test extends \advanced_testcase {
     }
 
     /**
+     * MDL-INT-016: a block built while the documents could not be read is retried a few minutes later.
+     */
+    public function test_a_failure_to_read_is_retried_after_a_few_minutes(): void {
+        $this->enable_files();
+        $clock = $this->mock_clock_with_frozen();
+        [$course, $student] = $this->course_with_a_document();
+        $fake = new fake_ai_client();
+        $fake->enqueue(new \moodle_exception('error_unexpected', 'local_dttutor'));
+        $fake->enqueue(['extracted' => [
+            ['filename' => 'guide.pdf', 'sha1' => sha1('the bytes of guide.pdf'), 'text' => 'Prune the vine in winter'],
+        ], 'skipped' => []]);
+        \core\di::set(ai_client::class, $fake);
+
+        context_preloader::build((int)$course->id, (int)$student->id);
+        $this->assertDebuggingCalled();
+        $soon = context_preloader::build((int)$course->id, (int)$student->id);
+
+        $this->assertCount(1, $fake->calls, 'A failure is not sent again with every question.');
+        $this->assertStringNotContainsString('Prune the vine in winter', $soon);
+
+        $clock->bump(context_preloader::INCOMPLETE_TTL + 1);
+        $later = context_preloader::build((int)$course->id, (int)$student->id);
+
+        $this->assertCount(2, $fake->calls);
+        $this->assertStringContainsString('Document guide.pdf: Prune the vine in winter', $later);
+    }
+
+    /**
+     * MDL-INT-016: a block built with every document read is kept as before.
+     */
+    public function test_a_complete_block_is_not_rebuilt_after_a_few_minutes(): void {
+        $this->enable_files();
+        $clock = $this->mock_clock_with_frozen();
+        [$course, $student] = $this->course_with_a_document();
+        $fake = new fake_ai_client();
+        $fake->enqueue(['extracted' => [
+            ['filename' => 'guide.pdf', 'sha1' => sha1('the bytes of guide.pdf'), 'text' => 'Prune the vine in winter'],
+        ], 'skipped' => []]);
+        \core\di::set(ai_client::class, $fake);
+
+        context_preloader::build((int)$course->id, (int)$student->id);
+        \cache::make('local_dttutor', 'file_text')->purge();
+        $clock->bump(context_preloader::INCOMPLETE_TTL + 1);
+        $text = context_preloader::build((int)$course->id, (int)$student->id);
+
+        $this->assertCount(1, $fake->calls, 'Only a block missing its documents expires early.');
+        $this->assertStringContainsString('Prune the vine in winter', $text);
+    }
+
+    /**
      * MDL-INT-016: a file the service could not read anyway never leaves the platform.
      */
     public function test_a_file_of_a_kind_that_cannot_be_read_is_not_sent(): void {
