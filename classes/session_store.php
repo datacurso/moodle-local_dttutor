@@ -16,6 +16,8 @@
 
 namespace local_dttutor;
 
+use local_dttutor\httpclient\client_factory;
+use local_dttutor\httpclient\provider_config;
 use local_dttutor\httpclient\tutoria_api;
 
 /**
@@ -146,8 +148,11 @@ class session_store {
         }
 
         try {
-            $api = \core\di::get(tutoria_api::class);
-            $response = $api->purge_conversations($userid, $courseid);
+            $deleted = 0;
+            foreach (self::owners_by_tenant($userid, $courseid) as $owner) {
+                $response = self::api_for($owner)->purge_conversations($userid, $courseid);
+                $deleted += (int)($response['deleted_sessions'] ?? 0);
+            }
         } catch (\Throwable $e) {
             // Metadata only: the scope says what was asked for without naming the person.
             \local_dttutor_log('CONVERSATION_PURGE_FAILED', [
@@ -158,7 +163,7 @@ class session_store {
             return null;
         }
 
-        return (int)($response['deleted_sessions'] ?? 0);
+        return $deleted;
     }
 
     /**
@@ -178,7 +183,7 @@ class session_store {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/local/dttutor/lib.php');
 
-        $rows = $DB->get_records_select(self::TABLE, $select, $params, '', 'id, remotesessionid');
+        $rows = $DB->get_records_select(self::TABLE, $select, $params, '', 'id, remotesessionid, userid');
         if ($rows === []) {
             return;
         }
@@ -188,15 +193,19 @@ class session_store {
             return;
         }
 
-        try {
-            $api = \core\di::get(tutoria_api::class);
-        } catch (\Throwable $e) {
-            \local_dttutor_log('SESSION_PURGE_REMOTE_UNAVAILABLE', ['exception' => get_class($e), 'rows' => count($rows)], true);
-            $api = null;
-        }
+        foreach (self::group_by_tenant($rows) as $owner => $group) {
+            try {
+                $api = self::api_for($owner ?: null);
+            } catch (\Throwable $e) {
+                \local_dttutor_log(
+                    'SESSION_PURGE_REMOTE_UNAVAILABLE',
+                    ['exception' => get_class($e), 'rows' => count($group)],
+                    true
+                );
+                continue;
+            }
 
-        if ($api !== null) {
-            foreach ($rows as $row) {
+            foreach ($group as $row) {
                 try {
                     $api->delete_session($row->remotesessionid);
                 } catch (\Throwable $e) {
@@ -206,5 +215,73 @@ class session_store {
         }
 
         $DB->delete_records_select(self::TABLE, $select, $params);
+    }
+
+    /**
+     * API client for the requests made about the conversations of a user.
+     *
+     * On Workplace the request goes with the licence of the tenant of that user, not with the one
+     * of whoever triggered the deletion (usually an administrator of another tenant). Elsewhere,
+     * and when no user is given, it is the client of the current request.
+     *
+     * @param int|null $userid User the conversations belong to.
+     * @return tutoria_api
+     * @throws \Throwable When the client cannot be built.
+     */
+    private static function api_for(?int $userid): tutoria_api {
+        if ($userid === null || !provider_config::has_tenants()) {
+            return \core\di::get(tutoria_api::class);
+        }
+
+        return new tutoria_api(client_factory::for_user($userid));
+    }
+
+    /**
+     * One user of each tenant whose conversations a purge reaches, to send it with their licence.
+     *
+     * A purge of a user goes with that user. A purge of a whole course goes once for each tenant
+     * with a stored conversation in it; when none is stored, or on a site without tenancy, it goes
+     * once with the client of the current request.
+     *
+     * @param int|null $userid User the purge is limited to, or null for every user.
+     * @param int|null $courseid Course the purge is limited to, or null for every course.
+     * @return array<int, int|null> Users to send the purge as, null for the current request.
+     */
+    private static function owners_by_tenant(?int $userid, ?int $courseid): array {
+        global $DB;
+
+        if ($userid !== null || !provider_config::has_tenants()) {
+            return [$userid];
+        }
+
+        $owners = $DB->get_fieldset_select(self::TABLE, 'DISTINCT userid', 'courseid = :courseid', ['courseid' => $courseid]);
+        $grouped = self::group_by_tenant(array_map(static fn($owner) => (object)['userid' => (int)$owner], $owners));
+
+        return $grouped === [] ? [null] : array_keys($grouped);
+    }
+
+    /**
+     * Group stored sessions by the tenant of their owner, keyed by one owner of each tenant.
+     *
+     * Without tenancy every session goes in a single group keyed by 0, sent with the client of the
+     * current request.
+     *
+     * @param \stdClass[] $rows Sessions with at least the userid field.
+     * @return array<int, \stdClass[]>
+     */
+    private static function group_by_tenant(array $rows): array {
+        if (!provider_config::has_tenants()) {
+            return $rows === [] ? [] : [0 => array_values($rows)];
+        }
+
+        $owners = [];
+        $groups = [];
+        foreach ($rows as $row) {
+            $tenantid = provider_config::get_tenant_id((int)$row->userid);
+            $owners[$tenantid] ??= (int)$row->userid;
+            $groups[$owners[$tenantid]][] = $row;
+        }
+
+        return $groups;
     }
 }

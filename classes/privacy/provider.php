@@ -72,6 +72,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'selected_text' => 'privacy:metadata:datacurso_ai:selected_text',
             'site_id' => 'privacy:metadata:datacurso_ai:site_id',
             'site_url' => 'privacy:metadata:datacurso_ai:site_url',
+            'tenant_id' => 'privacy:metadata:datacurso_ai:tenant_id',
             'timezone' => 'privacy:metadata:datacurso_ai:timezone',
             'userid' => 'privacy:metadata:datacurso_ai:userid',
         ], 'privacy:metadata:datacurso_ai');

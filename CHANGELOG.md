@@ -5,6 +5,18 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.12-wp] - 2026-10-07
+
+**Compatibility note:** This version is compatible only with **Moodle Workplace 4.5**. It is the first release of the `WORKPLACE_405_STABLE` branch, created from `main` (2.0.11).
+
+### Fixed
+- **The chat is authenticated with the licence of the tenant**: on Workplace each tenant can have its own licence in the tenant configuration of `aiprovider_datacurso`, and the provider already resolves the region with it, but the tutor read the licence of the site for the `License-Key` header of the chat. A tenant with a licence of its own had its chat sent to the region of its licence and charged to the one of the site. The licence is now the one of the tenant of the user, or the one of the site when the tenant has none.
+- **The chat names the tenant**: the chat request is built by the tutor rather than by the provider, and it was the only one that did not carry `tenant_id`, so the service could not attribute the consumption of the chat to a tenant. It now carries it, `0` on a site without tenancy.
+- **Conversations are deleted with the licence of the tenant they belong to**: deleting a user or a course, a privacy request and the retention task asked the service to delete the conversations with the licence of whoever triggered them, usually an administrator of another tenant. They now go with the licence of the tenant of the user the conversations belong to, once per tenant when a course holds conversations of users of several tenants.
+
+### Changed
+- **Declared support** is `[405, 405]`: this branch targets Moodle Workplace 4.5 only.
+
 ## [2.0.11] - 2026-10-02
 
 ### Fixed

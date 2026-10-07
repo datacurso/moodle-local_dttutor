@@ -138,6 +138,7 @@ $string['privacy:metadata:datacurso_ai:page_url'] = 'A URL da página do Moodle 
 $string['privacy:metadata:datacurso_ai:selected_text'] = 'O texto que o usuário selecionou na página para perguntar sobre ele.';
 $string['privacy:metadata:datacurso_ai:site_id'] = 'O identificador anônimo deste site Moodle.';
 $string['privacy:metadata:datacurso_ai:site_url'] = 'A URL deste site Moodle.';
+$string['privacy:metadata:datacurso_ai:tenant_id'] = 'O identificador do tenant do usuário no Moodle Workplace, 0 em um site sem tenants.';
 $string['privacy:metadata:datacurso_ai:timezone'] = 'O fuso horário do usuário.';
 $string['privacy:metadata:datacurso_ai:userid'] = 'O ID do usuário que envia a mensagem.';
 $string['privacy:metadata:local_dttutor_course_config'] = 'Configuração do tutor IA por curso.';

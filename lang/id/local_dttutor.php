@@ -138,6 +138,7 @@ $string['privacy:metadata:datacurso_ai:page_url'] = 'URL halaman Moodle tempat p
 $string['privacy:metadata:datacurso_ai:selected_text'] = 'Teks yang dipilih pengguna di halaman untuk ditanyakan.';
 $string['privacy:metadata:datacurso_ai:site_id'] = 'Pengenal anonim situs Moodle ini.';
 $string['privacy:metadata:datacurso_ai:site_url'] = 'URL situs Moodle ini.';
+$string['privacy:metadata:datacurso_ai:tenant_id'] = 'Pengenal tenant pengguna di Moodle Workplace, 0 pada situs tanpa tenant.';
 $string['privacy:metadata:datacurso_ai:timezone'] = 'Zona waktu pengguna.';
 $string['privacy:metadata:datacurso_ai:userid'] = 'ID pengguna yang mengirim pesan.';
 $string['privacy:metadata:local_dttutor_course_config'] = 'Konfigurasi tutor AI per kursus.';

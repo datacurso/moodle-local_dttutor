@@ -50,6 +50,10 @@ final class handler_test extends \advanced_testcase {
         $this->assertTrue($payload['stream']);
         $this->assertSame('42', $payload['userid']);
         $this->assertSame('fake-site', $payload['site_id']);
+        $this->assertSame(
+            (string)\local_dttutor\httpclient\provider_config::get_tenant_id(42),
+            $payload['tenant_id']
+        );
     }
 
     /**

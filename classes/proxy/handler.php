@@ -30,6 +30,7 @@ namespace local_dttutor\proxy;
 
 use local_dttutor\httpclient\ai_client;
 use local_dttutor\httpclient\client_factory;
+use local_dttutor\httpclient\provider_config;
 
 /**
  * SSE streaming handler.
@@ -140,6 +141,9 @@ class handler {
             'max_tokens'     => 16384,
             'userid'         => (string)$userid,
             'site_id'        => $siteid,
+            // Same field the provider adds to its own requests, so the service can attribute the
+            // chat to the tenant of the user on Workplace (0 on a site without tenancy).
+            'tenant_id'      => (string)provider_config::get_tenant_id($userid),
             'stream_options' => ['include_usage' => true],
         ];
     }
