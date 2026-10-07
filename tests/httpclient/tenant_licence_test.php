@@ -31,7 +31,6 @@ use aiprovider_datacurso\local\tenant_config;
  * @covers     \local_dttutor\httpclient\provider_config
  * @covers     \local_dttutor\httpclient\datacurso_ai_client
  * @covers     \local_dttutor\httpclient\client_factory
- * @covers     \local_dttutor\proxy\handler
  */
 final class tenant_licence_test extends \advanced_testcase {
     /** @var \stdClass A user of a tenant with a licence of its own. */
@@ -109,19 +108,5 @@ final class tenant_licence_test extends \advanced_testcase {
         $client = client_factory::for_user((int)$this->owninglicence->id);
 
         $this->assertSame('DC-TENANT-LICENCE', $client->get_license_key());
-    }
-
-    /**
-     * The chat request names the tenant of the user, as the requests of the provider do.
-     */
-    public function test_the_chat_payload_carries_the_tenant(): void {
-        $payload = \local_dttutor\proxy\handler::build_payload(
-            'gemini-2.5-flash',
-            [['role' => 'user', 'content' => 'Hi']],
-            (int)$this->owninglicence->id,
-            'fake-site'
-        );
-
-        $this->assertSame((string)$this->owningtenant, $payload['tenant_id']);
     }
 }

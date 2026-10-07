@@ -138,7 +138,6 @@ $string['privacy:metadata:datacurso_ai:page_url'] = 'URL страницы Moodle
 $string['privacy:metadata:datacurso_ai:selected_text'] = 'Текст, выделенный пользователем на странице для вопроса.';
 $string['privacy:metadata:datacurso_ai:site_id'] = 'Анонимный идентификатор этого сайта Moodle.';
 $string['privacy:metadata:datacurso_ai:site_url'] = 'URL этого сайта Moodle.';
-$string['privacy:metadata:datacurso_ai:tenant_id'] = 'Идентификатор арендатора (tenant) пользователя в Moodle Workplace, 0 на сайте без арендаторов.';
 $string['privacy:metadata:datacurso_ai:timezone'] = 'Часовой пояс пользователя.';
 $string['privacy:metadata:datacurso_ai:userid'] = 'ID пользователя, отправляющего сообщение.';
 $string['privacy:metadata:local_dttutor_course_config'] = 'Настройки ИИ-тьютора для каждого курса.';
