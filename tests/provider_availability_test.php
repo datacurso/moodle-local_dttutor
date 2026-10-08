@@ -20,6 +20,7 @@ use local_dttutor\external\get_chat_history;
 use local_dttutor\fixtures\fake_ai_client;
 use local_dttutor\httpclient\ai_client;
 use local_dttutor\httpclient\client_factory;
+use local_dttutor\httpclient\provider_config;
 use local_dttutor\proxy\request_guard;
 
 defined('MOODLE_INTERNAL') || die();
@@ -37,6 +38,7 @@ require_once(__DIR__ . '/fixtures/fake_ai_client.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \local_dttutor\proxy\request_guard::assert_provider_enabled
  * @covers     \local_dttutor\httpclient\client_factory::is_provider_enabled
+ * @covers     \local_dttutor\httpclient\datacurso_ai_client
  */
 final class provider_availability_test extends \advanced_testcase {
     protected function setUp(): void {
@@ -152,9 +154,48 @@ final class provider_availability_test extends \advanced_testcase {
      * MDL-INT-039: the region of the licence is resolved once and kept.
      */
     public function test_the_licence_region_is_resolved_once_and_kept(): void {
-        $this->markTestSkipped(
-            '[Pendiente:skip] The licence region is still looked up against the licence store on every '
-            . 'call, which delays each message and leaves the chat unusable when that store is down.'
-        );
+        if (!class_exists(\aiprovider_datacurso\local\license_region::class) || provider_config::has_instances()) {
+            $this->markTestSkipped('Needs the Moodle 4.5 provider that keeps the region of the licence (1.5.2+).');
+        }
+        $this->setAdminUser();
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider(['licensekey' => 'DC-KEPT-LICENCE']);
+
+        // The European region of this licence is already known, and the licence store cannot be
+        // reached: were the region asked for again, building the client would fail.
+        $this->keep_region('1', sha1('DC-KEPT-LICENCE'));
+        set_config('curlsecurityblockedhosts', 'shop.datacurso.com');
+
+        foreach ([1, 2] as $request) {
+            $client = new \local_dttutor\httpclient\datacurso_ai_client();
+            $this->assertStringContainsString('eu.', $client->get_base_url(), "Request {$request}");
+        }
+    }
+
+    /**
+     * Keep a resolved region where the provider keeps it for the current user.
+     *
+     * That is the site configuration without tenancy, and the tenant of the user on Workplace.
+     *
+     * @param string $region '1' for the European deployment.
+     * @param string $fingerprint Fingerprint of the licence the region belongs to.
+     */
+    private function keep_region(string $region, string $fingerprint): void {
+        $values = [
+            \aiprovider_datacurso\local\license_region::REGION => $region,
+            \aiprovider_datacurso\local\license_region::FINGERPRINT => $fingerprint,
+            \aiprovider_datacurso\local\license_region::CHECKED => (string)time(),
+        ];
+        foreach ($values as $name => $value) {
+            if (provider_config::has_tenants()) {
+                \aiprovider_datacurso\local\tenant_config::set(
+                    provider_config::COMPONENT,
+                    provider_config::get_tenant_id(),
+                    $name,
+                    $value
+                );
+            } else {
+                set_config($name, $value, provider_config::COMPONENT);
+            }
+        }
     }
 }
