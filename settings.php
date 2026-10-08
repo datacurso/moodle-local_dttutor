@@ -75,6 +75,31 @@ if ($hassiteconfig) {
         )
     );
 
+    // Usage limits, applied here before any question leaves for the AI service.
+    $settings->add(new admin_setting_heading(
+        'local_dttutor/usagelimits',
+        get_string('usage_limits', 'local_dttutor'),
+        get_string('usage_limits_desc', 'local_dttutor')
+    ));
+
+    $usagelimits = [
+        'ratelimit_user_requests' => \local_dttutor\local\usage_limit::DEFAULT_USER_REQUESTS,
+        'ratelimit_course_requests' => \local_dttutor\local\usage_limit::DEFAULT_COURSE_REQUESTS,
+        'ratelimit_window_minutes' => \local_dttutor\local\usage_limit::DEFAULT_WINDOW_MINUTES,
+        'ratelimit_concurrent' => \local_dttutor\local\usage_limit::DEFAULT_CONCURRENT,
+    ];
+    foreach ($usagelimits as $name => $default) {
+        $settings->add(
+            new admin_setting_configtext(
+                'local_dttutor/' . $name,
+                get_string($name, 'local_dttutor'),
+                get_string($name . '_desc', 'local_dttutor'),
+                $default,
+                PARAM_INT
+            )
+        );
+    }
+
     $settings->add(new admin_setting_heading(
         'local_dttutor/avatarsettings',
         get_string('avatar', 'local_dttutor'),

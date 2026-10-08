@@ -34,10 +34,13 @@ require_once('../../config.php');
 require_once(__DIR__ . '/lib.php');
 
 use local_dttutor\httpclient\tutoria_api;
+use local_dttutor\local\usage_limit;
+use local_dttutor\local\usage_limit_exceeded;
 use local_dttutor\proxy\context_preloader;
 use local_dttutor\proxy\handler;
 use local_dttutor\proxy\request_guard;
 use local_dttutor\proxy\system_message;
+use local_dttutor\session_store;
 
 // Method check.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -99,6 +102,18 @@ if ($messages === []) {
     die(json_encode(['error' => 'invalid_request']));
 }
 
+// Count the question and take a streaming slot before anything is sent to the AI service: the
+// limit of the service is optional and configured elsewhere, this one always applies.
+try {
+    usage_limit::acquire((int)$USER->id, $courseid, time());
+} catch (usage_limit_exceeded $e) {
+    \local_dttutor_log('USAGE_LIMIT_EXCEEDED', ['scope' => $e->scope, 'courseid' => $courseid]);
+    http_response_code(429);
+    header('Content-Type: application/json');
+    header('Retry-After: ' . $e->retry_after(time()));
+    die(json_encode(['error' => 'usage_limit_exceeded', 'message' => $e->getMessage()]));
+}
+
 // Model is a placeholder — the Datacurso AI proxy decides server-side.
 $model        = 'gemini-2.5-flash';
 $resetsession = !empty($input['reset_session']);
@@ -139,18 +154,29 @@ $timing = new \local_dttutor\local\response_time();
 
 try {
     $tutoriaapi = new tutoria_api();
+
+    // The answers of the session about to be replaced, read before it is deleted: only those may
+    // be written back as answers of the tutor. Unreadable, no answer is trusted.
+    $knownanswers = [];
+    if ($resetsession) {
+        $previous = session_store::get_remote_session_id((int)$USER->id, $courseid, $cmid);
+        if ($previous !== null) {
+            try {
+                $knownanswers = $tutoriaapi->assistant_answers($previous);
+            } catch (\Throwable $e) {
+                \local_dttutor_log('REPLAY_HISTORY_UNAVAILABLE', ['exception' => get_class($e)], true);
+            }
+        }
+    }
+
     $session = $resetsession ?
         $tutoriaapi->reset_session_v2($courseid, $USER->id, $cmid) :
         $tutoriaapi->start_session_v2($courseid, $USER->id, $cmid);
     $sessionid = $session['session_id'] ?? null;
 
     if ($sessionid && $resetsession) {
-        foreach ($messages as $message) {
-            $replayrole = $message['role'];
-            $content = trim($message['content']);
-            if ($content !== '') {
-                $tutoriaapi->append_message($sessionid, $replayrole, $content);
-            }
+        foreach (tutoria_api::replayable_messages($messages, $knownanswers) as $message) {
+            $tutoriaapi->append_message($sessionid, $message['role'], trim($message['content']));
         }
     } else if ($sessionid && $usermessage !== '') {
         $tutoriaapi->append_message($sessionid, 'user', $usermessage);

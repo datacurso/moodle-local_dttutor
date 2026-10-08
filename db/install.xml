@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/dttutor/db" VERSION="20260923" COMMENT="XMLDB file for Moodle local/dttutor"
+<XMLDB PATH="local/dttutor/db" VERSION="20261008" COMMENT="XMLDB file for Moodle local/dttutor"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -37,6 +37,26 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="userid-courseid-cmid" UNIQUE="true" FIELDS="userid, courseid, cmid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_dttutor_pending_delete" COMMENT="Deletions the Datacurso AI service has not confirmed yet, kept until it does">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="remotesessionid" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Session to delete in the AI service, or null for a deletion by user and course"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="User whose conversations are deleted, or null for every user of the course"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Course the deletion is limited to, or null for every course of the user"/>
+        <FIELD NAME="attempts" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Attempts that failed so far, the first one included"/>
+        <FIELD NAME="nextattempt" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="When the deletion is tried again"/>
+        <FIELD NAME="lasterror" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Short machine-readable reason of the last failure"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="When the deletion was first requested"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="When the deletion was last tried"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="nextattempt" UNIQUE="false" FIELDS="nextattempt"/>
+        <INDEX NAME="remotesessionid" UNIQUE="false" FIELDS="remotesessionid"/>
       </INDEXES>
     </TABLE>
   </TABLES>

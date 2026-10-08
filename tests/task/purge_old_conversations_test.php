@@ -18,6 +18,7 @@ namespace local_dttutor\task;
 
 use local_dttutor\fixtures\fake_ai_client;
 use local_dttutor\httpclient\ai_client;
+use local_dttutor\local\pending_deletion;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -107,6 +108,8 @@ final class purge_old_conversations_test extends \advanced_testcase {
 
         $this->assertDebuggingCalled();
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'unreachable']));
+        // DTT-PRIV-004: the conversation is still asked for until the service confirms.
+        $this->assertTrue($DB->record_exists(pending_deletion::TABLE, ['remotesessionid' => 'unreachable']));
     }
 
     /**

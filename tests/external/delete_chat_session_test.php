@@ -18,12 +18,15 @@ namespace local_dttutor\external;
 
 use local_dttutor\course_config;
 use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\fixtures\provider_exception;
 use local_dttutor\httpclient\ai_client;
+use local_dttutor\local\pending_deletion;
 use local_dttutor\session_store;
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
+require_once(__DIR__ . '/../fixtures/provider_exception.php');
 
 /**
  * Tests for the delete_chat_session external function.
@@ -34,6 +37,7 @@ require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \local_dttutor\external\delete_chat_session
  * @covers     \local_dttutor\session_store
+ * @covers     \local_dttutor\local\pending_deletion
  */
 final class delete_chat_session_test extends \advanced_testcase {
     /**
@@ -157,28 +161,50 @@ final class delete_chat_session_test extends \advanced_testcase {
     }
 
     /**
-     * MDL-INT-024: deleting the conversation of the user.
+     * DTT-PRIV-004: a deletion the service did not confirm is kept, so it can be repeated.
      */
-    public function test_remote_failure_is_swallowed_and_reported_as_not_deleted(): void {
+    public function test_remote_failure_keeps_the_session_pending_deletion(): void {
         global $DB;
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
         $fake = $this->fake_remote_api();
-        $fake->enqueue(new \moodle_exception('error_api_not_configured', 'local_dttutor'));
+        $fake->enqueue(new provider_exception('httperror', 503));
         session_store::upsert((int)$student->id, (int)$course->id, null, 'remote-broken');
 
         $result = delete_chat_session::execute((int)$course->id);
         $this->assertDebuggingCalledCount(1);
 
         $this->assertFalse($result['deleted']);
-        // The handle is dropped anyway: the remote session is gone or will expire on its own.
+        // The user no longer points at it, but the identifier waits for the service to confirm.
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-broken']));
+        $pending = $DB->get_record(pending_deletion::TABLE, ['remotesessionid' => 'remote-broken'], '*', MUST_EXIST);
+        $this->assertSame('http_503', $pending->lasterror);
+        $this->assertEquals(1, $pending->attempts);
+        $this->assertNull($pending->userid);
     }
 
     /**
-     * MDL-INT-024: deleting the conversation of the user.
+     * DTT-PRIV-004: a session the service no longer has counts as deleted, with nothing left to repeat.
      */
-    public function test_client_construction_failure_is_swallowed_and_drops_the_stored_handle(): void {
+    public function test_a_session_the_service_no_longer_has_is_deleted(): void {
+        global $DB;
+        $this->resetAfterTest();
+        [$course, $student] = $this->enrolled_student_in_enabled_course();
+        $fake = $this->fake_remote_api();
+        $fake->enqueue(new provider_exception('httperror', 404));
+        session_store::upsert((int)$student->id, (int)$course->id, null, 'remote-expired');
+
+        $result = delete_chat_session::execute((int)$course->id);
+
+        $this->assertTrue($result['deleted']);
+        $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-expired']));
+        $this->assertSame(0, $DB->count_records(pending_deletion::TABLE));
+    }
+
+    /**
+     * DTT-PRIV-004: without a client to ask, the deletion is kept for later.
+     */
+    public function test_client_construction_failure_keeps_the_session_pending_deletion(): void {
         global $DB;
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
@@ -194,8 +220,11 @@ final class delete_chat_session_test extends \advanced_testcase {
         $this->assertStringContainsString('SESSION_DELETE_REMOTE_UNAVAILABLE', $debug[0]->message);
         $this->assertStringNotContainsString('remote-unreachable', $debug[0]->message);
         $this->assertFalse($result['deleted']);
-        // The stored handle is dropped anyway so a later deletion does not chase a dead pointer.
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-unreachable']));
+        $this->assertSame(
+            pending_deletion::PROVIDER_UNAVAILABLE,
+            $DB->get_field(pending_deletion::TABLE, 'lasterror', ['remotesessionid' => 'remote-unreachable'])
+        );
     }
 
     /**

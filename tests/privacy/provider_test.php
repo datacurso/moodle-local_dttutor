@@ -27,11 +27,14 @@ use core_privacy\local\request\writer;
 use core_privacy\tests\provider_testcase;
 use local_dttutor\course_config;
 use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\fixtures\provider_exception;
 use local_dttutor\httpclient\ai_client;
+use local_dttutor\local\pending_deletion;
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
+require_once(__DIR__ . '/../fixtures/provider_exception.php');
 
 /**
  * Privacy provider tests for local_dttutor.
@@ -41,6 +44,7 @@ require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
  * @copyright  2026 Datacurso
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \local_dttutor\privacy\provider
+ * @covers     \local_dttutor\local\conversation_export
  */
 final class provider_test extends provider_testcase {
     /** @var string Component name under test. */
@@ -230,6 +234,14 @@ final class provider_test extends provider_testcase {
         $this->add_session((int)$teacher->id, (int)$course->id, 'sess-teacher', (int)$page->cmid);
         $this->add_session((int)$other->id, (int)$course->id, 'sess-other');
         $context = \context_course::instance($course->id);
+        $fake = $this->fake_remote_api();
+        $fake->enqueue([
+            'messages' => [
+                ['id' => 'm1', 'role' => 'user', 'content' => 'What is due on Friday?', 'timestamp' => 1767225600],
+                ['id' => 'm2', 'role' => 'assistant', 'content' => 'The essay.', 'timestamp' => 1767225610],
+            ],
+            'pagination' => ['limit' => 100, 'offset' => 0, 'has_more' => false],
+        ]);
 
         $this->export_context_data_for_user((int)$teacher->id, $context, self::COMPONENT);
 
@@ -242,6 +254,15 @@ final class provider_test extends provider_testcase {
         $this->assertCount(1, $sessions->sessions);
         $this->assertSame('sess-teacher', $sessions->sessions[0]->remotesessionid);
         $this->assertEquals($page->cmid, $sessions->sessions[0]->cmid);
+        // DTT-PRIV-001-R1: the conversation itself is exported, not only its handle.
+        $this->assertSame(['GET /chat/history?session_id=sess-teacher&limit=100&offset=0'], $fake->get_call_signatures());
+        $messages = $sessions->sessions[0]->messages;
+        $this->assertCount(2, $messages);
+        $this->assertSame('user', $messages[0]->role);
+        $this->assertSame('What is due on Friday?', $messages[0]->content);
+        $this->assertSame('The essay.', $messages[1]->content);
+        $this->assertNotEmpty($messages[0]->time);
+        $this->assertFalse(property_exists($sessions->sessions[0], 'messages_unavailable'));
 
         $config = $writer->get_data([
             get_string('pluginname', self::COMPONENT),
@@ -249,6 +270,107 @@ final class provider_test extends provider_testcase {
         ]);
         $this->assertNotEmpty($config->timemodified);
         $this->assertFalse(property_exists($config, 'custom_prompt'), 'The per-course prompt no longer exists');
+    }
+
+    /**
+     * DTT-PRIV-001-R1: a long conversation is read page by page until the service says it is over.
+     */
+    public function test_export_reads_every_page_of_a_conversation(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $student = $generator->create_and_enrol($course, 'student');
+        $this->add_session((int)$student->id, (int)$course->id, 'sess-long');
+        $context = \context_course::instance($course->id);
+        $fake = $this->fake_remote_api();
+        $first = [];
+        for ($i = 0; $i < 100; $i++) {
+            $first[] = ['id' => "m{$i}", 'role' => 'user', 'content' => "Question {$i}", 'timestamp' => 1767225600 + $i];
+        }
+        $fake->enqueue(['messages' => $first, 'pagination' => ['has_more' => true]]);
+        $fake->enqueue([
+            'messages' => [['id' => 'last', 'role' => 'assistant', 'content' => 'Last answer', 'timestamp' => 1767229999]],
+            'pagination' => ['has_more' => false],
+        ]);
+
+        $this->export_context_data_for_user((int)$student->id, $context, self::COMPONENT);
+
+        $this->assertSame([
+            'GET /chat/history?session_id=sess-long&limit=100&offset=0',
+            'GET /chat/history?session_id=sess-long&limit=100&offset=100',
+        ], $fake->get_call_signatures());
+        $sessions = writer::with_context($context)->get_data([
+            get_string('pluginname', self::COMPONENT),
+            get_string('privacy:export:sessions', self::COMPONENT),
+        ]);
+        $this->assertCount(101, $sessions->sessions[0]->messages);
+        $this->assertSame('Last answer', $sessions->sessions[0]->messages[100]->content);
+    }
+
+    /**
+     * DTT-PRIV-001-R1: messages that could not be read are declared, never silently left out.
+     */
+    public function test_export_declares_the_messages_it_could_not_read(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $student = $generator->create_and_enrol($course, 'student');
+        $this->add_session((int)$student->id, (int)$course->id, 'sess-down');
+        $context = \context_course::instance($course->id);
+        $fake = $this->fake_remote_api();
+        $fake->enqueue(new provider_exception('httperror', 503));
+
+        $this->export_context_data_for_user((int)$student->id, $context, self::COMPONENT);
+
+        $sessions = writer::with_context($context)->get_data([
+            get_string('pluginname', self::COMPONENT),
+            get_string('privacy:export:sessions', self::COMPONENT),
+        ]);
+        $this->assertSame([], $sessions->sessions[0]->messages);
+        $this->assertSame(
+            get_string('privacy:export:messages_unavailable', self::COMPONENT, 'http_503'),
+            $sessions->sessions[0]->messages_unavailable
+        );
+    }
+
+    /**
+     * DTT-PRIV-001-R1: without a client the export still completes, and says why it is short.
+     */
+    public function test_export_declares_an_unavailable_service(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $student = $generator->create_and_enrol($course, 'student');
+        $this->add_session((int)$student->id, (int)$course->id, 'sess-unreachable');
+        $context = \context_course::instance($course->id);
+        fake_ai_client::bind_unavailable();
+
+        $this->export_context_data_for_user((int)$student->id, $context, self::COMPONENT);
+
+        $sessions = writer::with_context($context)->get_data([
+            get_string('pluginname', self::COMPONENT),
+            get_string('privacy:export:sessions', self::COMPONENT),
+        ]);
+        $this->assertStringContainsString('provider_unavailable', $sessions->sessions[0]->messages_unavailable);
+    }
+
+    /**
+     * DTT-PRIV-001-R1: a conversation the service no longer has is exported as empty, not as missing.
+     */
+    public function test_export_of_an_expired_conversation_is_empty_and_complete(): void {
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $student = $generator->create_and_enrol($course, 'student');
+        $this->add_session((int)$student->id, (int)$course->id, 'sess-expired');
+        $context = \context_course::instance($course->id);
+        $fake = $this->fake_remote_api();
+        $fake->enqueue(new provider_exception('httperror', 404));
+
+        $this->export_context_data_for_user((int)$student->id, $context, self::COMPONENT);
+
+        $sessions = writer::with_context($context)->get_data([
+            get_string('pluginname', self::COMPONENT),
+            get_string('privacy:export:sessions', self::COMPONENT),
+        ]);
+        $this->assertSame([], $sessions->sessions[0]->messages);
+        $this->assertFalse(property_exists($sessions->sessions[0], 'messages_unavailable'));
     }
 
     /**
@@ -380,13 +502,22 @@ final class provider_test extends provider_testcase {
         $student = $generator->create_and_enrol($course, 'student');
         $this->add_session((int)$student->id, (int)$course->id, 'sess-fails');
         $fake = $this->fake_remote_api();
+        // The deletion by user and course fails, and so does the fallback on the known session.
+        $fake->enqueue(new \moodle_exception('error_unexpected', 'local_dttutor'));
         $fake->enqueue(new \moodle_exception('error_unexpected', 'local_dttutor'));
 
         $contextlist = new approved_contextlist($student, self::COMPONENT, [\context_course::instance($course->id)->id]);
         provider::delete_data_for_user($contextlist);
 
-        $this->assertDebuggingCalled();
+        $this->assertDebuggingCalledCount(2);
         $this->assertSame(0, $DB->count_records('local_dttutor_session'));
+        // DTT-PRIV-004: the deletion by user and course waits for the service, and so does the
+        // known session the fallback could not delete either.
+        $this->assertTrue($DB->record_exists(pending_deletion::TABLE, [
+            'userid' => $student->id,
+            'courseid' => $course->id,
+        ]));
+        $this->assertTrue($DB->record_exists(pending_deletion::TABLE, ['remotesessionid' => 'sess-fails']));
     }
 
     /**
@@ -407,6 +538,11 @@ final class provider_test extends provider_testcase {
         // Once for the deletion by user, once for the fallback that deletes the known sessions.
         $this->assertDebuggingCalledCount(2);
         $this->assertSame(0, $DB->count_records('local_dttutor_session'));
+        $this->assertTrue($DB->record_exists(pending_deletion::TABLE, ['remotesessionid' => 'sess-unreachable']));
+        $this->assertTrue($DB->record_exists(pending_deletion::TABLE, [
+            'userid' => $student->id,
+            'courseid' => $course->id,
+        ]));
     }
 
     /**

@@ -25,6 +25,7 @@
 namespace local_dttutor\httpclient;
 
 use cache;
+use local_dttutor\local\pending_deletion;
 use local_dttutor\session_store;
 use moodle_exception;
 
@@ -42,6 +43,12 @@ class tutoria_api {
      * @var int
      */
     private const SESSION_BACKEND_VALIDATION_INTERVAL = 300;
+
+    /** @var int Messages read per page when checking a replay against the session it replaces. */
+    private const REPLAY_HISTORY_PAGE_SIZE = 100;
+
+    /** @var int Pages read at most when checking a replay; the browser sends 40 messages at most. */
+    private const REPLAY_HISTORY_PAGES = 5;
 
     /** @var ai_client AI service client (port). */
     private ai_client $client;
@@ -173,6 +180,72 @@ class tutoria_api {
     }
 
     /**
+     * The answers the tutor gave in a session, as keys that a replay can be checked against.
+     *
+     * Replaying a conversation into a fresh session takes its messages from the browser, and
+     * nothing stops a browser from sending an answer the tutor never gave. Only answers found in
+     * the session being replaced are trusted.
+     *
+     * @param string $sessionid Session being replaced.
+     * @return bool[] Answers of the session, keyed by {@see self::answer_key()}.
+     * @throws moodle_exception If the history cannot be read.
+     */
+    public function assistant_answers(string $sessionid): array {
+        $answers = [];
+        for ($page = 0; $page < self::REPLAY_HISTORY_PAGES; $page++) {
+            $response = $this->get_history($sessionid, self::REPLAY_HISTORY_PAGE_SIZE, $page * self::REPLAY_HISTORY_PAGE_SIZE);
+            $messages = (array)($response['messages'] ?? []);
+            foreach ($messages as $message) {
+                if (is_array($message) && ($message['role'] ?? '') === 'assistant') {
+                    $answers[self::answer_key((string)($message['content'] ?? ''))] = true;
+                }
+            }
+            if ($messages === [] || empty($response['pagination']['has_more'])) {
+                break;
+            }
+        }
+        return $answers;
+    }
+
+    /**
+     * The messages of a conversation that may be written into a fresh session.
+     *
+     * What the user wrote is theirs to replay. An answer is replayed only when the tutor really
+     * gave it in the session being replaced.
+     *
+     * @param array $messages Conversation sent by the browser, as role and content.
+     * @param bool[] $answers Answers of the session being replaced, keyed by {@see self::answer_key()}.
+     * @return array The messages to replay, in their order.
+     */
+    public static function replayable_messages(array $messages, array $answers): array {
+        $replay = [];
+        foreach ($messages as $message) {
+            $content = (string)$message['content'];
+            if (trim($content) === '') {
+                continue;
+            }
+            if ($message['role'] === 'assistant' && !isset($answers[self::answer_key($content)])) {
+                continue;
+            }
+            $replay[] = $message;
+        }
+        return $replay;
+    }
+
+    /**
+     * The form in which an answer is compared, whichever side cut it short.
+     *
+     * The browser sends a message cut to the length the proxy accepts, so both sides are cut the
+     * same way before they are compared.
+     *
+     * @param string $content Text of the answer.
+     * @return string
+     */
+    private static function answer_key(string $content): string {
+        return sha1(\core_text::substr(trim($content), 0, \local_dttutor\proxy\request_guard::MAX_MESSAGE_LENGTH));
+    }
+
+    /**
      * Get chat history for a session.
      *
      * @param string $sessionid Session ID.
@@ -190,21 +263,49 @@ class tutoria_api {
     }
 
     /**
-     * Delete a chat session.
+     * Delete a chat session, and forget its handle only once the service confirmed it.
+     *
+     * The local handle goes either way, so the user, the course and the module stop pointing at
+     * it. When the service did not confirm the deletion, the identifier is kept among the pending
+     * deletions instead, and a scheduled task asks again until it does: forgetting it would leave
+     * the conversation in the service with nothing left to repeat the request.
      *
      * @param string $sessionid Session ID to delete.
      * @return array Response with deletion status.
-     * @throws moodle_exception If deletion fails.
+     * @throws moodle_exception If deletion fails; the session is then pending deletion.
      * @since Moodle 4.5
      */
     public function delete_session(string $sessionid): array {
         try {
-            return $this->client->request('DELETE', '/chat/session/' . $sessionid);
-        } finally {
-            // The handle is dropped even when the remote call fails: the session is either gone
-            // already or will expire on its own, and keeping a dead pointer would only mislead
-            // later deletions.
+            $response = $this->delete_remote_session($sessionid);
+        } catch (\Throwable $e) {
+            pending_deletion::queue_session($sessionid, $e);
             session_store::forget($sessionid);
+            throw $e;
+        }
+
+        session_store::forget($sessionid);
+        return $response;
+    }
+
+    /**
+     * Ask the service to delete a session, without touching what Moodle holds about it.
+     *
+     * A session the service no longer has is reported as deleted: it expired on its own, which
+     * is the outcome the deletion wanted.
+     *
+     * @param string $sessionid Session ID to delete.
+     * @return array Response with deletion status.
+     * @throws moodle_exception If the service did not confirm the deletion.
+     */
+    public function delete_remote_session(string $sessionid): array {
+        try {
+            return $this->client->request('DELETE', '/chat/session/' . rawurlencode($sessionid)) ?? [];
+        } catch (\Throwable $e) {
+            if (pending_deletion::is_already_gone($e)) {
+                return ['deleted' => true, 'already_gone' => true];
+            }
+            throw $e;
         }
     }
 

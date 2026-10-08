@@ -876,7 +876,10 @@ define([
                     .then((response) => {
                         if (!response.ok) {
                             return response.json().then((errData) => {
-                                throw new Error(errData.error || 'HTTP ' + response.status);
+                                const error = new Error(errData.error || 'HTTP ' + response.status);
+                                // A refusal the user can act on (a usage limit) carries its own message.
+                                error.userMessage = typeof errData.message === 'string' ? errData.message : '';
+                                throw error;
                             });
                         }
                         return this._readChatProxyStream(response, sendBtn, firstTokenReceived);
@@ -892,7 +895,7 @@ define([
                         }
                         this.hideTypingIndicator();
                         sendBtn.prop('disabled', false);
-                        ErrorModal.showGeneralError(this.strings.errorUnexpected);
+                        ErrorModal.showGeneralError(err.userMessage || this.strings.errorUnexpected);
                     });
             } catch (error) {
                 this.hideTypingIndicator();
@@ -1513,7 +1516,10 @@ define([
                 .then((response) => {
                     if (!response.ok) {
                         return response.json().then((errData) => {
-                            throw new Error(errData.error || 'HTTP ' + response.status);
+                            const error = new Error(errData.error || 'HTTP ' + response.status);
+                            // A refusal the user can act on (a usage limit) carries its own message.
+                            error.userMessage = typeof errData.message === 'string' ? errData.message : '';
+                            throw error;
                         });
                     }
                     return this._readChatProxyStream(response, sendBtn, firstTokenReceived);
@@ -1528,7 +1534,7 @@ define([
                     }
                     this.hideTypingIndicator();
                     sendBtn.prop('disabled', false);
-                    ErrorModal.showGeneralError(this.strings.errorUnexpected);
+                    ErrorModal.showGeneralError(err.userMessage || this.strings.errorUnexpected);
                 });
         }
 
@@ -1787,10 +1793,13 @@ define([
         }
 
         /**
-         * Sanitizes a string by removing angle brackets.
+         * Make sure a message is a string before it is sent.
          *
-         * @param {string} str - String to sanitize
-         * @returns {string} Sanitized string
+         * The text is sent as the user wrote it, angle brackets included: it is escaped where it is
+         * displayed (renderMarkdown and jQuery text()), not here.
+         *
+         * @param {string} str - Message to send
+         * @returns {string} The message, or an empty string when it is not a string
          */
         sanitizeString(str) {
             if (typeof str !== 'string') {
