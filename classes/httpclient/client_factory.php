@@ -55,4 +55,23 @@ final class client_factory {
         }
         return new datacurso_ai_client();
     }
+
+    /**
+     * Return the client for the requests made on behalf of a given user.
+     *
+     * On Workplace each tenant has its own licence, so a request about a user (deleting their
+     * conversations, for instance) goes with the licence of their tenant and not with the one of
+     * whoever triggered it. A bound client, as tests register, is returned as it is.
+     *
+     * @param int $userid
+     * @return ai_client
+     * @throws \Throwable When the production adapter cannot be built.
+     */
+    public static function for_user(int $userid): ai_client {
+        $container = \core\di::get_container();
+        if ($container->has(ai_client::class)) {
+            return $container->get(ai_client::class);
+        }
+        return new datacurso_ai_client($userid);
+    }
 }

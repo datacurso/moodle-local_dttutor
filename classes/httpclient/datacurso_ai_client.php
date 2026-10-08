@@ -49,13 +49,26 @@ final class datacurso_ai_client implements ai_client {
     /** @var bool Whether the provider instance lookup has already been attempted. */
     private bool $instanceresolved = false;
 
+    /** @var int|null User the requests are made for, null for the current user. */
+    private ?int $userid;
+
     /**
      * Build the provider client eagerly so that misconfiguration surfaces at resolution time.
      *
+     * On Workplace the client is bound to the tenant of the user, so the region and the licence
+     * are the ones of that tenant.
+     *
+     * @param int|null $userid User the requests are made for; defaults to the current user.
      * @throws \moodle_exception When the provider license key is not configured.
      */
-    public function __construct() {
-        $this->api = new ai_services_api();
+    public function __construct(?int $userid = null) {
+        $this->userid = $userid;
+        if (provider_config::has_tenants()) {
+            // The Workplace provider takes the tenant in place of the base URL override.
+            $this->api = new ai_services_api(null, provider_config::get_tenant_id($userid));
+        } else {
+            $this->api = new ai_services_api();
+        }
     }
 
     /**
@@ -82,13 +95,14 @@ final class datacurso_ai_client implements ai_client {
     /**
      * License key configured in the provider.
      *
-     * Read from the enabled provider instance on Moodle 5.0+ and from the plugin configuration on
-     * Moodle 4.5, so the License-Key header is sent on every supported release.
+     * Read from the enabled provider instance on Moodle 5.0+, from the plugin configuration on
+     * Moodle 4.5 and from the tenant of the user on Workplace, so the License-Key header is sent on
+     * every supported release.
      *
      * @return string
      */
     public function get_license_key(): string {
-        return provider_config::get_license_key($this->get_provider_instance());
+        return provider_config::get_license_key($this->get_provider_instance(), $this->userid);
     }
 
     /**

@@ -24,6 +24,8 @@ namespace local_dttutor\httpclient;
  *    setting of the plugin.
  *  - Moodle 5.0+: the provider is configured through instances (the ai_providers table), each
  *    one switched on and off on its own and carrying its own licence key.
+ *  - Moodle Workplace 4.5: each tenant can hold its own licence key in the tenant configuration
+ *    of the provider, falling back to the one of the site.
  *
  * The release is recognised by the API the AI subsystem offers, never by the version number, so
  * the plugin follows whatever is actually installed on the site.
@@ -103,13 +105,53 @@ final class provider_config {
     }
 
     /**
+     * Whether the site provides tenancy and the provider keeps its configuration per tenant.
+     *
+     * True on Moodle Workplace with a provider release that stores the configuration per tenant.
+     *
+     * @return bool
+     */
+    public static function has_tenants(): bool {
+        return class_exists(\aiprovider_datacurso\local\tenant_resolver::class)
+            && class_exists(\aiprovider_datacurso\local\tenant_config::class)
+            && \aiprovider_datacurso\local\tenant_resolver::is_tenancy_available();
+    }
+
+    /**
+     * Tenant a user belongs to, as the provider resolves it.
+     *
+     * @param int|null $userid User to resolve; defaults to the current user.
+     * @return int The tenant, or 0 on a site without tenancy.
+     */
+    public static function get_tenant_id(?int $userid = null): int {
+        if (!class_exists(\aiprovider_datacurso\local\tenant_resolver::class)) {
+            return 0;
+        }
+
+        return \aiprovider_datacurso\local\tenant_resolver::get_tenant_id($userid);
+    }
+
+    /**
      * Licence key the requests to the AI service are authenticated with.
      *
+     * On Workplace it is the licence of the tenant of the user, or the one of the site when the
+     * tenant has none, which is the licence the provider resolves the region with.
+     *
      * @param \core_ai\provider|null $instance Instance already resolved, to spare a second lookup.
+     * @param int|null $userid User the request is made for; defaults to the current user.
      * @return string The key, or an empty string when none is configured.
      */
-    public static function get_license_key(?\core_ai\provider $instance = null): string {
+    public static function get_license_key(?\core_ai\provider $instance = null, ?int $userid = null): string {
         if (!self::has_instances()) {
+            if (self::has_tenants()) {
+                $licensekey = \aiprovider_datacurso\local\tenant_config::get(
+                    self::COMPONENT,
+                    self::get_tenant_id($userid),
+                    'licensekey',
+                    ''
+                );
+                return trim((string)$licensekey);
+            }
             return (string)(get_config(self::COMPONENT, 'licensekey') ?: '');
         }
 

@@ -50,6 +50,8 @@ final class handler_test extends \advanced_testcase {
         $this->assertTrue($payload['stream']);
         $this->assertSame('42', $payload['userid']);
         $this->assertSame('fake-site', $payload['site_id']);
+        // The service hands the payload on to the model, which rejects any field it does not know.
+        $this->assertArrayNotHasKey('tenant_id', $payload);
     }
 
     /**
