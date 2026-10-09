@@ -119,7 +119,7 @@ class delete_chat_session extends external_api {
             // and only then is the handle of the user dropped; a stale cache entry is detected by
             // the liveness probe the next time a session is started.
             \local_dttutor_log('SESSION_DELETE_REMOTE_UNAVAILABLE', ['exception' => get_class($e)], true);
-            pending_deletion::queue_session($remotesessionid, pending_deletion::PROVIDER_UNAVAILABLE);
+            pending_deletion::queue_session($remotesessionid);
             session_store::forget($remotesessionid);
             return ['deleted' => false];
         }

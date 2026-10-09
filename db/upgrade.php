@@ -186,32 +186,16 @@ function xmldb_local_dttutor_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026093001, 'local', 'dttutor');
     }
 
-    if ($oldversion < 2026100800) {
-        // A deletion the AI service did not confirm used to be forgotten together with the only
-        // identifier that could repeat it. It is now kept here until the service confirms it.
+    if ($oldversion < 2026100801) {
+        // The deletions the AI service has not confirmed are now kept in the queue of ad hoc tasks
+        // of Moodle. The table a pre-release of 2.0.12 created for them is no longer used.
         $table = new xmldb_table('local_dttutor_pending_delete');
-
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('remotesessionid', XMLDB_TYPE_CHAR, '255', null, null, null, null);
-        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
-        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
-        $table->add_field('attempts', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('nextattempt', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('lasterror', XMLDB_TYPE_CHAR, '64', null, null, null, null);
-        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-
-        $table->add_index('nextattempt', XMLDB_INDEX_NOTUNIQUE, ['nextattempt']);
-        $table->add_index('remotesessionid', XMLDB_INDEX_NOTUNIQUE, ['remotesessionid']);
-
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
         }
 
         // Dttutor savepoint reached.
-        upgrade_plugin_savepoint(true, 2026100800, 'local', 'dttutor');
+        upgrade_plugin_savepoint(true, 2026100801, 'local', 'dttutor');
     }
 
     return true;

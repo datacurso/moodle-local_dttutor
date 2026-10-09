@@ -34,13 +34,4 @@ $tasks = [
         'dayofweek' => '*',
         'month' => '*',
     ],
-    [
-        'classname' => 'local_dttutor\task\retry_pending_deletions',
-        'blocking' => 0,
-        'minute' => '*/15',
-        'hour' => '*',
-        'day' => '*',
-        'dayofweek' => '*',
-        'month' => '*',
-    ],
 ];

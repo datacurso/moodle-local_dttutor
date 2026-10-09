@@ -16,10 +16,10 @@
 
 namespace local_dttutor\local;
 
-use local_dttutor\event\service_failed;
 use local_dttutor\fixtures\fake_ai_client;
 use local_dttutor\fixtures\provider_exception;
 use local_dttutor\httpclient\tutoria_api;
+use local_dttutor\task\delete_remote_conversation;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -60,200 +60,115 @@ final class pending_deletion_test extends \advanced_testcase {
     }
 
     /**
-     * Make every pending deletion due now.
+     * DTT-PRIV-004: a session is queued once, as an ad hoc task that waits before its first try.
      */
-    private function make_all_due(): void {
-        global $DB;
-        $DB->set_field(pending_deletion::TABLE, 'nextattempt', 0);
+    public function test_a_session_is_queued_once(): void {
+        $before = time();
+        pending_deletion::queue_session('sess-1');
+        pending_deletion::queue_session('sess-1');
+
+        $this->assertSame([['remotesessionid' => 'sess-1', 'userid' => null, 'courseid' => null]], pending_deletion::pending());
+        $tasks = \core\task\manager::get_adhoc_tasks(delete_remote_conversation::class);
+        $this->assertCount(1, $tasks);
+        $task = reset($tasks);
+        $this->assertSame(delete_remote_conversation::ATTEMPTS, $task->get_attempts_available());
+        $this->assertGreaterThanOrEqual($before + pending_deletion::FIRST_DELAY, $task->get_next_run_time());
+        // The task does not run as the person: a deleted user could not be run as.
+        $this->assertEmpty($task->get_userid());
     }
 
     /**
-     * DTT-PRIV-004: a session is kept once with its reason.
+     * DTT-PRIV-004: neither an empty session nor a purge without a scope is queued.
      */
-    public function test_a_session_is_kept_once_with_its_reason(): void {
-        global $DB;
+    public function test_a_deletion_without_a_scope_is_never_queued(): void {
+        pending_deletion::queue_session('');
+        pending_deletion::queue_purge(null, null);
 
-        pending_deletion::queue_session('sess-1', new provider_exception('httperror', 503));
-        pending_deletion::queue_session('sess-1', new provider_exception('curlerror', 28));
-
-        $row = $DB->get_record(pending_deletion::TABLE, ['remotesessionid' => 'sess-1'], '*', MUST_EXIST);
-        $this->assertSame(1, $DB->count_records(pending_deletion::TABLE));
-        $this->assertSame('http_503', $row->lasterror);
-        $this->assertEquals(1, $row->attempts);
-        $this->assertNull($row->userid);
-        $this->assertNull($row->courseid);
-        $this->assertGreaterThan(time(), (int)$row->nextattempt);
-    }
-
-    /**
-     * DTT-PRIV-004: a purge without a scope is never kept.
-     */
-    public function test_a_purge_without_a_scope_is_never_kept(): void {
-        global $DB;
-
-        pending_deletion::queue_purge(null, null, 'transport');
-
-        $this->assertSame(0, $DB->count_records(pending_deletion::TABLE));
+        $this->assertSame([], pending_deletion::pending());
     }
 
     /**
      * DTT-PRIV-004: purges of different scopes are kept apart.
      */
     public function test_purges_of_different_scopes_are_kept_apart(): void {
-        global $DB;
+        pending_deletion::queue_purge(42, null);
+        pending_deletion::queue_purge(42, 7);
+        pending_deletion::queue_purge(null, 7);
+        pending_deletion::queue_purge(42, 7);
 
-        pending_deletion::queue_purge(42, null, 'transport');
-        pending_deletion::queue_purge(42, 7, 'transport');
-        pending_deletion::queue_purge(null, 7, 'transport');
-        pending_deletion::queue_purge(42, 7, 'transport');
-
-        $this->assertSame(3, $DB->count_records(pending_deletion::TABLE));
+        $this->assertEqualsCanonicalizing([
+            ['remotesessionid' => null, 'userid' => 42, 'courseid' => null],
+            ['remotesessionid' => null, 'userid' => 42, 'courseid' => 7],
+            ['remotesessionid' => null, 'userid' => null, 'courseid' => 7],
+        ], pending_deletion::pending());
     }
 
     /**
-     * DTT-PRIV-004: a confirmed session deletion leaves nothing pending.
+     * DTT-PRIV-004: the scope carried by a task is read back as it was queued, and nothing else.
      */
-    public function test_a_confirmed_session_deletion_leaves_nothing_pending(): void {
-        global $DB;
-        pending_deletion::queue_session('sess-1', 'transport');
-        $this->make_all_due();
+    public function test_the_scope_is_read_back_from_the_task(): void {
+        $this->assertSame(
+            ['remotesessionid' => 'sess-1', 'userid' => null, 'courseid' => null],
+            pending_deletion::scope_of((object)['remotesessionid' => 'sess-1', 'userid' => 5, 'courseid' => 6])
+        );
+        $this->assertSame(
+            ['remotesessionid' => null, 'userid' => 5, 'courseid' => null],
+            pending_deletion::scope_of((object)['remotesessionid' => null, 'userid' => '5', 'courseid' => null])
+        );
+        $this->assertNull(pending_deletion::scope_of(null));
+        $this->assertNull(pending_deletion::scope_of((object)['remotesessionid' => '']));
+    }
+
+    /**
+     * DTT-PRIV-004: a session is deleted through the session endpoint.
+     */
+    public function test_a_session_is_asked_for_through_its_endpoint(): void {
         [$api, $fake] = $this->api(['deleted' => true]);
 
-        $result = pending_deletion::retry_due($api, time());
+        pending_deletion::attempt($api, ['remotesessionid' => 'sess-1', 'userid' => null, 'courseid' => null]);
 
-        $this->assertSame(['confirmed' => 1, 'failed' => 0], $result);
         $this->assertSame(['DELETE /chat/session/sess-1'], $fake->get_call_signatures());
-        $this->assertSame(0, $DB->count_records(pending_deletion::TABLE));
+    }
+
+    /**
+     * DTT-PRIV-004: a purge is asked for with its scope.
+     */
+    public function test_a_purge_is_asked_for_with_its_scope(): void {
+        [$api, $fake] = $this->api(['deleted_sessions' => 3]);
+
+        pending_deletion::attempt($api, ['remotesessionid' => null, 'userid' => null, 'courseid' => 7]);
+
+        $this->assertSame(['POST /chat/sessions/purge'], $fake->get_call_signatures());
+        $this->assertTrue($fake->calls[0]['body']['all_users']);
+        $this->assertSame('7', $fake->calls[0]['body']['course_id']);
     }
 
     /**
      * DTT-PRIV-004: a session the service no longer has counts as deleted.
      */
     public function test_a_session_the_service_no_longer_has_counts_as_deleted(): void {
-        global $DB;
-        pending_deletion::queue_session('sess-1', 'transport');
-        $this->make_all_due();
         [$api] = $this->api(new provider_exception('httperror', 404));
 
-        $result = pending_deletion::retry_due($api, time());
+        pending_deletion::attempt($api, ['remotesessionid' => 'sess-1', 'userid' => null, 'courseid' => null]);
 
-        $this->assertSame(['confirmed' => 1, 'failed' => 0], $result);
-        $this->assertSame(0, $DB->count_records(pending_deletion::TABLE));
+        $this->assertTrue(pending_deletion::is_already_gone(new provider_exception('httperror', 404)));
+        $this->assertFalse(pending_deletion::is_already_gone(new provider_exception('httperror', 503)));
     }
 
     /**
-     * DTT-PRIV-004: a pending purge is asked with its scope.
+     * DTT-PRIV-004: a failure the service reports is not taken for a deletion.
      */
-    public function test_a_pending_purge_is_asked_with_its_scope(): void {
-        global $DB;
-        pending_deletion::queue_purge(null, 7, 'transport');
-        $this->make_all_due();
-        [$api, $fake] = $this->api(['deleted_sessions' => 3]);
-
-        pending_deletion::retry_due($api, time());
-
-        $this->assertSame(['POST /chat/sessions/purge'], $fake->get_call_signatures());
-        $this->assertTrue($fake->calls[0]['body']['all_users']);
-        $this->assertSame('7', $fake->calls[0]['body']['course_id']);
-        $this->assertSame(0, $DB->count_records(pending_deletion::TABLE));
-    }
-
-    /**
-     * DTT-PRIV-004: a failure keeps the deletion and waits longer.
-     */
-    public function test_a_failure_keeps_the_deletion_and_waits_longer(): void {
-        global $DB;
-        pending_deletion::queue_session('sess-1', 'transport');
-        $this->make_all_due();
+    public function test_a_failure_is_not_taken_for_a_deletion(): void {
         [$api] = $this->api(new provider_exception('httperror', 502));
 
-        $before = time();
-        $result = pending_deletion::retry_due($api, $before);
-
-        $this->assertSame(['confirmed' => 0, 'failed' => 1], $result);
-        $row = $DB->get_record(pending_deletion::TABLE, ['remotesessionid' => 'sess-1'], '*', MUST_EXIST);
-        $this->assertEquals(2, $row->attempts);
-        $this->assertSame('http_502', $row->lasterror);
-        $this->assertGreaterThanOrEqual($before + pending_deletion::delay_after(2), (int)$row->nextattempt);
-    }
-
-    /**
-     * DTT-PRIV-004: a deletion that is not due is not tried.
-     */
-    public function test_a_deletion_that_is_not_due_is_not_tried(): void {
-        global $DB;
-        pending_deletion::queue_session('sess-1', 'transport');
-        [$api, $fake] = $this->api();
-
-        $result = pending_deletion::retry_due($api, time());
-
-        $this->assertSame(['confirmed' => 0, 'failed' => 0], $result);
-        $this->assertSame([], $fake->get_call_signatures());
-        $this->assertSame(1, $DB->count_records(pending_deletion::TABLE));
-    }
-
-    /**
-     * DTT-PRIV-004: without a client every due deletion waits.
-     */
-    public function test_without_a_client_every_due_deletion_waits(): void {
-        global $DB;
-        pending_deletion::queue_session('sess-1', 'transport');
-        $this->make_all_due();
-
-        $result = pending_deletion::retry_due(null, time());
-
-        $this->assertSame(['confirmed' => 0, 'failed' => 1], $result);
-        $this->assertSame(
-            pending_deletion::PROVIDER_UNAVAILABLE,
-            $DB->get_field(pending_deletion::TABLE, 'lasterror', ['remotesessionid' => 'sess-1'])
-        );
-    }
-
-    /**
-     * DTT-PRIV-004: a deletion that stays stuck is reported once.
-     */
-    public function test_a_deletion_that_stays_stuck_is_reported_once(): void {
-        global $DB;
-        pending_deletion::queue_session('sess-1', 'transport');
-        $DB->set_field(pending_deletion::TABLE, 'attempts', pending_deletion::ALERT_AFTER_ATTEMPTS - 1);
-        $sink = $this->redirectEvents();
-
-        $this->make_all_due();
-        pending_deletion::retry_due(null, time());
-        $this->make_all_due();
-        pending_deletion::retry_due(null, time());
-
-        $events = array_values(array_filter(
-            $sink->get_events(),
-            static fn($event) => $event instanceof service_failed
-        ));
-        $this->assertCount(1, $events);
-        $this->assertSame(service_failed::OPERATION_DELETION, $events[0]->other['operation']);
-        $this->assertSame(pending_deletion::PROVIDER_UNAVAILABLE, $events[0]->other['reason']);
-        $debug = $this->getDebuggingMessages();
-        $this->resetDebugging();
-        $this->assertCount(1, $debug);
-        $this->assertStringContainsString('REMOTE_DELETION_OVERDUE', $debug[0]->message);
-        $this->assertStringNotContainsString('sess-1', $debug[0]->message);
-        // Reporting it does not give it up: it is still asked for.
-        $this->assertSame(1, $DB->count_records(pending_deletion::TABLE));
-    }
-
-    /**
-     * DTT-PRIV-004: the wait doubles up to a day.
-     */
-    public function test_the_wait_doubles_up_to_a_day(): void {
-        $this->assertSame(pending_deletion::FIRST_DELAY, pending_deletion::delay_after(1));
-        $this->assertSame(2 * pending_deletion::FIRST_DELAY, pending_deletion::delay_after(2));
-        $this->assertSame(4 * pending_deletion::FIRST_DELAY, pending_deletion::delay_after(3));
-        $this->assertSame(pending_deletion::MAX_DELAY, pending_deletion::delay_after(40));
+        $this->expectException(\moodle_exception::class);
+        pending_deletion::attempt($api, ['remotesessionid' => 'sess-1', 'userid' => null, 'courseid' => null]);
     }
 
     /**
      * DTT-PRIV-004: deleting a session forgets its handle only with a copy kept.
      */
     public function test_deleting_a_session_forgets_its_handle_only_with_a_copy_kept(): void {
-        global $DB;
         \local_dttutor\session_store::upsert(3, 7, null, 'sess-1');
         [$api] = $this->api(new provider_exception('curlerror', 28));
 
@@ -265,6 +180,6 @@ final class pending_deletion_test extends \advanced_testcase {
         }
 
         $this->assertNull(\local_dttutor\session_store::get_remote_session_id(3, 7, null));
-        $this->assertSame('transport', $DB->get_field(pending_deletion::TABLE, 'lasterror', ['remotesessionid' => 'sess-1']));
+        $this->assertSame([['remotesessionid' => 'sess-1', 'userid' => null, 'courseid' => null]], pending_deletion::pending());
     }
 }

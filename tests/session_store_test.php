@@ -59,7 +59,7 @@ final class session_store_test extends \advanced_testcase {
         // DTT-PRIV-004: the sessions the service could not be asked about wait for it.
         $this->assertEqualsCanonicalizing(
             ['remote-a', 'remote-b'],
-            $DB->get_fieldset(pending_deletion::TABLE, 'remotesessionid')
+            array_column(pending_deletion::pending(), 'remotesessionid')
         );
     }
 

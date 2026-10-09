@@ -192,12 +192,7 @@ final class purge_conversations_test extends \advanced_testcase {
         session_store::purge_remote_conversations(42, 7);
         $this->assertDebuggingCalledCount(2);
 
-        $pending = $DB->get_records(pending_deletion::TABLE);
-        $this->assertCount(1, $pending);
-        $row = reset($pending);
-        $this->assertNull($row->remotesessionid);
-        $this->assertEquals(42, $row->userid);
-        $this->assertEquals(7, $row->courseid);
+        $this->assertSame([['remotesessionid' => null, 'userid' => 42, 'courseid' => 7]], pending_deletion::pending());
     }
 
     /**
@@ -210,9 +205,7 @@ final class purge_conversations_test extends \advanced_testcase {
         session_store::purge_remote_conversations(null, 7);
         $this->assertDebuggingCalled();
 
-        $row = $DB->get_record(pending_deletion::TABLE, [], '*', MUST_EXIST);
-        $this->assertNull($row->userid);
-        $this->assertEquals(7, $row->courseid);
+        $this->assertSame([['remotesessionid' => null, 'userid' => null, 'courseid' => 7]], pending_deletion::pending());
     }
 
     /**
@@ -256,7 +249,7 @@ final class purge_conversations_test extends \advanced_testcase {
             $fake->get_call_signatures()
         );
         $this->assertSame(0, $DB->count_records(session_store::TABLE));
-        $this->assertSame(0, $DB->count_records(pending_deletion::TABLE));
+        $this->assertSame([], pending_deletion::pending());
     }
 
     /**
@@ -272,6 +265,6 @@ final class purge_conversations_test extends \advanced_testcase {
         $this->assertDebuggingCalled();
 
         $this->assertSame(0, $DB->count_records(session_store::TABLE));
-        $this->assertSame(['sess-two'], $DB->get_fieldset(pending_deletion::TABLE, 'remotesessionid'));
+        $this->assertSame([['remotesessionid' => 'sess-two', 'userid' => null, 'courseid' => null]], pending_deletion::pending());
     }
 }

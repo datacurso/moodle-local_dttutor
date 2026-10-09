@@ -59,15 +59,12 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'userid' => 'privacy:metadata:local_dttutor_session:userid',
         ], 'privacy:metadata:local_dttutor_session');
 
-        // Kept only until the AI service confirms a deletion it failed to confirm the first time.
-        // It names no user for the deletion of a single session, and is never exported: it is the
-        // erasure itself still under way, not data about the person.
-        $collection->add_database_table('local_dttutor_pending_delete', [
-            'courseid' => 'privacy:metadata:local_dttutor_pending_delete:courseid',
-            'remotesessionid' => 'privacy:metadata:local_dttutor_pending_delete:remotesessionid',
-            'timecreated' => 'privacy:metadata:local_dttutor_pending_delete:timecreated',
-            'userid' => 'privacy:metadata:local_dttutor_pending_delete:userid',
-        ], 'privacy:metadata:local_dttutor_pending_delete');
+        // A deletion the AI service failed to confirm waits in the queue of ad hoc tasks of Moodle
+        // until the service confirms it. It names no user for the deletion of a single session,
+        // and is never exported: it is the erasure itself still under way, not data about the person.
+        $collection->add_database_table('task_adhoc', [
+            'customdata' => 'privacy:metadata:task_adhoc:customdata',
+        ], 'privacy:metadata:task_adhoc');
 
         // Everything the chat proxy and the external functions send to the Datacurso AI service.
         $collection->add_external_location_link('datacurso_ai', [

@@ -109,7 +109,10 @@ final class purge_old_conversations_test extends \advanced_testcase {
         $this->assertDebuggingCalled();
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'unreachable']));
         // DTT-PRIV-004: the conversation is still asked for until the service confirms.
-        $this->assertTrue($DB->record_exists(pending_deletion::TABLE, ['remotesessionid' => 'unreachable']));
+        $this->assertSame(
+            [['remotesessionid' => 'unreachable', 'userid' => null, 'courseid' => null]],
+            pending_deletion::pending()
+        );
     }
 
     /**

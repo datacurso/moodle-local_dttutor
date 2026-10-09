@@ -157,7 +157,7 @@ class session_store {
                 'exception' => get_class($e),
                 'scope' => $userid === null ? 'course' : ($courseid === null ? 'user' : 'user_in_course'),
             ], true);
-            pending_deletion::queue_purge($userid, $courseid, $e);
+            pending_deletion::queue_purge($userid, $courseid);
             return null;
         }
 
@@ -197,7 +197,7 @@ class session_store {
         } catch (\Throwable $e) {
             \local_dttutor_log('SESSION_PURGE_REMOTE_UNAVAILABLE', ['exception' => get_class($e), 'rows' => count($rows)], true);
             foreach ($rows as $row) {
-                pending_deletion::queue_session((string)$row->remotesessionid, pending_deletion::PROVIDER_UNAVAILABLE);
+                pending_deletion::queue_session((string)$row->remotesessionid);
             }
             $api = null;
         }

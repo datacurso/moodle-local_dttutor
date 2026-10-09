@@ -267,7 +267,7 @@ class tutoria_api {
      *
      * The local handle goes either way, so the user, the course and the module stop pointing at
      * it. When the service did not confirm the deletion, the identifier is kept among the pending
-     * deletions instead, and a scheduled task asks again until it does: forgetting it would leave
+     * deletions instead, and an ad hoc task asks again until it does: forgetting it would leave
      * the conversation in the service with nothing left to repeat the request.
      *
      * @param string $sessionid Session ID to delete.
@@ -279,7 +279,7 @@ class tutoria_api {
         try {
             $response = $this->delete_remote_session($sessionid);
         } catch (\Throwable $e) {
-            pending_deletion::queue_session($sessionid, $e);
+            pending_deletion::queue_session($sessionid);
             session_store::forget($sessionid);
             throw $e;
         }

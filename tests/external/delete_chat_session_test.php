@@ -177,10 +177,10 @@ final class delete_chat_session_test extends \advanced_testcase {
         $this->assertFalse($result['deleted']);
         // The user no longer points at it, but the identifier waits for the service to confirm.
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-broken']));
-        $pending = $DB->get_record(pending_deletion::TABLE, ['remotesessionid' => 'remote-broken'], '*', MUST_EXIST);
-        $this->assertSame('http_503', $pending->lasterror);
-        $this->assertEquals(1, $pending->attempts);
-        $this->assertNull($pending->userid);
+        $this->assertSame(
+            [['remotesessionid' => 'remote-broken', 'userid' => null, 'courseid' => null]],
+            pending_deletion::pending()
+        );
     }
 
     /**
@@ -198,7 +198,7 @@ final class delete_chat_session_test extends \advanced_testcase {
 
         $this->assertTrue($result['deleted']);
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-expired']));
-        $this->assertSame(0, $DB->count_records(pending_deletion::TABLE));
+        $this->assertSame([], pending_deletion::pending());
     }
 
     /**
@@ -222,8 +222,8 @@ final class delete_chat_session_test extends \advanced_testcase {
         $this->assertFalse($result['deleted']);
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-unreachable']));
         $this->assertSame(
-            pending_deletion::PROVIDER_UNAVAILABLE,
-            $DB->get_field(pending_deletion::TABLE, 'lasterror', ['remotesessionid' => 'remote-unreachable'])
+            [['remotesessionid' => 'remote-unreachable', 'userid' => null, 'courseid' => null]],
+            pending_deletion::pending()
         );
     }
 

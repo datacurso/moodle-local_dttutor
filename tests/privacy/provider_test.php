@@ -119,6 +119,10 @@ final class provider_test extends provider_testcase {
             ['cmid', 'courseid', 'remotesessionid', 'timecreated', 'timemodified', 'userid'],
             array_keys($tables['local_dttutor_session']->get_privacy_fields())
         );
+        // DTT-PRIV-004: a deletion the service did not confirm waits in the queue of ad hoc tasks.
+        $this->assertArrayHasKey('task_adhoc', $tables);
+        $this->assertSame(['customdata'], array_keys($tables['task_adhoc']->get_privacy_fields()));
+        $this->assertArrayNotHasKey('local_dttutor_pending_delete', $tables);
 
         // No file area is declared any more: the course-materials feature was removed.
         $this->assertSame([], $this->get_items_by_type(subsystem_link::class));
@@ -513,11 +517,9 @@ final class provider_test extends provider_testcase {
         $this->assertSame(0, $DB->count_records('local_dttutor_session'));
         // DTT-PRIV-004: the deletion by user and course waits for the service, and so does the
         // known session the fallback could not delete either.
-        $this->assertTrue($DB->record_exists(pending_deletion::TABLE, [
-            'userid' => $student->id,
-            'courseid' => $course->id,
-        ]));
-        $this->assertTrue($DB->record_exists(pending_deletion::TABLE, ['remotesessionid' => 'sess-fails']));
+        $pending = pending_deletion::pending();
+        $this->assertContains(['remotesessionid' => null, 'userid' => (int)$student->id, 'courseid' => (int)$course->id], $pending);
+        $this->assertContains(['remotesessionid' => 'sess-fails', 'userid' => null, 'courseid' => null], $pending);
     }
 
     /**
@@ -538,11 +540,9 @@ final class provider_test extends provider_testcase {
         // Once for the deletion by user, once for the fallback that deletes the known sessions.
         $this->assertDebuggingCalledCount(2);
         $this->assertSame(0, $DB->count_records('local_dttutor_session'));
-        $this->assertTrue($DB->record_exists(pending_deletion::TABLE, ['remotesessionid' => 'sess-unreachable']));
-        $this->assertTrue($DB->record_exists(pending_deletion::TABLE, [
-            'userid' => $student->id,
-            'courseid' => $course->id,
-        ]));
+        $pending = pending_deletion::pending();
+        $this->assertContains(['remotesessionid' => 'sess-unreachable', 'userid' => null, 'courseid' => null], $pending);
+        $this->assertContains(['remotesessionid' => null, 'userid' => (int)$student->id, 'courseid' => (int)$course->id], $pending);
     }
 
     /**
