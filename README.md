@@ -202,19 +202,6 @@ Nothing else from the client (for example the user's name or arbitrary page meta
 
 The local deletion always completes, so a privacy request never waits on a third party. A remote deletion the service does not confirm (it is down, the licence is not valid, the request times out) is **not forgotten**: it is kept in `local_dttutor_pending_delete` and the scheduled task *Retry the conversation deletions the AI service has not confirmed* (every 15 minutes) asks again, waiting longer after each failure, up to a day. A session the service no longer has (HTTP 404) counts as deleted. After eight failed attempts an *AI service failure* event with the operation `remote_deletion` is recorded and the error log says so, while the deletion keeps being retried until the service confirms it.
 
-### Usage limits
-
-Each question costs a call to the AI service and keeps a PHP worker busy while the answer streams, so the plugin limits them itself, before anything leaves the site and whatever the rate limit of the AI provider:
-
-| Setting | Default | Meaning |
-|---|---|---|
-| Questions per user and course | 30 | Questions one user may ask in one course in each window. |
-| Questions per course | 600 | Questions all the users of a course may ask together in each window. |
-| Window (minutes) | 10 | Length of the window the questions are counted in (1 to 1440). |
-| Answers at once per user | 2 | Answers one user may have streaming at the same time. |
-
-A question over a limit is answered with HTTP 429 and a `Retry-After` header, and the chat tells the user when they may ask again. `0` removes a limit. The rate limit of the AI provider (*Site administration > AI > AI providers > Datacurso*) is still forwarded to the service and can be used on top of these.
-
 ## Troubleshooting
 
 ### The floating button doesn't appear

@@ -47,15 +47,6 @@ $definitions = [
         'simplekeys' => true,
         'simpledata' => true,
     ],
-    // Questions asked per person and course, and per course, in the current window of the usage
-    // limit, keyed by "u_{userid}_{courseid}_{windowstart}" and "c_{courseid}_{windowstart}". The
-    // window start is part of the key, so an old counter is never read again and only waits to expire.
-    'usage' => [
-        'mode' => cache_store::MODE_APPLICATION,
-        'ttl' => 90000, // Longer than the longest window that can be configured (a day).
-        'simplekeys' => true,
-        'simpledata' => true,
-    ],
     // Text read out of the documents a course hands out, keyed by the content hash of the file.
     // A document that never changes is read once: the hash changes with the file, so a corrected
     // document is read again on its own. What could not be read is kept too, with its reason, so

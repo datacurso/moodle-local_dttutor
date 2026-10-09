@@ -34,8 +34,6 @@ require_once('../../config.php');
 require_once(__DIR__ . '/lib.php');
 
 use local_dttutor\httpclient\tutoria_api;
-use local_dttutor\local\usage_limit;
-use local_dttutor\local\usage_limit_exceeded;
 use local_dttutor\proxy\context_preloader;
 use local_dttutor\proxy\handler;
 use local_dttutor\proxy\request_guard;
@@ -100,18 +98,6 @@ if ($messages === []) {
     http_response_code(400);
     header('Content-Type: application/json');
     die(json_encode(['error' => 'invalid_request']));
-}
-
-// Count the question and take a streaming slot before anything is sent to the AI service: the
-// limit of the service is optional and configured elsewhere, this one always applies.
-try {
-    usage_limit::acquire((int)$USER->id, $courseid, time());
-} catch (usage_limit_exceeded $e) {
-    \local_dttutor_log('USAGE_LIMIT_EXCEEDED', ['scope' => $e->scope, 'courseid' => $courseid]);
-    http_response_code(429);
-    header('Content-Type: application/json');
-    header('Retry-After: ' . $e->retry_after(time()));
-    die(json_encode(['error' => 'usage_limit_exceeded', 'message' => $e->getMessage()]));
 }
 
 // Model is a placeholder — the Datacurso AI proxy decides server-side.

@@ -876,10 +876,7 @@ define([
                     .then((response) => {
                         if (!response.ok) {
                             return response.json().then((errData) => {
-                                const error = new Error(errData.error || 'HTTP ' + response.status);
-                                // A refusal the user can act on (a usage limit) carries its own message.
-                                error.userMessage = typeof errData.message === 'string' ? errData.message : '';
-                                throw error;
+                                throw new Error(errData.error || 'HTTP ' + response.status);
                             });
                         }
                         return this._readChatProxyStream(response, sendBtn, firstTokenReceived);
@@ -895,7 +892,7 @@ define([
                         }
                         this.hideTypingIndicator();
                         sendBtn.prop('disabled', false);
-                        ErrorModal.showGeneralError(err.userMessage || this.strings.errorUnexpected);
+                        ErrorModal.showGeneralError(this.strings.errorUnexpected);
                     });
             } catch (error) {
                 this.hideTypingIndicator();
@@ -1516,10 +1513,7 @@ define([
                 .then((response) => {
                     if (!response.ok) {
                         return response.json().then((errData) => {
-                            const error = new Error(errData.error || 'HTTP ' + response.status);
-                            // A refusal the user can act on (a usage limit) carries its own message.
-                            error.userMessage = typeof errData.message === 'string' ? errData.message : '';
-                            throw error;
+                            throw new Error(errData.error || 'HTTP ' + response.status);
                         });
                     }
                     return this._readChatProxyStream(response, sendBtn, firstTokenReceived);
@@ -1534,7 +1528,7 @@ define([
                     }
                     this.hideTypingIndicator();
                     sendBtn.prop('disabled', false);
-                    ErrorModal.showGeneralError(err.userMessage || this.strings.errorUnexpected);
+                    ErrorModal.showGeneralError(this.strings.errorUnexpected);
                 });
         }
 
