@@ -202,6 +202,21 @@ Nothing else from the client (for example the user's name or arbitrary page meta
 
 The local deletion always completes, so a privacy request never waits on a third party. A remote deletion the service does not confirm (it is down, the licence is not valid, the request times out) is **not forgotten**: it is queued as an ad hoc task of Moodle, *Retry the conversation deletions the AI service has not confirmed*, and the plugin keeps no table of its own for it. The cron runs the task five minutes later and, while the service does not confirm, again and again, doubling the wait after each failure up to a day. A session the service no longer has (HTTP 404) counts as deleted. After eight failed attempts an *AI service failure* event with the operation `remote_deletion` is recorded and the error log says so. Moodle gives an ad hoc task a fixed number of attempts; on its last one the task hands the deletion to a new task instead of being left failed, so the deletion keeps being asked for until the service confirms it. The pending deletions can be seen in *Site administration > Server > Tasks > Ad hoc tasks*.
 
+### Usage limits
+
+The tutor sets no quota of its own. As with the AI providers of Moodle core (OpenAI and Azure AI offer an optional site-wide and per-user rate limit, disabled by default), the limit is set in the AI provider, and the administrator of each site decides whether to enable it and with which values, according to the number of users, the expected use and the credits available.
+
+The Datacurso AI Provider holds the limit of every plugin of the suite in *Site administration > Reports > General report Datacurso AI > Configuration* (also linked from the settings of the provider). For **Tutor AI** the administrator can set:
+
+| Setting | Meaning |
+|---|---|
+| Enable rate limit | Whether the per-user limit applies to the tutor. |
+| Credit limit per window | Credits one user may consume within the window. `0` for unlimited. |
+| Time window | Length of the window the credits are counted in. |
+| Credits per action | Estimated credits one question costs. A question is refused upfront when fewer credits remain in the window. |
+
+The tutor sends this limit with every question, and the Datacurso AI service enforces it on the consumption of each user, outside Moodle, so it holds across sessions and web servers. A question over the limit is refused, and the chat tells the user when they may ask again. **Enabling this limit is the control recommended for every site that offers the tutor to its users.**
+
 ## Troubleshooting
 
 ### The floating button doesn't appear
