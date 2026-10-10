@@ -33,6 +33,9 @@ class service_failed extends \core\event\base {
     /** @var string Operation of a failure while reading the documents of a course. */
     public const OPERATION_DOCUMENTS = 'document_read';
 
+    /** @var string Operation of a deletion the service has kept failing to confirm. */
+    public const OPERATION_DELETION = 'remote_deletion';
+
     /**
      * Set the basic properties of the event.
      */

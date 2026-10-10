@@ -186,5 +186,17 @@ function xmldb_local_dttutor_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026093001, 'local', 'dttutor');
     }
 
+    if ($oldversion < 2026100801) {
+        // The deletions the AI service has not confirmed are now kept in the queue of ad hoc tasks
+        // of Moodle. The table a pre-release of 2.0.12 created for them is no longer used.
+        $table = new xmldb_table('local_dttutor_pending_delete');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Dttutor savepoint reached.
+        upgrade_plugin_savepoint(true, 2026100801, 'local', 'dttutor');
+    }
+
     return true;
 }
