@@ -18,6 +18,7 @@ namespace local_dttutor;
 
 use local_dttutor\fixtures\fake_ai_client;
 use local_dttutor\fixtures\racing_session_store;
+use local_dttutor\local\pending_deletion;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -55,6 +56,11 @@ final class session_store_test extends \advanced_testcase {
         $this->assertStringNotContainsString('remote-a', $debug[0]->message);
         $this->assertSame(0, $DB->count_records(session_store::TABLE, ['courseid' => 7]));
         $this->assertSame(1, $DB->count_records(session_store::TABLE, ['courseid' => 8]));
+        // DTT-PRIV-004: the sessions the service could not be asked about wait for it.
+        $this->assertEqualsCanonicalizing(
+            ['remote-a', 'remote-b'],
+            array_column(pending_deletion::pending(), 'remotesessionid')
+        );
     }
 
     /**

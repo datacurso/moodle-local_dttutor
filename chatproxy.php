@@ -38,6 +38,7 @@ use local_dttutor\proxy\context_preloader;
 use local_dttutor\proxy\handler;
 use local_dttutor\proxy\request_guard;
 use local_dttutor\proxy\system_message;
+use local_dttutor\session_store;
 
 // Method check.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -139,18 +140,29 @@ $timing = new \local_dttutor\local\response_time();
 
 try {
     $tutoriaapi = new tutoria_api();
+
+    // The answers of the session about to be replaced, read before it is deleted: only those may
+    // be written back as answers of the tutor. Unreadable, no answer is trusted.
+    $knownanswers = [];
+    if ($resetsession) {
+        $previous = session_store::get_remote_session_id((int)$USER->id, $courseid, $cmid);
+        if ($previous !== null) {
+            try {
+                $knownanswers = $tutoriaapi->assistant_answers($previous);
+            } catch (\Throwable $e) {
+                \local_dttutor_log('REPLAY_HISTORY_UNAVAILABLE', ['exception' => get_class($e)], true);
+            }
+        }
+    }
+
     $session = $resetsession ?
         $tutoriaapi->reset_session_v2($courseid, $USER->id, $cmid) :
         $tutoriaapi->start_session_v2($courseid, $USER->id, $cmid);
     $sessionid = $session['session_id'] ?? null;
 
     if ($sessionid && $resetsession) {
-        foreach ($messages as $message) {
-            $replayrole = $message['role'];
-            $content = trim($message['content']);
-            if ($content !== '') {
-                $tutoriaapi->append_message($sessionid, $replayrole, $content);
-            }
+        foreach (tutoria_api::replayable_messages($messages, $knownanswers) as $message) {
+            $tutoriaapi->append_message($sessionid, $message['role'], trim($message['content']));
         }
     } else if ($sessionid && $usermessage !== '') {
         $tutoriaapi->append_message($sessionid, 'user', $usermessage);

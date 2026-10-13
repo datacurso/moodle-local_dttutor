@@ -29,6 +29,7 @@ use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_value;
 use local_dttutor\httpclient\tutoria_api;
+use local_dttutor\local\pending_deletion;
 use local_dttutor\proxy\request_guard;
 use local_dttutor\session_store;
 
@@ -113,17 +114,20 @@ class delete_chat_session extends external_api {
         try {
             $tutoriaapi = \core\di::get(tutoria_api::class);
         } catch (\Throwable $e) {
-            // The provider client cannot be built (unconfigured or unreachable). Drop the stored
-            // handle anyway so a later deletion does not chase a dead pointer; a stale cache entry
-            // is detected by the liveness probe the next time a session is started.
+            // The provider client cannot be built (unconfigured or unreachable). The session is
+            // kept among the pending deletions, which ask the service again until it confirms,
+            // and only then is the handle of the user dropped; a stale cache entry is detected by
+            // the liveness probe the next time a session is started.
             \local_dttutor_log('SESSION_DELETE_REMOTE_UNAVAILABLE', ['exception' => get_class($e)], true);
+            pending_deletion::queue_session($remotesessionid);
             session_store::forget($remotesessionid);
             return ['deleted' => false];
         }
         $tutoriaapi->forget_cached_session((int)$params['courseid'], (int)$USER->id, $cmid);
 
         try {
-            // The stored handle is dropped by delete_session() even when the remote call fails.
+            // When the service does not confirm, delete_session() keeps the session among the
+            // pending deletions before dropping the handle of the user.
             $result = $tutoriaapi->delete_session($remotesessionid);
             return ['deleted' => (bool)($result['deleted'] ?? false)];
         } catch (\Throwable $e) {

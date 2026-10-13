@@ -72,7 +72,7 @@ class file_content {
      *
      * @param \course_modinfo $modinfo Course the documents belong to.
      * @param int[] $cmids Activities whose documents may be read, in the order they are listed.
-     * @return bool False when the service could not be asked, so the documents are still unread.
+     * @return bool False when documents are still unread, so the knowledge is built again soon.
      */
     public static function prefetch(\course_modinfo $modinfo, array $cmids): bool {
         return document_reader::prefetch($modinfo, $cmids);

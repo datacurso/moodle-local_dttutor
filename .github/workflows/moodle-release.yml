@@ -20,9 +20,15 @@ defaults:
   run:
     shell: bash
 
+# The job only reads the repository; publishing goes through the moodle.org token.
+permissions:
+  contents: read
+
 jobs:
   release-at-moodle-org:
     runs-on: ubuntu-latest
+    # The token lives in this environment, so a release can be made to wait for a reviewer.
+    environment: moodle-org-release
     env:
       PLUGIN: local_dttutor
       CURL: curl -s
@@ -33,17 +39,25 @@ jobs:
     steps:
       - name: Call the service function
         id: add-version
+        env:
+          # Passed as data, never interpolated into the script: a tag typed by hand must not
+          # be able to run commands next to the publishing token.
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
-          if [[ ! -z "${{ github.event.inputs.tag }}" ]]; then
-            TAGNAME="${{ github.event.inputs.tag }}"
-          elif [[ $GITHUB_REF = refs/tags/* ]]; then
+          if [[ -n "${INPUT_TAG}" ]]; then
+            TAGNAME="${INPUT_TAG}"
+          elif [[ "${GITHUB_REF}" = refs/tags/* ]]; then
             TAGNAME="${GITHUB_REF##*/}"
           fi
-          if [[ -z "${TAGNAME}" ]]; then
+          if [[ -z "${TAGNAME:-}" ]]; then
             echo "No tag name has been provided!"
             exit 1
           fi
-          ZIPURL="https://api.github.com/repos/${{ github.repository }}/zipball/${TAGNAME}"
+          if [[ ! "${TAGNAME}" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "The tag is not a release version (expected 1.2.3, v1.2.3 or 1.2.3-suffix)."
+            exit 1
+          fi
+          ZIPURL="https://api.github.com/repos/${GITHUB_REPOSITORY}/zipball/${TAGNAME}"
           RESPONSE=$(${CURL} ${ENDPOINT} --data-urlencode "wstoken=${TOKEN}" \
                                          --data-urlencode "wsfunction=${FUNCTION}" \
                                          --data-urlencode "moodlewsrestformat=json" \
@@ -61,5 +75,5 @@ jobs:
         env:
           RESPONSE: ${{ steps.add-version.outputs.response }}
         run: |
-          jq <<< ${RESPONSE}
-          jq --exit-status ".id" <<< ${RESPONSE} > /dev/null
+          jq <<< "${RESPONSE}"
+          jq --exit-status ".id" <<< "${RESPONSE}" > /dev/null

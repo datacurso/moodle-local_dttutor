@@ -1,5 +1,10 @@
 name: Moodle Plugin CI
 
+# Manual on purpose. The automatic gate is Jenkins (Jenkinsfile.moodleplugin), which runs the
+# same moodle-plugin-ci checks on every branch and pull request: the ruleset of main requires a
+# pull request, a review by the code owners and the status check
+# continuous-integration/jenkins/branch before anything is merged. This workflow stays as a way
+# to run the checks on GitHub runners on demand.
 on:
   workflow_dispatch:
 

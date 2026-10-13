@@ -34,6 +34,7 @@ require_once(__DIR__ . '/course_documents_testcase.php');
  * @copyright  2026 Datacurso
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \local_dttutor\proxy\document_reader
+ * @covers     \local_dttutor\proxy\context_preloader
  */
 final class document_reader_test extends course_documents_testcase {
     /**
@@ -184,6 +185,100 @@ final class document_reader_test extends course_documents_testcase {
 
         $this->assertCount(1, $fake->calls, 'Only a block missing its documents expires early.');
         $this->assertStringContainsString('Prune the vine in winter', $text);
+    }
+
+    /**
+     * AUD-03: one request carries at most the bytes allowed, so the encoding fits in memory.
+     */
+    public function test_one_request_carries_at_most_the_bytes_allowed(): void {
+        $this->enable_files();
+        [$course, $student] = $this->course_with_a_document('doc0.pdf');
+        $this->add_documents_to_the_course($course, 3);
+        // Each document of the fixture weighs 22 bytes: two fit, the other two wait.
+        set_config('document_request_bytes', 50, 'local_dttutor');
+        $fake = new fake_ai_client();
+        $fake->enqueue(['extracted' => [], 'skipped' => []]);
+        \core\di::set(ai_client::class, $fake);
+
+        $complete = document_reader::prefetch(get_fast_modinfo($course, $student->id), $this->resources_of($course));
+
+        $this->assertFalse($complete, 'Documents left for the next request leave the knowledge incomplete.');
+        $this->assertCount(1, $fake->calls);
+        $this->assertCount(2, $fake->calls[0]['body']['files']);
+    }
+
+    /**
+     * AUD-03: the documents that did not fit are read by the next build, a few minutes later.
+     */
+    public function test_the_documents_that_did_not_fit_are_read_next(): void {
+        $this->enable_files();
+        $clock = $this->mock_clock_with_frozen();
+        [$course, $student] = $this->course_with_a_document('doc0.pdf');
+        $this->add_documents_to_the_course($course, 1);
+        set_config('document_request_bytes', 30, 'local_dttutor');
+        $fake = new fake_ai_client();
+        $fake->enqueue(['extracted' => [$this->read_entry('doc0.pdf', 'First text')], 'skipped' => []]);
+        $fake->enqueue(['extracted' => [$this->read_entry('doc1.pdf', 'Second text')], 'skipped' => []]);
+        \core\di::set(ai_client::class, $fake);
+
+        context_preloader::build((int)$course->id, (int)$student->id);
+        $clock->bump(context_preloader::INCOMPLETE_TTL + 1);
+        $text = context_preloader::build((int)$course->id, (int)$student->id);
+
+        $this->assertCount(2, $fake->calls);
+        $this->assertSame('doc1.pdf', $fake->calls[1]['body']['files'][0]['filename']);
+        $this->assertStringContainsString('First text', $text);
+        $this->assertStringContainsString('Second text', $text);
+    }
+
+    /**
+     * AUD-03: a document heavier than the budget is still read, on its own.
+     */
+    public function test_a_document_heavier_than_the_budget_is_read_alone(): void {
+        $this->enable_files();
+        [$course, $student] = $this->course_with_a_document('guide.pdf');
+        set_config('document_request_bytes', 5, 'local_dttutor');
+        $fake = new fake_ai_client();
+        $fake->enqueue($this->read_response('guide.pdf', 'Prune the vine in winter'));
+        \core\di::set(ai_client::class, $fake);
+
+        $complete = document_reader::prefetch(get_fast_modinfo($course, $student->id), $this->resources_of($course));
+
+        $this->assertTrue($complete);
+        $this->assertCount(1, $fake->calls[0]['body']['files']);
+    }
+
+    /**
+     * AUD-03: while one request reads the documents of a course, the others do not send them again.
+     */
+    public function test_a_course_being_read_by_another_request_is_not_sent_twice(): void {
+        global $CFG;
+        $this->enable_files();
+        [$course, $student] = $this->course_with_a_document();
+        $fake = new fake_ai_client();
+        \core\di::set(ai_client::class, $fake);
+        // File locks are not reentrant within one process, so they stand in for another request.
+        $CFG->lock_factory = '\\core\\lock\\file_lock_factory';
+        $other = \core\lock\lock_config::get_lock_factory('local_dttutor_documents')->get_lock('course_' . $course->id, 0);
+
+        try {
+            $complete = document_reader::prefetch(get_fast_modinfo($course, $student->id), $this->resources_of($course));
+        } finally {
+            $other->release();
+        }
+
+        $this->assertFalse($complete);
+        $this->assertSame([], $fake->get_call_signatures());
+    }
+
+    /**
+     * The course modules of a course, in the order they are listed.
+     *
+     * @param \stdClass $course
+     * @return int[]
+     */
+    private function resources_of(\stdClass $course): array {
+        return array_keys(get_fast_modinfo($course)->get_cms());
     }
 
     /**
