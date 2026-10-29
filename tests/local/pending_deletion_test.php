@@ -156,6 +156,50 @@ final class pending_deletion_test extends \advanced_testcase {
     }
 
     /**
+     * Failures of a deletion, and whether each one means that the site has no licence.
+     *
+     * @return array[]
+     */
+    public static function licence_failures(): array {
+        return [
+            'no licence key' => ['invalidlicensekey', null, true],
+            'no enabled provider instance' => ['instance_disabled', null, true],
+            'enabled provider instance without a key' => ['licensekey_missing', null, true],
+            'licence refused by the service' => ['license_not_allowed', null, false],
+            'service error' => ['httperror', 502, false],
+            'session already gone' => ['httperror', 404, false],
+            'transport error' => ['curlerror', 28, false],
+            'credits run out' => ['notenoughtokens', null, false],
+            'empty error code' => ['', null, false],
+        ];
+    }
+
+    /**
+     * Only a missing licence makes a deletion wait for one; any other failure is retried.
+     *
+     * @dataProvider licence_failures
+     * @param string $errorcode Error code of the provider.
+     * @param mixed $a Argument of the error code.
+     * @param bool $expected Whether the deletion waits for a licence.
+     */
+    public function test_only_a_missing_licence_makes_a_deletion_wait(string $errorcode, $a, bool $expected): void {
+        $error = new provider_exception($errorcode, $a);
+
+        $this->assertSame($expected, pending_deletion::is_waiting_for_licence($error));
+    }
+
+    /**
+     * An error that does not come from the provider never makes a deletion wait for a licence.
+     */
+    public function test_an_error_outside_the_provider_does_not_wait_for_a_licence(): void {
+        $runtime = new \RuntimeException('invalidlicensekey');
+        $coding = new \coding_exception('invalidlicensekey');
+
+        $this->assertFalse(pending_deletion::is_waiting_for_licence($runtime));
+        $this->assertFalse(pending_deletion::is_waiting_for_licence($coding));
+    }
+
+    /**
      * DTT-PRIV-004: a failure the service reports is not taken for a deletion.
      */
     public function test_a_failure_is_not_taken_for_a_deletion(): void {
