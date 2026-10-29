@@ -5,6 +5,11 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Tests
+- **The tests of the course knowledge no longer mistake an identifier for a year**: four assertions looked for a year (`2030`, `2035`) anywhere in the text sent to the AI service, which also holds the identifiers of the course and its activities. On a test database whose course module identifiers start at 203000, `test_a_change_in_the_course_reaches_the_next_question` failed although the date shown was right, and the tests of the reused knowledge and of the dates of a lesson could pass with the date missing. They now match the whole date line as the plugin writes it (`due: …`, `opens: …`), and the reuse test also asserts that the changed date is not shown. `tests/proxy/context_preloader_test.php`, at 653 lines, is split by subject into `context_preloader_test.php` (visibility, reuse and list size), `context_preloader_grades_test.php`, `context_preloader_dates_test.php` and `context_preloader_progress_test.php`, with no other test changed.
+
 ## [2.0.12] - 2026-10-08
 
 Two of the three findings left open by the Mindfree re-evaluation of 2026-09-24 (release 2.0.9, report MFR-4U6GLPG2Q3Q3B6YXSFYA5JEQ2XNXNSBEGVTW6KCGAK7NXX4TUWDQ), and the observations of an internal audit of 2.0.11 against that report. Each entry names the finding it closes and the tests that back it. DTT-SEC-006-R1, the local quota on the questions sent to the AI service, is handled in the AI provider (`aiprovider_datacurso`), which owns the usage limits of every plugin of the suite.
