@@ -30,6 +30,11 @@ use local_dttutor\proxy\document_read_failure;
  * task hands the same deletion to a new task instead, so it is asked for until the service
  * confirms it.
  *
+ * A site without a licence for the AI provider cannot ask at all, and no retry changes that until
+ * an administrator configures one. Such an attempt is not a failure: the deletion is handed to a
+ * new task a day later, with every attempt left, instead of filling the task log with failures
+ * and reporting as stuck a deletion that is only waiting for the licence.
+ *
  * @package    local_dttutor
  * @copyright  2026 Datacurso
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -81,12 +86,21 @@ class delete_remote_conversation extends \core\task\adhoc_task {
     /**
      * Report a failed attempt, and keep the deletion for the next one.
      *
+     * An attempt that failed for lack of a licence is not reported: the deletion waits for it.
+     *
      * @param array $scope remotesessionid, userid and courseid of the deletion.
      * @param string $reason Short machine-readable reason of the failure.
      * @param \Throwable $error What the attempt failed with.
      * @throws \Throwable The same error, while this task has attempts left.
      */
     private function failed(array $scope, string $reason, \Throwable $error): void {
+        if (pending_deletion::is_waiting_for_licence($error)) {
+            $licencereason = document_read_failure::reason_of($error);
+            mtrace("Remote deletion waits for a licence of the AI provider ({$licencereason}).");
+            $this->hand_on($scope, 0);
+            return;
+        }
+
         $attempt = self::ATTEMPTS - $this->get_attempts_available() + 1;
         mtrace("Remote deletion not confirmed ({$reason}), attempt {$attempt}.");
 
@@ -98,11 +112,22 @@ class delete_remote_conversation extends \core\task\adhoc_task {
             throw $error;
         }
 
-        // The last attempt of this task: a new one carries the deletion on, a day from now.
+        // The last attempt of this task: a new one carries the deletion on, waiting as long as the
+        // cron waits after a failure.
+        $this->hand_on($scope, DAYSECS);
+    }
+
+    /**
+     * Hand the deletion to a new task, a day from now and with every attempt left.
+     *
+     * @param array $scope remotesessionid, userid and courseid of the deletion.
+     * @param int $faildelay Wait the new task starts from if it fails; 0 when nothing failed.
+     */
+    private function hand_on(array $scope, int $faildelay): void {
         $next = new self();
         $next->set_custom_data($scope);
         $next->set_attempts_available(self::ATTEMPTS);
-        $next->set_fail_delay(DAYSECS);
+        $next->set_fail_delay($faildelay);
         $next->set_next_run_time(time() + DAYSECS);
         \core\task\manager::queue_adhoc_task($next);
         mtrace('Remote deletion handed to a new task.');
