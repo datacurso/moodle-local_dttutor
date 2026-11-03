@@ -5,7 +5,16 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.0.14] - 2026-11-03
+
+**Compatibility note:** This version is compatible from **Moodle 4.5** to **Moodle 5.3**.
+
+### Changed
+- **Moodle 5.3 is a supported release**: `version.php` declared support up to Moodle 5.2 (`supported = [405, 502]`), so the plugins page of a Moodle 5.3 site warned that the tutor was outside its tested range. It now declares `[405, 503]`, and `requires` names Moodle 4.5 (`2024100700`), the oldest release the plugin supports, instead of Moodle 4.4 (`2024042200`)
+
+### Fixed
+- **The templates use the Bootstrap classes of the running Moodle**: the course management page (`manage_course.mustache`) built its switch and icon spacing with Bootstrap 4 classes (`custom-control`, `custom-switch`, `mr-1`, `mr-2`), and the chat drawer (`tutor_ia_drawer.mustache`) hid its screen-reader text with `sr-only`. Moodle 5.0 moved to Bootstrap 5 and keeps those names only through a deprecated compatibility layer, which outlines them in red as deprecated on Behat sites and in theme designer mode and which a later release removes. Moodle 4.5 ships Bootstrap 4, without the Bootstrap 5 names, so neither set works on both. The class names now come from `\local_dttutor\local\bootstrap_classes`, which gives the Bootstrap 4 names on Moodle 4.5 and the Bootstrap 5 names (`form-check form-switch`, `me-1`, `me-2`, `visually-hidden`) on Moodle 5.0 and later. Tests: `tests/local/bootstrap_classes_test.php`
+- **The upgrade step that retires the legacy service bot no longer calls a deprecated function on Moodle 5.3**: it suspended the bot with `user_update_user()`, deprecated in Moodle 5.3 (MDL-82650) and due to be removed in Moodle 6.0. It now uses `\core\user::update_user()` when the running Moodle has it, and `user_update_user()` on Moodle 4.5. Tests: `tests/upgrade_bot_removal_test.php`
 
 ### Tests
 - **The tests of the course knowledge no longer mistake an identifier for a year**: four assertions looked for a year (`2030`, `2035`) anywhere in the text sent to the AI service, which also holds the identifiers of the course and its activities. On a test database whose course module identifiers start at 203000, `test_a_change_in_the_course_reaches_the_next_question` failed although the date shown was right, and the tests of the reused knowledge and of the dates of a lesson could pass with the date missing. They now match the whole date line as the plugin writes it (`due: …`, `opens: …`), and the reuse test also asserts that the changed date is not shown. `tests/proxy/context_preloader_test.php`, at 653 lines, is split by subject into `context_preloader_test.php` (visibility, reuse and list size), `context_preloader_grades_test.php`, `context_preloader_dates_test.php` and `context_preloader_progress_test.php`, with no other test changed.

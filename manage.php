@@ -64,6 +64,7 @@ $templatecontext = [
     'has_usage' => $usage !== null,
     'usage_questions' => $usage,
     'usage_days' => \local_dttutor\local\service_status::USAGE_WINDOW_DAYS,
+    'bs' => \local_dttutor\local\bootstrap_classes::get(),
 ];
 
 echo $OUTPUT->header();

@@ -37,21 +37,38 @@ class service_bot {
      * Unenrol the bot from every course, suspend it and forget its id. Safe to call repeatedly.
      */
     public static function retire(): void {
-        global $CFG, $DB;
-
         $bot = self::find_bot();
         if ($bot !== null) {
             self::unenrol_everywhere((int)$bot->id);
 
             if (empty($bot->suspended)) {
-                require_once($CFG->dirroot . '/user/lib.php');
-                $update = (object)['id' => $bot->id, 'suspended' => 1];
-                user_update_user($update, false, true);
+                self::suspend((int)$bot->id);
                 \core\session\manager::destroy_user_sessions((int)$bot->id);
             }
         }
 
         unset_config('serviceuserid', 'local_dttutor');
+    }
+
+    /**
+     * Suspend a user through the user API of the running Moodle.
+     *
+     * Moodle 5.3 deprecated user_update_user() in favour of \core\user::update_user() (MDL-82650),
+     * which Moodle 4.5 does not have.
+     *
+     * @param int $userid
+     */
+    private static function suspend(int $userid): void {
+        global $CFG;
+
+        $update = (object)['id' => $userid, 'suspended' => 1];
+        if (method_exists(\core\user::class, 'update_user')) {
+            \core\user::update_user($update, false, true);
+            return;
+        }
+
+        require_once($CFG->dirroot . '/user/lib.php');
+        user_update_user($update, false, true);
     }
 
     /**

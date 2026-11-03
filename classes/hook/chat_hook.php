@@ -245,6 +245,7 @@ class chat_hook {
             'avatarurl' => $avatarurl->out(false),
             'position' => $drawerside,
             'chatproxy_url' => $chatproxyurl->out(false),
+            'bs' => \local_dttutor\local\bootstrap_classes::get(),
         ];
 
         $toggle = $OUTPUT->render_from_template('local_dttutor/tutor_ia_toggle', $toggledata);
