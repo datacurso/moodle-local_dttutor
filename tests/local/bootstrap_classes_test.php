@@ -46,6 +46,7 @@ final class bootstrap_classes_test extends \basic_testcase {
      * @dataProvider bootstrap5_branches_provider
      * @param int $branch
      */
+    #[\PHPUnit\Framework\Attributes\DataProvider('bootstrap5_branches_provider')]
     public function test_moodle_5_gets_bootstrap5_names(int $branch): void {
         $classes = bootstrap_classes::get($branch);
 
