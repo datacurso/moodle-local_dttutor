@@ -79,6 +79,7 @@ $string['error_invalid_message'] = 'Пожалуйста, введите кор�
 $string['error_invalid_position'] = 'Неверные данные позиции';
 $string['error_license_fallback'] = 'Ошибка лицензии: {$a}';
 $string['error_license_fallback_short'] = 'Ошибка лицензии';
+$string['error_license_missing'] = 'ИИ-тьютор недоступен, потому что на этом сайте не настроена лицензия сервиса ИИ. Пожалуйста, свяжитесь с администратором.';
 $string['error_license_not_allowed'] = 'Ваша лицензия не позволяет доступ к сервису ИИ-тьютор. Пожалуйста, свяжитесь с администратором для проверки статуса лицензии или обновления плана.';
 $string['error_license_not_allowed_short'] = 'Ошибка лицензии';
 $string['error_message_too_long'] = '[Ошибка] Сообщение слишком длинное. Максимум 4000 символов.';

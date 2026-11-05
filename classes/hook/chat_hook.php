@@ -246,12 +246,27 @@ class chat_hook {
             'position' => $drawerside,
             'chatproxy_url' => $chatproxyurl->out(false),
             'bs' => \local_dttutor\local\bootstrap_classes::get(),
+            'anchoreddrawers' => self::theme_anchors_drawers(),
         ];
 
         $toggle = $OUTPUT->render_from_template('local_dttutor/tutor_ia_toggle', $toggledata);
         $drawer = $OUTPUT->render_from_template('local_dttutor/tutor_ia_drawer', $drawerdata);
 
         $hook->add_html($toggle . $drawer);
+    }
+
+    /**
+     * Whether Boost anchors the course index and the block drawer to the centre of the screen.
+     *
+     * Moodle 5.3 does so on the course page and the standard layout, so those drawers cannot
+     * follow the page aside when the chat opens and have to step out of the way. Earlier releases
+     * keep them against the edges of the screen, where the page moves aside with them in place.
+     *
+     * @return bool
+     */
+    private static function theme_anchors_drawers(): bool {
+        global $CFG;
+        return (int)($CFG->branch ?? 0) >= 503;
     }
 
     /**

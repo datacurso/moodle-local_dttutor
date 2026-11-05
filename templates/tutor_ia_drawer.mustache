@@ -42,10 +42,11 @@
         "avatarurl": "/local/dttutor/pix/avatars/avatar_profesor_01.png",
         "position": "right",
         "chatproxy_url": "/local/dttutor/chatproxy.php",
-        "bs": {"visuallyhidden": "visually-hidden"}
+        "bs": {"visuallyhidden": "visually-hidden"},
+        "anchoreddrawers": true
     }
 }}
-<div class="tutor-ia-drawer tutor-ia-drawer-{{position}}" id="tutor-ia-drawer-{{uniqid}}" data-position="{{position}}" aria-label="{{tutorname}}" tabindex="-1" role="region">
+<div class="tutor-ia-drawer tutor-ia-drawer-{{position}}" id="tutor-ia-drawer-{{uniqid}}" data-position="{{position}}"{{#anchoreddrawers}} data-anchored-drawers="1"{{/anchoreddrawers}} aria-label="{{tutorname}}" tabindex="-1" role="region">
     <div class="tutor-ia-drawer-header">
         <div class="tutor-ia-header-content">
             <img src="{{avatarurl}}" alt="{{tutorname}}" class="tutor-ia-avatar-small">

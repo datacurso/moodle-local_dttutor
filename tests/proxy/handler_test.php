@@ -17,10 +17,12 @@
 namespace local_dttutor\proxy;
 
 use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\fixtures\provider_exception;
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
+require_once(__DIR__ . '/../fixtures/provider_exception.php');
 
 /**
  * Tests for the chat proxy streaming handler.
@@ -165,6 +167,64 @@ final class handler_test extends \advanced_testcase {
             'message' => get_string('error_ratelimit_exceeded', 'local_dttutor', ''),
         ], $response);
         $this->assertDebuggingCalled('[local_dttutor] AI_API_RATE_LIMITED {"reset_at":0}');
+    }
+
+    /**
+     * MDL-E2E-018: a refused licence reaches the user as such, with a code to title it.
+     */
+    public function test_refused_licence_is_an_error_with_its_message_and_code(): void {
+        $this->resetAfterTest();
+        $body = json_encode(['detail' => 'license_not_allowed']);
+
+        $response = handler::classify_response(403, 0, $body);
+
+        $this->assertSame([
+            'type' => 'error',
+            'error' => get_string('error_license_not_allowed', 'local_dttutor'),
+            'code' => 'license_not_allowed',
+        ], $response);
+        $this->assertDebuggingCalled('[local_dttutor] AI_API_REFUSED {"detail":"license_not_allowed"}');
+    }
+
+    /**
+     * MDL-E2E-018: credits run out reach the user as such, with a code to title them.
+     */
+    public function test_credits_run_out_are_an_error_with_their_message_and_code(): void {
+        $this->resetAfterTest();
+
+        $response = handler::classify_response(403, 0, json_encode(['detail' => 'tokens_not_sufficient']));
+
+        $this->assertSame('tokens_not_sufficient', $response['code']);
+        $this->assertSame(get_string('error_insufficient_tokens', 'local_dttutor'), $response['error']);
+        $this->assertDebuggingCalled('[local_dttutor] AI_API_REFUSED {"detail":"tokens_not_sufficient"}');
+    }
+
+    /**
+     * MDL-E2E-018: a site without a licence is told so instead of getting a generic error.
+     */
+    public function test_a_site_without_a_licence_is_told_so(): void {
+        foreach (['invalidlicensekey', 'instance_disabled', 'licensekey_missing'] as $errorcode) {
+            $response = handler::unavailable_response(new provider_exception($errorcode));
+
+            $this->assertSame([
+                'type' => 'error',
+                'error' => get_string('error_license_missing', 'local_dttutor'),
+                'code' => 'license_missing',
+            ], $response, $errorcode);
+        }
+    }
+
+    /**
+     * MDL-E2E-017: a provider that cannot be built for another reason stays a generic error.
+     */
+    public function test_a_provider_unavailable_for_another_reason_is_a_generic_error(): void {
+        $response = handler::unavailable_response(new \RuntimeException('connection refused'));
+
+        $this->assertSame([
+            'type' => 'error',
+            'error' => get_string('error_unexpected', 'local_dttutor'),
+            'code' => 'provider_unavailable',
+        ], $response);
     }
 
     /**

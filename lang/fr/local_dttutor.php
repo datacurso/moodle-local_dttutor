@@ -79,6 +79,7 @@ $string['error_invalid_message'] = 'Veuillez entrer un message valide';
 $string['error_invalid_position'] = 'Données de position invalides';
 $string['error_license_fallback'] = 'Erreur de licence : {$a}';
 $string['error_license_fallback_short'] = 'Erreur de licence';
+$string['error_license_missing'] = 'Le Tuteur IA n\'est pas disponible, car aucune licence du service d\'IA n\'est configurée sur ce site. Veuillez contacter votre administrateur.';
 $string['error_license_not_allowed'] = 'Votre licence ne permet pas l\'accès au service Tuteur IA. Veuillez contacter votre administrateur pour vérifier l\'état de votre licence ou mettre à niveau votre plan.';
 $string['error_license_not_allowed_short'] = 'Erreur de licence';
 $string['error_message_too_long'] = '[Erreur] Le message est trop long. Maximum 4000 caractères.';

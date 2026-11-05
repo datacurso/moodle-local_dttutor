@@ -17,6 +17,7 @@
 namespace local_dttutor\httpclient;
 
 use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\session_store;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -161,6 +162,32 @@ final class tutoria_api_test extends \advanced_testcase {
         $api->delete_session('remote-del');
 
         $this->assertFalse($DB->record_exists('local_dttutor_session', ['remotesessionid' => 'remote-del']));
+    }
+
+    /**
+     * MDL-INT-036: a conversation erased by a privacy request is not resumed from the cache.
+     */
+    public function test_a_session_erased_in_moodle_is_not_reused_from_the_cache(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $user = $this->getDataGenerator()->create_user();
+        $fake = new fake_ai_client();
+        $fake->enqueue($this->session_response('remote-erased'));
+        $fake->enqueue($this->session_response('remote-after'));
+        $api = new tutoria_api($fake);
+        $api->start_session_v2((int)$course->id, (int)$user->id);
+
+        // What a privacy request leaves behind: the reference is gone, the cache entry is not.
+        session_store::purge('userid = :userid', ['userid' => $user->id], false);
+        $session = $api->start_session_v2((int)$course->id, (int)$user->id);
+
+        $this->assertSame('remote-after', $session['session_id']);
+        $this->assertSame(['POST /chat/start/v2', 'POST /chat/start/v2'], $fake->get_call_signatures());
+        $this->assertSame(
+            'remote-after',
+            $DB->get_field('local_dttutor_session', 'remotesessionid', ['userid' => $user->id, 'courseid' => $course->id])
+        );
     }
 
     /**

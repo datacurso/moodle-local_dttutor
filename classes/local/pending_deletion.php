@@ -46,14 +46,6 @@ final class pending_deletion {
     public const PROVIDER_UNAVAILABLE = 'provider_unavailable';
 
     /**
-     * @var string[] Error codes of the AI provider when the site has no licence to use it.
-     *
-     * invalidlicensekey: no licence key (every release). On Moodle 5.0+, instance_disabled: no
-     * enabled provider instance, and licensekey_missing: an enabled instance without a key.
-     */
-    private const NO_LICENCE_REASONS = ['invalidlicensekey', 'instance_disabled', 'licensekey_missing'];
-
-    /**
      * Keep a session the service did not confirm as deleted.
      *
      * @param string $remotesessionid Session identifier in the AI service.
@@ -142,8 +134,7 @@ final class pending_deletion {
      * @return bool
      */
     public static function is_waiting_for_licence(\Throwable $error): bool {
-        $reason = document_read_failure::reason_of($error);
-        return in_array($reason, self::NO_LICENCE_REASONS, true);
+        return licence::is_missing($error);
     }
 
     /**

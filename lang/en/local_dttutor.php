@@ -79,6 +79,7 @@ $string['error_invalid_message'] = 'Please enter a valid message';
 $string['error_invalid_position'] = 'Invalid position data';
 $string['error_license_fallback'] = 'License error: {$a}';
 $string['error_license_fallback_short'] = 'License Error';
+$string['error_license_missing'] = 'The AI Tutor is not available because this site has no license configured for the AI service. Please contact your administrator.';
 $string['error_license_not_allowed'] = 'Your site license does not allow access to the AI Tutor service. Please contact your administrator to verify your license status or upgrade your plan.';
 $string['error_license_not_allowed_short'] = 'License Error';
 $string['error_message_too_long'] = '[Error] Message is too long. Maximum 4000 characters.';

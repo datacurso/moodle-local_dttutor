@@ -120,6 +120,28 @@ final class chat_hook_output_test extends \advanced_testcase {
     }
 
     /**
+     * MDL-E2E-024: only where Boost anchors its drawers to the centre (Moodle 5.3) is the chat
+     * told to move them aside; earlier releases keep them in place.
+     */
+    public function test_only_moodle_53_and_later_move_the_anchored_drawers_aside(): void {
+        global $CFG;
+        $course = $this->create_enabled_course();
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+        $branch = $CFG->branch;
+
+        foreach (['405' => false, '500' => false, '502' => false, '503' => true] as $release => $anchored) {
+            $CFG->branch = $release;
+            $this->set_course_page($course);
+            $output = $this->footer_output();
+
+            $this->assertStringContainsString(self::TOGGLE_MARKER, $output, $release);
+            $this->assertSame($anchored, str_contains($output, 'data-anchored-drawers="1"'), $release);
+        }
+        $CFG->branch = $branch;
+    }
+
+    /**
      * MDL-INT-026: the chat switched off site wide removes the button from every course.
      */
     public function test_no_button_when_the_chat_is_off_site_wide(): void {

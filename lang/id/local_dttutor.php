@@ -79,6 +79,7 @@ $string['error_invalid_message'] = 'Silakan masukkan pesan yang valid';
 $string['error_invalid_position'] = 'Data posisi tidak valid';
 $string['error_license_fallback'] = 'Kesalahan lisensi: {$a}';
 $string['error_license_fallback_short'] = 'Kesalahan Lisensi';
+$string['error_license_missing'] = 'Tutor AI tidak tersedia karena situs ini belum memiliki lisensi layanan AI yang dikonfigurasi. Silakan hubungi administrator Anda.';
 $string['error_license_not_allowed'] = 'Lisensi Anda tidak mengizinkan akses ke layanan Tutor AI. Silakan hubungi administrator Anda untuk memverifikasi status lisensi Anda atau tingkatkan paket Anda.';
 $string['error_license_not_allowed_short'] = 'Kesalahan Lisensi';
 $string['error_message_too_long'] = '[Kesalahan] Pesan terlalu panjang. Maksimal 4000 karakter.';
