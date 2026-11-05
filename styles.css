@@ -101,12 +101,60 @@
     transition: padding 0.2s ease;
 }
 
+/*
+ * Boost and its child themes pad #page.drawers through an id selector, which outweighs the class
+ * above, and move the page aside with a margin when one of their own drawers opens. The page is
+ * moved the same way, over the margin of the course index or the block drawer when one is open.
+ */
+body #page.drawers.tutor-ia-shifted-right {
+    margin-right: var(--tutor-ia-drawer-width);
+    transition: margin 0.2s ease;
+}
+
+body #page.drawers.tutor-ia-shifted-left {
+    margin-left: var(--tutor-ia-drawer-width);
+    transition: margin 0.2s ease;
+}
+
+/*
+ * On the course page and the standard layout, Boost (Moodle 5.3) anchors the course index and the
+ * block drawer to the centre of the screen, not to the page, so they would not follow the page
+ * aside and would sit over the content. They step out while the chat is open, and come back as
+ * the user left them when it closes: no preference of the user is changed.
+ */
+body.limitedwidth.tutor-ia-drawer-open-right .drawer.drawer-left.show,
+body.limitedwidth.tutor-ia-drawer-open-right .drawer.drawer-right.show,
+body.limitedwidth.tutor-ia-drawer-open-left .drawer.drawer-left.show,
+body.limitedwidth.tutor-ia-drawer-open-left .drawer.drawer-right.show,
+body.pagelayout-standard.tutor-ia-drawer-open-right .drawer.drawer-left.show,
+body.pagelayout-standard.tutor-ia-drawer-open-right .drawer.drawer-right.show,
+body.pagelayout-standard.tutor-ia-drawer-open-left .drawer.drawer-left.show,
+body.pagelayout-standard.tutor-ia-drawer-open-left .drawer.drawer-right.show {
+    visibility: hidden;
+}
+
+body.limitedwidth.tutor-ia-drawer-open-right #page.drawers.show-drawer-left,
+body.pagelayout-standard.tutor-ia-drawer-open-right #page.drawers.show-drawer-left {
+    margin-left: 0;
+}
+
+body.limitedwidth.tutor-ia-drawer-open-left #page.drawers.show-drawer-right,
+body.pagelayout-standard.tutor-ia-drawer-open-left #page.drawers.show-drawer-right {
+    margin-right: 0;
+}
+
 /* Too narrow to shift anything: the panel takes the screen while it is open. */
 @media (max-width: 576px) {
     .tutor-ia-shifted-right,
     .tutor-ia-shifted-left {
         padding-right: 0;
         padding-left: 0;
+    }
+
+    body #page.drawers.tutor-ia-shifted-right,
+    body #page.drawers.tutor-ia-shifted-left {
+        margin-right: 0;
+        margin-left: 0;
     }
 }
 
@@ -313,6 +361,14 @@ body.tutor-ia-drawer-open-left .popover-process-monitor {
 .tutor-ia-edit-message:hover,
 .tutor-ia-edit-message:focus {
     background: rgba(255, 255, 255, 0.32);
+}
+
+/* While an answer arrives the message cannot be edited. */
+.tutor-ia-message.user:hover .tutor-ia-edit-message:disabled,
+.tutor-ia-edit-message:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.18);
 }
 
 /* Inline Edit Container */

@@ -26,12 +26,14 @@ define([
     'core/ajax',
     'core/pubsub',
     'core/str',
+    'core_message/message_drawer_events',
     'local_dttutor/error_modal'
 ], function (
     $,
     Ajax,
     PubSub,
     Str,
+    MessageDrawerEvents,
     ErrorModal
 ) {
     'use strict';
@@ -328,16 +330,26 @@ define([
             });
 
             document.addEventListener('keydown', (e) => {
-                if (this.isDrawerOpen() && e.key === 'Escape') {
+                // An Escape already handled inside the chat (cancelling an edit) must not close it too.
+                if (this.isDrawerOpen() && e.key === 'Escape' && !e.defaultPrevented) {
                     this.closeDrawer();
                 }
             });
 
-            // Close drawer if Moodle's message drawer opens (prevent conflict).
-            PubSub.subscribe('core_message/drawer_shown', () => {
-                if (this.isDrawerOpen()) {
-                    this.closeDrawer();
-                }
+            // Only one drawer at a time: the messaging drawer has no "shown" event, so every
+            // request that opens it closes the chat. A toggle that hides it finds the chat closed.
+            [
+                MessageDrawerEvents.SHOW,
+                MessageDrawerEvents.TOGGLE_VISIBILITY,
+                MessageDrawerEvents.SHOW_CONVERSATION,
+                MessageDrawerEvents.CREATE_CONVERSATION_WITH_USER,
+                MessageDrawerEvents.SHOW_SETTINGS,
+            ].forEach((eventname) => {
+                PubSub.subscribe(eventname, () => {
+                    if (this.isDrawerOpen()) {
+                        this.closeDrawer();
+                    }
+                });
             });
 
             if (this.jumpTo) {
@@ -507,13 +519,14 @@ define([
             }
 
             // Close Moodle's message drawer to prevent conflict.
-            PubSub.publish('core_message/hide', {});
+            PubSub.publish(MessageDrawerEvents.HIDE, {});
 
             this.drawerElement.classList.add('show');
             this.drawerElement.setAttribute('tabindex', '0');
 
             if (this.toggleButton) {
                 this.toggleButton.setAttribute('aria-expanded', 'true');
+                this.setToggleLabel(this.toggleButton.dataset.labelClose);
             }
 
             if (this.pageElement && !this.pageElement.classList.contains(this.pageClass)) {
@@ -548,6 +561,7 @@ define([
 
             if (this.toggleButton) {
                 this.toggleButton.setAttribute('aria-expanded', 'false');
+                this.setToggleLabel(this.toggleButton.dataset.labelOpen);
             }
 
             if (this.pageElement && this.pageElement.classList.contains(this.pageClass)) {
@@ -749,7 +763,33 @@ define([
                 .attr('data-action', 'edit-message')
                 .attr('aria-label', this.strings.editMessage || 'Edit message')
                 .attr('title', this.strings.editMessage || 'Edit message')
+                .prop('disabled', this.streaming)
                 .text('✎');
+        }
+
+        /**
+         * Mark whether an answer is arriving, locking the edit buttons meanwhile.
+         *
+         * Editing a message restarts the conversation from it, so it waits for the answer.
+         *
+         * @param {boolean} streaming Whether an answer is arriving.
+         */
+        setStreaming(streaming) {
+            this.streaming = streaming;
+            this.root.find(SELECTORS.EDIT_MESSAGE).prop('disabled', streaming);
+        }
+
+        /**
+         * Name the floating button after what it does next.
+         *
+         * @param {string|undefined} label Label of the next action.
+         */
+        setToggleLabel(label) {
+            if (!label) {
+                return;
+            }
+            this.toggleButton.setAttribute('aria-label', label);
+            this.toggleButton.setAttribute('title', label);
         }
 
         /**
@@ -864,7 +904,7 @@ define([
                 // Use AbortController so closeCurrentStream() can cancel the fetch.
                 this.currentAbortController = new AbortController();
                 const signal = this.currentAbortController.signal;
-                this.streaming = true;
+                this.setStreaming(true);
                 let firstTokenReceived = false;
 
                 fetch(proxyUrl, {
@@ -1358,6 +1398,7 @@ define([
                         this.saveEditing();
                     } else if (e.key === 'Escape') {
                         e.preventDefault();
+                        e.stopPropagation();
                         this.cancelEditing();
                     }
                 })
@@ -1501,7 +1542,7 @@ define([
 
             this.currentAbortController = new AbortController();
             const signal = this.currentAbortController.signal;
-            this.streaming = true;
+            this.setStreaming(true);
             let firstTokenReceived = false;
 
             fetch(proxyUrl, {
@@ -1569,7 +1610,12 @@ define([
                 });
             });
 
-            return builtMessages;
+            // A question followed straight by another one was never answered (the page was left
+            // while the answer arrived): sent along, the tutor would answer it with the next one.
+            return builtMessages.filter((message, index) => {
+                const next = builtMessages[index + 1];
+                return !(message.role === 'user' && next && next.role === 'user');
+            });
         }
 
         /**
@@ -1699,7 +1745,7 @@ define([
             }
             this.currentAbortController = null;
 
-            this.streaming = false;
+            this.setStreaming(false);
             this.currentAIMessageEl = null;
             this.currentAIMessageContainer = null;
             this.currentAIMessageRawText = '';
