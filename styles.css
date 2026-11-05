@@ -119,27 +119,25 @@ body #page.drawers.tutor-ia-shifted-left {
 /*
  * On the course page and the standard layout, Boost (Moodle 5.3) anchors the course index and the
  * block drawer to the centre of the screen, not to the page, so they would not follow the page
- * aside and would sit over the content. They step out while the chat is open, and come back as
- * the user left them when it closes: no preference of the user is changed.
+ * aside and would sit over the content. They step out of the way while the chat is open, and come
+ * back as the user left them when it closes: no preference of the user is changed. Earlier
+ * releases keep those drawers against the edges, so the chat only adds the step-aside class on
+ * Moodle 5.3 and later (see chat_hook::theme_anchors_drawers()).
  */
-body.limitedwidth.tutor-ia-drawer-open-right .drawer.drawer-left.show,
-body.limitedwidth.tutor-ia-drawer-open-right .drawer.drawer-right.show,
-body.limitedwidth.tutor-ia-drawer-open-left .drawer.drawer-left.show,
-body.limitedwidth.tutor-ia-drawer-open-left .drawer.drawer-right.show,
-body.pagelayout-standard.tutor-ia-drawer-open-right .drawer.drawer-left.show,
-body.pagelayout-standard.tutor-ia-drawer-open-right .drawer.drawer-right.show,
-body.pagelayout-standard.tutor-ia-drawer-open-left .drawer.drawer-left.show,
-body.pagelayout-standard.tutor-ia-drawer-open-left .drawer.drawer-right.show {
+body.limitedwidth.tutor-ia-drawers-step-aside .drawer.drawer-left.show,
+body.limitedwidth.tutor-ia-drawers-step-aside .drawer.drawer-right.show,
+body.pagelayout-standard.tutor-ia-drawers-step-aside .drawer.drawer-left.show,
+body.pagelayout-standard.tutor-ia-drawers-step-aside .drawer.drawer-right.show {
     visibility: hidden;
 }
 
-body.limitedwidth.tutor-ia-drawer-open-right #page.drawers.show-drawer-left,
-body.pagelayout-standard.tutor-ia-drawer-open-right #page.drawers.show-drawer-left {
+body.limitedwidth.tutor-ia-drawers-step-aside.tutor-ia-drawer-open-right #page.drawers.show-drawer-left,
+body.pagelayout-standard.tutor-ia-drawers-step-aside.tutor-ia-drawer-open-right #page.drawers.show-drawer-left {
     margin-left: 0;
 }
 
-body.limitedwidth.tutor-ia-drawer-open-left #page.drawers.show-drawer-right,
-body.pagelayout-standard.tutor-ia-drawer-open-left #page.drawers.show-drawer-right {
+body.limitedwidth.tutor-ia-drawers-step-aside.tutor-ia-drawer-open-left #page.drawers.show-drawer-right,
+body.pagelayout-standard.tutor-ia-drawers-step-aside.tutor-ia-drawer-open-left #page.drawers.show-drawer-right {
     margin-right: 0;
 }
 

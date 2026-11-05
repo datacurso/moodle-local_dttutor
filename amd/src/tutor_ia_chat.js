@@ -122,6 +122,9 @@ define([
             this.pageClass = this.position === 'left' ? 'tutor-ia-shifted-left' : 'tutor-ia-shifted-right';
             // Used for footer-popover positioning via CSS.
             this.bodyClass = this.position === 'left' ? 'tutor-ia-drawer-open-left' : 'tutor-ia-drawer-open-right';
+            // Only where the theme anchors its drawers to the centre (Moodle 5.3) do they step aside.
+            this.stepAsideClass = this.drawerElement && this.drawerElement.dataset.anchoredDrawers === '1'
+                ? 'tutor-ia-drawers-step-aside' : null;
 
             this.pageContext = this.detectPageContext();
             this.adjustDrawerTopPosition();
@@ -536,6 +539,9 @@ define([
             if (this.bodyElement && !this.bodyElement.classList.contains(this.bodyClass)) {
                 this.bodyElement.classList.add(this.bodyClass);
             }
+            if (this.bodyElement && this.stepAsideClass) {
+                this.bodyElement.classList.add(this.stepAsideClass);
+            }
 
             if (this.jumpTo) {
                 this.jumpTo.setAttribute('tabindex', 0);
@@ -570,6 +576,9 @@ define([
 
             if (this.bodyElement && this.bodyElement.classList.contains(this.bodyClass)) {
                 this.bodyElement.classList.remove(this.bodyClass);
+            }
+            if (this.bodyElement && this.stepAsideClass) {
+                this.bodyElement.classList.remove(this.stepAsideClass);
             }
 
             if (this.jumpTo) {
