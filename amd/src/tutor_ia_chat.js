@@ -927,7 +927,7 @@ define([
                         this.clearSelection();
                     })
                     .catch((err) => {
-                        if (err.name === 'AbortError') {
+                        if (err.name === 'AbortError' || err.shown) {
                             return; // Cancelled by closeCurrentStream.
                         }
                         this.hideTypingIndicator();
@@ -1023,7 +1023,10 @@ define([
                                 try {
                                     const errorData = JSON.parse(dataStr);
                                     that.handleStreamError(errorData, sendBtn);
-                                    reject(new Error('Stream error'));
+                                    // Already shown to the user: the caller must not add a generic one.
+                                    const shown = new Error('Stream error');
+                                    shown.shown = true;
+                                    reject(shown);
                                     return;
                                 } catch (e) {
                                     // Non-JSON error, fall through.
@@ -1564,7 +1567,7 @@ define([
                     this.clearSelection();
                 })
                 .catch((err) => {
-                    if (err.name === 'AbortError') {
+                    if (err.name === 'AbortError' || err.shown) {
                         return;
                     }
                     this.hideTypingIndicator();
@@ -1779,57 +1782,31 @@ define([
         }
 
         /**
-         * Handle structured error data from SSE stream.
-         * Detects license and insufficient tokens errors and shows user-friendly modals.
+         * Show the error the chat proxy streamed.
          *
-         * @param {Object} errorData - Error data object from SSE event
+         * The proxy sends the message already in the language of the user, with a code for the
+         * refusals the user can do nothing about by retrying (licence, credits). A bare error code
+         * such as "ai_api_error" carries no message of its own and gets the generic one.
+         *
+         * @param {Object} errorData - Data of the SSE error event: {error, code}.
          * @param {jQuery} sendBtn - Send button element to re-enable
          */
         handleStreamError(errorData, sendBtn) {
             this.hideTypingIndicator();
             this.finalizeStream(sendBtn);
 
-            if (errorData && errorData.detail && errorData.detail.status === 'error') {
-                const errorMessage = errorData.detail.detail || '';
-
-                if (errorMessage.toLowerCase().includes('license not allowed')) {
-                    var self = this;
-                    Str.get_strings([
-                        { key: 'error_license_not_allowed', component: 'local_dttutor' },
-                        { key: 'error_license_not_allowed_short', component: 'local_dttutor' }
-                    ]).then(function (strings) {
-                        ErrorModal.showGeneralError(strings[0], strings[1]);
-                        return;
-                    }).catch(function () {
-                        ErrorModal.showGeneralError(
-                            self.strings.errorLicenseFallback.replace('{$a}', errorMessage),
-                            self.strings.errorLicenseFallbackShort
-                        );
-                    });
-                    return;
-                }
-
-                if (errorMessage.toLowerCase().includes('insufficient tokens')) {
-                    var selfTokens = this;
-                    Str.get_strings([
-                        { key: 'error_insufficient_tokens', component: 'local_dttutor' },
-                        { key: 'error_insufficient_tokens_short', component: 'local_dttutor' }
-                    ]).then(function (strings) {
-                        ErrorModal.showGeneralError(strings[0], strings[1]);
-                        return;
-                    }).catch(function () {
-                        ErrorModal.showGeneralError(
-                            selfTokens.strings.errorNoCreditssFallback.replace('{$a}', errorMessage),
-                            selfTokens.strings.errorInsufficientTokensShort
-                        );
-                    });
-                    return;
-                }
-
-                ErrorModal.showGeneralError(errorMessage);
-            } else {
+            const message = errorData && typeof errorData.error === 'string' ? errorData.error.trim() : '';
+            if (message === '' || /^[a-z_]+$/.test(message)) {
                 ErrorModal.showGeneralError(this.strings.errorUnexpected);
+                return;
             }
+
+            const titles = {
+                'license_not_allowed': this.strings.errorLicenseFallbackShort,
+                'license_missing': this.strings.errorLicenseFallbackShort,
+                'tokens_not_sufficient': this.strings.errorInsufficientTokensShort,
+            };
+            ErrorModal.showGeneralError(message, titles[errorData.code]);
         }
 
         /**

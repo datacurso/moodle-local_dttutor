@@ -79,6 +79,7 @@ $string['error_invalid_message'] = 'Bitte geben Sie eine gültige Nachricht ein'
 $string['error_invalid_position'] = 'Ungültige Positionsdaten';
 $string['error_license_fallback'] = 'Lizenzfehler: {$a}';
 $string['error_license_fallback_short'] = 'Lizenzfehler';
+$string['error_license_missing'] = 'Der KI-Tutor ist nicht verfügbar, weil für diese Website keine Lizenz für den KI-Dienst eingerichtet ist. Bitte kontaktieren Sie Ihren Administrator.';
 $string['error_license_not_allowed'] = 'Ihre Lizenz erlaubt keinen Zugriff auf den KI-Tutor-Dienst. Bitte kontaktieren Sie Ihren Administrator, um Ihren Lizenzstatus zu überprüfen oder Ihren Plan zu aktualisieren.';
 $string['error_license_not_allowed_short'] = 'Lizenzfehler';
 $string['error_message_too_long'] = '[Fehler] Nachricht ist zu lang. Maximal 4000 Zeichen.';
