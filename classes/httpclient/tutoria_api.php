@@ -94,7 +94,7 @@ class tutoria_api {
             $cached = $this->cache->get($cachekey);
         }
 
-        if ($cached && $this->is_session_valid($cached)) {
+        if ($cached && $this->is_session_valid($cached) && $this->is_still_stored($cached, $courseid, $userid, $cmid)) {
             if (!$this->should_validate_cached_session($cached)) {
                 return $cached;
             }
@@ -411,6 +411,25 @@ class tutoria_api {
         }
 
         return $response;
+    }
+
+    /**
+     * Whether a cached session is still the one Moodle keeps for the user, course and module.
+     *
+     * The cache only spares a call to the service; the reference in the database is the one
+     * every deletion removes (privacy requests, a deleted user or course, a new conversation).
+     * Trusting the cache alone kept the chat writing into a conversation that had just been
+     * deleted, with no reference left for a later privacy request to find.
+     *
+     * @param array $session Cached session data.
+     * @param int $courseid Course ID.
+     * @param int $userid User ID.
+     * @param int|null $cmid Course Module ID.
+     * @return bool
+     */
+    private function is_still_stored(array $session, int $courseid, int $userid, ?int $cmid): bool {
+        $stored = session_store::get_remote_session_id($userid, $courseid, $cmid);
+        return $stored !== null && $stored === (string)($session['session_id'] ?? '');
     }
 
     /**
