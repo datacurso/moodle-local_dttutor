@@ -24,6 +24,7 @@ namespace local_dttutor\proxy;
  * @copyright  2026 Datacurso
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \local_dttutor\proxy\context_preloader
+ * @covers     \local_dttutor\proxy\course_total
  */
 final class context_preloader_grades_test extends \advanced_testcase {
     /**
@@ -154,6 +155,80 @@ final class context_preloader_grades_test extends \advanced_testcase {
             '55.00',
             context_preloader::build($course->id, (int)$student->id)
         );
+    }
+
+    /**
+     * A course with a visible and a hidden assignment, both graded, with the totals recalculated.
+     *
+     * Visible: 85 out of 100. Hidden: 40 out of 50. The stored course total is 125 out of 150.
+     *
+     * @param int $mode Value of "Hide totals if they contain hidden items" for the course.
+     * @return array{0: \stdClass, 1: \stdClass} Course and student.
+     */
+    private function course_with_a_hidden_grade_in_the_total(int $mode): array {
+        global $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
+        set_config('include_grades', 1, 'local_dttutor');
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $student = $generator->create_and_enrol($course, 'student');
+        foreach ([[100, 85.0, false], [50, 40.0, true]] as [$max, $grade, $hidden]) {
+            $assign = $generator->create_module('assign', ['course' => $course->id, 'grade' => $max]);
+            $item = \grade_item::fetch([
+                'courseid' => $course->id,
+                'itemtype' => 'mod',
+                'itemmodule' => 'assign',
+                'iteminstance' => $assign->id,
+            ]);
+            $item->update_final_grade($student->id, $grade);
+            if ($hidden) {
+                $item->set_hidden(1, true);
+            }
+        }
+        grade_set_setting($course->id, 'report_user_showtotalsifcontainhidden', $mode);
+        grade_regrade_final_grades($course->id);
+
+        return [$course, $student];
+    }
+
+    /**
+     * MDL-INT-009: a course total that would give the hidden grade away is not sent.
+     */
+    public function test_a_total_containing_a_hidden_grade_is_not_sent_when_the_course_hides_it(): void {
+        $this->resetAfterTest();
+        [$course, $student] = $this->course_with_a_hidden_grade_in_the_total(GRADE_REPORT_HIDE_TOTAL_IF_CONTAINS_HIDDEN);
+
+        $text = context_preloader::build($course->id, (int)$student->id);
+
+        $this->assertStringContainsString('85.00 / 100.00', $text);
+        $this->assertStringNotContainsString('Course total', $text);
+        $this->assertStringNotContainsString('125.00', $text);
+    }
+
+    /**
+     * MDL-INT-009: the total is recalculated without the hidden grade when the course says so.
+     */
+    public function test_a_total_containing_a_hidden_grade_leaves_it_out_when_the_course_says_so(): void {
+        $this->resetAfterTest();
+        [$course, $student] = $this->course_with_a_hidden_grade_in_the_total(GRADE_REPORT_SHOW_TOTAL_IF_CONTAINS_HIDDEN);
+
+        $text = context_preloader::build($course->id, (int)$student->id);
+
+        $this->assertStringContainsString('Course total: 85.00 / 100.00', $text);
+        $this->assertStringNotContainsString('125.00', $text);
+    }
+
+    /**
+     * MDL-INT-009: a course that shows the real total keeps sending it, as the gradebook shows it.
+     */
+    public function test_the_real_total_is_sent_when_the_course_shows_it(): void {
+        $this->resetAfterTest();
+        [$course, $student] = $this->course_with_a_hidden_grade_in_the_total(GRADE_REPORT_SHOW_REAL_TOTAL_IF_CONTAINS_HIDDEN);
+
+        $text = context_preloader::build($course->id, (int)$student->id);
+
+        $this->assertStringContainsString('Course total: 125.00 / 150.00', $text);
     }
 
     /**
