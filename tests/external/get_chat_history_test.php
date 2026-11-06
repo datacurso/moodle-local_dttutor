@@ -18,12 +18,14 @@ namespace local_dttutor\external;
 
 use local_dttutor\course_config;
 use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\fixtures\provider_dependency_trait;
 use local_dttutor\httpclient\ai_client;
 use local_dttutor\session_store;
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
+require_once(__DIR__ . '/../fixtures/provider_dependency_trait.php');
 
 /**
  * Tests for the get_chat_history external function.
@@ -35,6 +37,16 @@ require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
  * @covers     \local_dttutor\external\get_chat_history
  */
 final class get_chat_history_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
+    /**
+     * Skip every test of this class when the Datacurso AI provider is not installed.
+     */
+    protected function setUp(): void {
+        parent::setUp();
+        $this->require_provider();
+    }
+
     /**
      * Bind a fake AI client in the DI container.
      *

@@ -18,6 +18,7 @@ namespace local_dttutor;
 
 use local_dttutor\external\get_chat_history;
 use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\fixtures\provider_dependency_trait;
 use local_dttutor\httpclient\ai_client;
 use local_dttutor\httpclient\client_factory;
 use local_dttutor\proxy\request_guard;
@@ -25,6 +26,7 @@ use local_dttutor\proxy\request_guard;
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/fixtures/fake_ai_client.php');
+require_once(__DIR__ . '/fixtures/provider_dependency_trait.php');
 
 /**
  * How the tutor reacts to the state of the AI provider it depends on.
@@ -39,8 +41,11 @@ require_once(__DIR__ . '/fixtures/fake_ai_client.php');
  * @covers     \local_dttutor\httpclient\client_factory::is_provider_enabled
  */
 final class provider_availability_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     protected function setUp(): void {
         parent::setUp();
+        $this->require_provider();
         $this->resetAfterTest();
     }
 

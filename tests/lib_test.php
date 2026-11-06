@@ -16,6 +16,12 @@
 
 namespace local_dttutor;
 
+use local_dttutor\fixtures\provider_dependency_trait;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/fixtures/provider_dependency_trait.php');
+
 /**
  * Course navigation entry point and role resolution helper.
  *
@@ -28,6 +34,8 @@ namespace local_dttutor;
  * @covers     ::local_dttutor_pluginfile
  */
 final class lib_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     protected function setUp(): void {
         global $CFG;
         parent::setUp();
@@ -51,6 +59,7 @@ final class lib_test extends \advanced_testcase {
      * MDL-INT-025: whoever can edit the course reaches the tutor management page from the course menu.
      */
     public function test_the_management_link_is_offered_to_an_editing_teacher(): void {
+        $this->require_provider();
         \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
@@ -63,6 +72,7 @@ final class lib_test extends \advanced_testcase {
      * MDL-INT-025: a student never sees the management link.
      */
     public function test_the_management_link_is_hidden_from_a_student(): void {
+        $this->require_provider();
         \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $course = $this->getDataGenerator()->create_course();
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
@@ -75,6 +85,7 @@ final class lib_test extends \advanced_testcase {
      * MDL-INT-025: the link disappears when the chat is switched off for the whole site.
      */
     public function test_the_management_link_disappears_when_the_chat_is_off_site_wide(): void {
+        $this->require_provider();
         \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
@@ -135,6 +146,7 @@ final class lib_test extends \advanced_testcase {
      * The custom avatar is not served while the plugin is disabled in the Datacurso AI provider.
      */
     public function test_the_custom_avatar_is_not_served_when_the_plugin_is_disabled(): void {
+        $this->require_provider();
         $context = \context_system::instance();
         get_file_storage()->create_file_from_string([
             'contextid' => $context->id,

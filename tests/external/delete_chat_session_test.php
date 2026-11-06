@@ -18,6 +18,7 @@ namespace local_dttutor\external;
 
 use local_dttutor\course_config;
 use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\fixtures\provider_dependency_trait;
 use local_dttutor\fixtures\provider_exception;
 use local_dttutor\httpclient\ai_client;
 use local_dttutor\local\pending_deletion;
@@ -27,6 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
 require_once(__DIR__ . '/../fixtures/provider_exception.php');
+require_once(__DIR__ . '/../fixtures/provider_dependency_trait.php');
 
 /**
  * Tests for the delete_chat_session external function.
@@ -40,6 +42,8 @@ require_once(__DIR__ . '/../fixtures/provider_exception.php');
  * @covers     \local_dttutor\local\pending_deletion
  */
 final class delete_chat_session_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     /**
      * Bind a fake AI client in the DI container.
      *
@@ -71,6 +75,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      * MDL-INT-024: deleting the conversation of the user.
      */
     public function test_tutor_disabled_for_the_course_is_refused(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
         $this->setAdminUser();
@@ -94,6 +99,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      * @return void
      */
     public function test_plugin_disabled_in_provider_is_refused(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
         \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
@@ -115,6 +121,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      * MDL-INT-024: deleting the conversation of the user.
      */
     public function test_module_from_another_course_is_refused(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         [$course] = $this->enrolled_student_in_enabled_course();
         $othercourse = $this->getDataGenerator()->create_course();
@@ -129,6 +136,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      * MDL-INT-024: deleting the conversation of the user.
      */
     public function test_delete_without_a_stored_session_makes_no_remote_call(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         [$course] = $this->enrolled_student_in_enabled_course();
         $fake = $this->fake_remote_api();
@@ -145,6 +153,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      */
     public function test_delete_with_a_stored_session_issues_exactly_one_delete_and_forgets_the_row(): void {
         global $DB;
+        $this->require_provider();
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
         $fake = $this->fake_remote_api();
@@ -166,6 +175,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      */
     public function test_delete_targets_the_module_scoped_session_only(): void {
         global $DB;
+        $this->require_provider();
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
         $page = $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
@@ -187,6 +197,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      */
     public function test_remote_failure_keeps_the_session_pending_deletion(): void {
         global $DB;
+        $this->require_provider();
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
         $fake = $this->fake_remote_api();
@@ -210,6 +221,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      */
     public function test_a_session_the_service_no_longer_has_is_deleted(): void {
         global $DB;
+        $this->require_provider();
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
         $fake = $this->fake_remote_api();
@@ -228,6 +240,7 @@ final class delete_chat_session_test extends \advanced_testcase {
      */
     public function test_client_construction_failure_keeps_the_session_pending_deletion(): void {
         global $DB;
+        $this->require_provider();
         $this->resetAfterTest();
         [$course, $student] = $this->enrolled_student_in_enabled_course();
         // Resolving the AI client throws, as when the provider is unconfigured or not installed.

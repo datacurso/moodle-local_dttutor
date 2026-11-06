@@ -17,6 +17,11 @@
 namespace local_dttutor\external;
 
 use local_dttutor\course_config;
+use local_dttutor\fixtures\provider_dependency_trait;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/../fixtures/provider_dependency_trait.php');
 
 /**
  * Tests for the save_course_config external function.
@@ -28,6 +33,8 @@ use local_dttutor\course_config;
  * @covers     \local_dttutor\external\save_course_config
  */
 final class save_course_config_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     /**
      * Create a course and log an editing teacher in (the plugin is enabled in the provider by default).
      *
@@ -56,6 +63,7 @@ final class save_course_config_test extends \advanced_testcase {
      * MDL-INT-023: saving the course switch.
      */
     public function test_teacher_enables_the_tutor(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();
 
@@ -70,6 +78,7 @@ final class save_course_config_test extends \advanced_testcase {
      * MDL-INT-023: saving the course switch.
      */
     public function test_teacher_disables_the_tutor(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
@@ -94,6 +103,7 @@ final class save_course_config_test extends \advanced_testcase {
      * MDL-INT-023: saving the course switch.
      */
     public function test_return_structure_has_no_enrol_status(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();
 
@@ -107,6 +117,7 @@ final class save_course_config_test extends \advanced_testcase {
      * MDL-INT-023: saving the course switch.
      */
     public function test_student_without_course_update_is_refused(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
@@ -120,6 +131,7 @@ final class save_course_config_test extends \advanced_testcase {
      * MDL-INT-023: saving the course switch.
      */
     public function test_plugin_disabled_site_wide_is_refused(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();
         \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
@@ -140,6 +152,7 @@ final class save_course_config_test extends \advanced_testcase {
      * request carries the switch alone.
      */
     public function test_the_switch_is_all_a_course_decides(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();
 
@@ -154,6 +167,7 @@ final class save_course_config_test extends \advanced_testcase {
      * MDL-INT-023: whoever cannot edit the course cannot switch the tutor on.
      */
     public function test_a_student_cannot_switch_the_tutor(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();
         $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'student'));

@@ -16,7 +16,12 @@
 
 namespace local_dttutor;
 
+use local_dttutor\fixtures\provider_dependency_trait;
 use local_dttutor\proxy\request_guard;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/fixtures/provider_dependency_trait.php');
 
 /**
  * Global and per-course enablement of the tutor.
@@ -28,6 +33,8 @@ use local_dttutor\proxy\request_guard;
  * @covers     \local_dttutor\course_config
  */
 final class course_config_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest();
@@ -130,6 +137,7 @@ final class course_config_test extends \advanced_testcase {
      * MDL-INT-001: the site switch turned off leaves the tutor unavailable in an enabled course.
      */
     public function test_the_site_switch_off_overrides_an_enabled_course(): void {
+        $this->require_provider();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
@@ -142,6 +150,7 @@ final class course_config_test extends \advanced_testcase {
      * MDL-INT-001: the course switch turned off leaves the tutor unavailable with the site switch on.
      */
     public function test_the_course_switch_off_keeps_the_tutor_unavailable(): void {
+        $this->require_provider();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
@@ -153,6 +162,7 @@ final class course_config_test extends \advanced_testcase {
      * MDL-INT-001: the tutor is available only when both switches agree.
      */
     public function test_both_switches_on_make_the_tutor_available(): void {
+        $this->require_provider();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);

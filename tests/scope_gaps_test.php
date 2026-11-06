@@ -17,6 +17,11 @@
 namespace local_dttutor;
 
 use local_dttutor\external\save_course_config;
+use local_dttutor\fixtures\provider_dependency_trait;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/fixtures/provider_dependency_trait.php');
 
 /**
  * Scope items with no home of their own: features still to be built and one misleading message.
@@ -31,6 +36,8 @@ use local_dttutor\external\save_course_config;
  * @coversNothing
  */
 final class scope_gaps_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest();
@@ -40,6 +47,7 @@ final class scope_gaps_test extends \advanced_testcase {
      * MDL-E2E-010: with the chat switched off for the site, the message names that situation.
      */
     public function test_the_refusal_with_the_chat_off_site_wide_names_that_situation(): void {
+        $this->require_provider();
         $this->setAdminUser();
         \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
         $course = $this->getDataGenerator()->create_course();

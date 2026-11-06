@@ -17,6 +17,11 @@
 namespace local_dttutor\proxy;
 
 use local_dttutor\course_config;
+use local_dttutor\fixtures\provider_dependency_trait;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/../fixtures/provider_dependency_trait.php');
 
 /**
  * Tests for the chat proxy request guard.
@@ -27,6 +32,8 @@ use local_dttutor\course_config;
  * @covers     \local_dttutor\proxy\request_guard
  */
 final class request_guard_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     /**
      * Create a course with the tutor enabled in the provider and for the course.
      *
@@ -34,6 +41,7 @@ final class request_guard_test extends \advanced_testcase {
      * @return \stdClass The course record.
      */
     private function create_enabled_course(array $courseoptions = []): \stdClass {
+        $this->require_provider();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course($courseoptions);
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
@@ -50,6 +58,7 @@ final class request_guard_test extends \advanced_testcase {
      * @return array
      */
     private function build_input(int $courseid, array $messages = [], array $extracontext = []): array {
+        $this->require_provider();
         if ($messages === []) {
             $messages = [['role' => 'user', 'content' => 'Hello']];
         }

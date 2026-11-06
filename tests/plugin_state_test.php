@@ -18,7 +18,12 @@ namespace local_dttutor;
 
 use aiprovider_datacurso\local\plugin_settings;
 use core\hook\output\before_footer_html_generation;
+use local_dttutor\fixtures\provider_dependency_trait;
 use local_dttutor\hook\chat_hook;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/fixtures/provider_dependency_trait.php');
 
 /**
  * Tests that the plugin state comes from the Datacurso AI provider instead of the plugin's own setting.
@@ -30,6 +35,8 @@ use local_dttutor\hook\chat_hook;
  * @covers     \local_dttutor\hook\chat_hook
  */
 final class plugin_state_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     /**
      * Load the plugin library and upgrade code under test.
      *
@@ -84,6 +91,7 @@ final class plugin_state_test extends \advanced_testcase {
      * @return void
      */
     public function test_navigation_entry_is_shown_when_enabled_in_provider(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
@@ -101,6 +109,7 @@ final class plugin_state_test extends \advanced_testcase {
      * @return void
      */
     public function test_navigation_entry_is_hidden_when_disabled_in_provider(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
@@ -117,6 +126,7 @@ final class plugin_state_test extends \advanced_testcase {
      * @return void
      */
     public function test_floating_chat_is_rendered_when_enabled_in_provider(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         set_config('enabled', '0', 'local_dttutor');
 
@@ -129,6 +139,7 @@ final class plugin_state_test extends \advanced_testcase {
      * @return void
      */
     public function test_floating_chat_is_not_rendered_when_disabled_in_provider(): void {
+        $this->require_provider();
         $this->resetAfterTest();
         plugin_settings::set_enabled('local_dttutor', false);
 

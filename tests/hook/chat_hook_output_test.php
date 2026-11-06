@@ -18,6 +18,11 @@ namespace local_dttutor\hook;
 
 use core\hook\output\before_footer_html_generation;
 use local_dttutor\course_config;
+use local_dttutor\fixtures\provider_dependency_trait;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/../fixtures/provider_dependency_trait.php');
 
 /**
  * What the footer hook adds to a page, and when it adds nothing at all.
@@ -32,11 +37,14 @@ use local_dttutor\course_config;
  * @covers     \local_dttutor\hook\chat_hook
  */
 final class chat_hook_output_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     /** @var string Marker of the floating toggle button in the generated HTML. */
     private const TOGGLE_MARKER = 'data-action="tutor-ia-toggle"';
 
     protected function setUp(): void {
         parent::setUp();
+        $this->require_provider();
         $this->resetAfterTest();
     }
 
