@@ -24,6 +24,7 @@
 
 namespace local_dttutor\external;
 
+use aiprovider_datacurso\local\plugin_settings;
 use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
@@ -87,10 +88,8 @@ class delete_chat_session extends external_api {
         // Check if user is logged in.
         require_login();
 
-        // Verify plugin is enabled.
-        if (!get_config('local_dttutor', 'enabled')) {
-            throw new \moodle_exception('error_tutor_disabled_site', 'local_dttutor');
-        }
+        // Verify the plugin is enabled in the Datacurso AI provider.
+        plugin_settings::require_enabled('local_dttutor');
 
         // Validate course context and permissions.
         $context = \context_course::instance($params['courseid']);

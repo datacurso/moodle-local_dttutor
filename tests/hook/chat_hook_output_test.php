@@ -18,6 +18,11 @@ namespace local_dttutor\hook;
 
 use core\hook\output\before_footer_html_generation;
 use local_dttutor\course_config;
+use local_dttutor\fixtures\provider_dependency_trait;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/../fixtures/provider_dependency_trait.php');
 
 /**
  * What the footer hook adds to a page, and when it adds nothing at all.
@@ -32,11 +37,14 @@ use local_dttutor\course_config;
  * @covers     \local_dttutor\hook\chat_hook
  */
 final class chat_hook_output_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     /** @var string Marker of the floating toggle button in the generated HTML. */
     private const TOGGLE_MARKER = 'data-action="tutor-ia-toggle"';
 
     protected function setUp(): void {
         parent::setUp();
+        $this->require_provider();
         $this->resetAfterTest();
     }
 
@@ -47,7 +55,7 @@ final class chat_hook_output_test extends \advanced_testcase {
      */
     private function create_enabled_course(): \stdClass {
         $this->setAdminUser();
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $course = $this->getDataGenerator()->create_course();
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
@@ -147,7 +155,7 @@ final class chat_hook_output_test extends \advanced_testcase {
     public function test_no_button_when_the_chat_is_off_site_wide(): void {
         $course = $this->create_enabled_course();
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
-        set_config('enabled', 0, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
         $this->setUser($student);
         $this->set_course_page($course);
 
