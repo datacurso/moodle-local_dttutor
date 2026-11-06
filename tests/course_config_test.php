@@ -34,13 +34,15 @@ final class course_config_test extends \advanced_testcase {
     }
 
     /**
-     * Whether the tutor is available for a course, as the request guard sees it.
+     * Whether the tutor is available for a course, as every entry point sees it: the plugin state
+     * in the Datacurso AI provider first, then the course switch of the request guard.
      *
      * @param int $courseid
      * @return bool
      */
     private function tutor_is_available(int $courseid): bool {
         try {
+            \aiprovider_datacurso\local\plugin_settings::require_enabled('local_dttutor');
             request_guard::assert_course_enabled($courseid);
             return true;
         } catch (\moodle_exception $e) {
@@ -131,7 +133,7 @@ final class course_config_test extends \advanced_testcase {
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
-        set_config('enabled', 0, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
 
         $this->assertFalse($this->tutor_is_available((int)$course->id));
     }
@@ -142,7 +144,7 @@ final class course_config_test extends \advanced_testcase {
     public function test_the_course_switch_off_keeps_the_tutor_unavailable(): void {
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
 
         $this->assertFalse($this->tutor_is_available((int)$course->id));
     }
@@ -153,7 +155,7 @@ final class course_config_test extends \advanced_testcase {
     public function test_both_switches_on_make_the_tutor_available(): void {
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
 
         $this->assertTrue($this->tutor_is_available((int)$course->id));

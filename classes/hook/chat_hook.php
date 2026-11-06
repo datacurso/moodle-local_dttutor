@@ -16,6 +16,7 @@
 
 namespace local_dttutor\hook;
 
+use aiprovider_datacurso\local\plugin_settings;
 use core\hook\output\before_footer_html_generation;
 
 /**
@@ -151,8 +152,8 @@ class chat_hook {
     private static function add_float_chat(before_footer_html_generation $hook): void {
         global $PAGE, $COURSE, $USER, $OUTPUT;
 
-        // Check 1: Global plugin enabled.
-        if (!get_config('local_dttutor', 'enabled')) {
+        // Check 1: Plugin enabled in the Datacurso AI provider.
+        if (!plugin_settings::is_enabled('local_dttutor')) {
             return;
         }
 

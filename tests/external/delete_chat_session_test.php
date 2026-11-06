@@ -57,7 +57,6 @@ final class delete_chat_session_test extends \advanced_testcase {
      * @return array{0: \stdClass, 1: \stdClass} The course and the student.
      */
     private function enrolled_student_in_enabled_course(): array {
-        set_config('enabled', 1, 'local_dttutor');
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
@@ -84,6 +83,29 @@ final class delete_chat_session_test extends \advanced_testcase {
         $this->expectExceptionMessageMatches('/not available/');
         try {
             delete_chat_session::execute((int)$course->id);
+        } finally {
+            $this->assertSame([], $fake->get_call_signatures());
+        }
+    }
+
+    /**
+     * S6: deleting is refused without remote calls when the Datacurso AI provider disables the plugin.
+     *
+     * @return void
+     */
+    public function test_plugin_disabled_in_provider_is_refused(): void {
+        $this->resetAfterTest();
+        [$course, $student] = $this->enrolled_student_in_enabled_course();
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
+        $fake = $this->fake_remote_api();
+        session_store::upsert((int)$student->id, (int)$course->id, null, 'remote-42');
+
+        try {
+            delete_chat_session::execute((int)$course->id);
+            $this->fail('Deleting must be refused while the plugin is disabled.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('plugindisabled', $e->errorcode);
+            $this->assertSame('aiprovider_datacurso', $e->module);
         } finally {
             $this->assertSame([], $fake->get_call_signatures());
         }

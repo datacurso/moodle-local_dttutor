@@ -32,6 +32,10 @@ class observer {
     public static function course_deleted(\core\event\course_deleted $event): void {
         $courseid = (int)$event->objectid;
         course_config::delete($courseid);
+        // Nothing of the course ever reached the service: do not ask it, do not log a failure.
+        if (!session_store::has_sessions(null, $courseid)) {
+            return;
+        }
         $remote = session_store::purge_remote_conversations(null, $courseid);
         session_store::purge('courseid = :courseid', ['courseid' => $courseid], $remote === null);
     }
@@ -43,6 +47,10 @@ class observer {
      */
     public static function user_deleted(\core\event\user_deleted $event): void {
         $userid = (int)$event->objectid;
+        // Nothing of the user ever reached the service: do not ask it, do not log a failure.
+        if (!session_store::has_sessions($userid, null)) {
+            return;
+        }
         $remote = session_store::purge_remote_conversations($userid, null);
         session_store::purge('userid = :userid', ['userid' => $userid], $remote === null);
     }

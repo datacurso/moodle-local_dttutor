@@ -24,21 +24,19 @@
 
 require_once('../../config.php');
 
+use aiprovider_datacurso\local\plugin_settings;
 use local_dttutor\course_config;
 
 $courseid = required_param('id', PARAM_INT);
 
 require_login($courseid);
+// Check the plugin is enabled in the Datacurso AI provider.
+plugin_settings::require_enabled('local_dttutor');
 $course = get_course($courseid);
 $context = context_course::instance($courseid);
 
 // Check capability.
 require_capability('moodle/course:update', $context);
-
-// Check plugin is enabled.
-if (!get_config('local_dttutor', 'enabled')) {
-    throw new moodle_exception('error_tutor_disabled_site', 'local_dttutor');
-}
 
 // Set up page.
 $PAGE->set_url('/local/dttutor/manage.php', ['id' => $courseid]);

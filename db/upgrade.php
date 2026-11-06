@@ -198,5 +198,14 @@ function xmldb_local_dttutor_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026100801, 'local', 'dttutor');
     }
 
+    if ($oldversion < 2026110500) {
+        // The "Enabled" switch moved to the Datacurso AI provider, whose upgrade already copied
+        // the value of this setting, so the plugin only removes its own copy.
+        unset_config('enabled', 'local_dttutor');
+
+        // Dttutor savepoint reached.
+        upgrade_plugin_savepoint(true, 2026110500, 'local', 'dttutor');
+    }
+
     return true;
 }

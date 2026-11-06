@@ -28,7 +28,7 @@ use local_dttutor\course_config;
  */
 final class request_guard_test extends \advanced_testcase {
     /**
-     * Create a course with the tutor enabled globally and for the course.
+     * Create a course with the tutor enabled in the provider and for the course.
      *
      * @param array $courseoptions Extra options for the course generator.
      * @return \stdClass The course record.
@@ -36,7 +36,6 @@ final class request_guard_test extends \advanced_testcase {
     private function create_enabled_course(array $courseoptions = []): \stdClass {
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course($courseoptions);
-        set_config('enabled', 1, 'local_dttutor');
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         course_config::update($course->id, ['indexing_enabled' => 1]);
         return $course;
@@ -103,12 +102,12 @@ final class request_guard_test extends \advanced_testcase {
     public function test_plugin_globally_disabled_is_rejected(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
-        set_config('enabled', 0, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
         $this->setUser($student);
 
         $this->expectException(\moodle_exception::class);
-        $this->expectExceptionMessageMatches('/not available/');
+        $this->expectExceptionMessageMatches('/is not enabled on this site/');
         request_guard::authorize($this->build_input($course->id));
     }
 

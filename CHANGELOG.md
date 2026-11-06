@@ -5,6 +5,14 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.15] - 2026-11-06
+
+### Changed
+- **The tutor follows its state in the Datacurso AI provider**: the site-wide *Enable Chat* setting (`local_dttutor/enabled`) moved to the Datacurso AI provider (Site administration > AI > Datacurso plugins list), which keeps its value; the plugin's own setting is removed on upgrade, together with its strings `enabled` and `enabled_desc`. While the plugin is disabled there, the chat is not added to the pages, the course menu has no management link, the custom avatar is not served and the chat proxy refuses every question. The tutor management page (`manage.php`) and the web services `local_dttutor_get_chat_history`, `local_dttutor_delete_chat_session` and `local_dttutor_save_course_config` refuse with the provider's message instead of the plugin's own *The AI Tutor is switched off for this site.* error: users are told the plugin is not enabled and to contact the administrator, and site administrators get a link to the provider's plugins list. The string `error_tutor_disabled_site` is removed, and the help of the course switch (`enable_tutor_for_course_help`) no longer mentions a global plugin setting. Each entry point checks the plugin state once; `request_guard::assert_course_enabled()` now checks only the course switch. Requires `aiprovider_datacurso` 2026110400. Tests: `tests/plugin_state_test.php`, `tests/lib_test.php`, `tests/scope_gaps_test.php`, `tests/course_config_test.php`, `tests/proxy/request_guard_test.php`, `tests/external/get_chat_history_test.php`, `tests/external/delete_chat_session_test.php`, `tests/external/save_course_config_test.php`
+
+### Fixed
+- **Deleting a user or a course the tutor never served no longer contacts the AI service**: every user and course deletion asked the service to erase their conversations, so with an unconfigured or unreachable provider each deletion logged a failure and queued a purge for people who never used the tutor. The observers now ask the service only when `local_dttutor_session` holds a conversation of that user or course (`session_store::has_sessions()`). Tests: `tests/observer_test.php`
+
 ## [2.0.14] - 2026-11-04
 
 **Compatibility note:** This version is compatible from **Moodle 4.5** to **Moodle 5.3**.

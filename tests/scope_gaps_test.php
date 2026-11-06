@@ -41,7 +41,7 @@ final class scope_gaps_test extends \advanced_testcase {
      */
     public function test_the_refusal_with_the_chat_off_site_wide_names_that_situation(): void {
         $this->setAdminUser();
-        set_config('enabled', 0, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
         $this->setUser($teacher);
@@ -50,7 +50,8 @@ final class scope_gaps_test extends \advanced_testcase {
             save_course_config::execute((int)$course->id, true);
             $this->fail('The tutor is switched off for the site, so the request had to be refused.');
         } catch (\moodle_exception $e) {
-            $this->assertEquals(get_string('error_tutor_disabled_site', 'local_dttutor'), $e->getMessage());
+            $this->assertSame('plugindisabled', $e->errorcode);
+            $this->assertSame('aiprovider_datacurso', $e->module);
             $this->assertNotEquals(get_string('error_api_not_configured', 'local_dttutor'), $e->getMessage());
         }
     }

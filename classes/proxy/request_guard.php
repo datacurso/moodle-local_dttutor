@@ -16,6 +16,7 @@
 
 namespace local_dttutor\proxy;
 
+use aiprovider_datacurso\local\plugin_settings;
 use local_dttutor\course_config;
 use local_dttutor\httpclient\client_factory;
 use local_dttutor\local\open_attempt;
@@ -79,6 +80,7 @@ class request_guard {
     public static function authorize(array $input): \stdClass {
         global $USER;
 
+        plugin_settings::require_enabled('local_dttutor');
         self::assert_provider_enabled();
 
         $context = is_array($input['context'] ?? null) ? $input['context'] : [];
@@ -157,16 +159,17 @@ class request_guard {
     }
 
     /**
-     * Refuse the request unless the tutor is enabled both site-wide and for the course.
+     * Refuse the request unless the tutor is enabled for the course.
      *
      * Shared by the chat proxy and the AJAX external functions so that every entry point
-     * applies the same per-course gate.
+     * applies the same per-course gate. Each entry point checks the plugin state in the
+     * Datacurso AI provider itself, before this gate.
      *
      * @param int $courseid Course id.
      * @throws \moodle_exception When the tutor is not available for the course.
      */
     public static function assert_course_enabled(int $courseid): void {
-        if (!get_config('local_dttutor', 'enabled') || !course_config::is_enabled_for_course($courseid)) {
+        if (!course_config::is_enabled_for_course($courseid)) {
             throw new \moodle_exception('error_tutor_not_available', 'local_dttutor');
         }
     }

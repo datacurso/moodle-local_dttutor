@@ -47,7 +47,7 @@ final class chat_hook_output_test extends \advanced_testcase {
      */
     private function create_enabled_course(): \stdClass {
         $this->setAdminUser();
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $course = $this->getDataGenerator()->create_course();
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
@@ -147,7 +147,7 @@ final class chat_hook_output_test extends \advanced_testcase {
     public function test_no_button_when_the_chat_is_off_site_wide(): void {
         $course = $this->create_enabled_course();
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
-        set_config('enabled', 0, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
         $this->setUser($student);
         $this->set_course_page($course);
 

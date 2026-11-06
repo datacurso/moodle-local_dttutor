@@ -64,7 +64,7 @@ final class services_contract_test extends \advanced_testcase {
      */
     private function ready_course(): array {
         $this->setAdminUser();
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $course = $this->getDataGenerator()->create_course();
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
@@ -159,7 +159,7 @@ final class services_contract_test extends \advanced_testcase {
      */
     public function test_saving_the_course_switch_answers_with_the_declared_structure(): void {
         $this->setAdminUser();
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');

@@ -119,6 +119,19 @@ class session_store {
     }
 
     /**
+     * Whether any conversation is stored for a user, a course, or both.
+     *
+     * @param int|null $userid User the question is limited to, or null for every user.
+     * @param int|null $courseid Course the question is limited to, or null for every course.
+     * @return bool
+     */
+    public static function has_sessions(?int $userid, ?int $courseid): bool {
+        global $DB;
+        $conditions = array_filter(['userid' => $userid, 'courseid' => $courseid], static fn($v) => $v !== null);
+        return $DB->record_exists(self::TABLE, $conditions);
+    }
+
+    /**
      * Ask the AI service to delete every conversation of a user, or of a whole course.
      *
      * Deleting the stored handles one by one only reaches the conversations Moodle knows

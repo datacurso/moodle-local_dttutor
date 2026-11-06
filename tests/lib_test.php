@@ -25,6 +25,7 @@ namespace local_dttutor;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     ::local_dttutor_extend_navigation_course
  * @covers     ::local_dttutor_get_user_role
+ * @covers     ::local_dttutor_pluginfile
  */
 final class lib_test extends \advanced_testcase {
     protected function setUp(): void {
@@ -50,7 +51,7 @@ final class lib_test extends \advanced_testcase {
      * MDL-INT-025: whoever can edit the course reaches the tutor management page from the course menu.
      */
     public function test_the_management_link_is_offered_to_an_editing_teacher(): void {
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
         $this->setUser($teacher);
@@ -62,7 +63,7 @@ final class lib_test extends \advanced_testcase {
      * MDL-INT-025: a student never sees the management link.
      */
     public function test_the_management_link_is_hidden_from_a_student(): void {
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $course = $this->getDataGenerator()->create_course();
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
         $this->setUser($student);
@@ -74,7 +75,7 @@ final class lib_test extends \advanced_testcase {
      * MDL-INT-025: the link disappears when the chat is switched off for the whole site.
      */
     public function test_the_management_link_disappears_when_the_chat_is_off_site_wide(): void {
-        set_config('enabled', 0, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
         $this->setUser($teacher);
@@ -128,5 +129,40 @@ final class lib_test extends \advanced_testcase {
         $this->setUser($user);
 
         $this->assertEquals('student', local_dttutor_get_user_role());
+    }
+
+    /**
+     * The custom avatar is not served while the plugin is disabled in the Datacurso AI provider.
+     */
+    public function test_the_custom_avatar_is_not_served_when_the_plugin_is_disabled(): void {
+        $context = \context_system::instance();
+        get_file_storage()->create_file_from_string([
+            'contextid' => $context->id,
+            'component' => 'local_dttutor',
+            'filearea' => 'customavatar',
+            'itemid' => 0,
+            'filepath' => '/',
+            'filename' => 'avatar.png',
+        ], 'image');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
+
+        $this->assertFalse(local_dttutor_pluginfile(null, null, $context, 'customavatar', [0, 'avatar.png'], false));
+    }
+
+    /**
+     * The management page refuses through the provider right after the login check.
+     *
+     * Page scripts cannot run inside PHPUnit, so the contract is checked on the script itself.
+     */
+    public function test_the_management_page_requires_the_plugin_enabled(): void {
+        global $CFG;
+        $source = file_get_contents($CFG->dirroot . '/local/dttutor/manage.php');
+
+        $login = strpos($source, 'require_login($courseid);');
+        $gate = strpos($source, "plugin_settings::require_enabled('local_dttutor');");
+        $this->assertNotFalse($login);
+        $this->assertNotFalse($gate);
+        $this->assertGreaterThan($login, $gate);
+        $this->assertStringNotContainsString('error_tutor_disabled_site', $source);
     }
 }

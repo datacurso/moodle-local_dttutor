@@ -43,7 +43,7 @@ final class tutor_used_test extends \advanced_testcase {
      */
     private function ready_course(): array {
         $this->setAdminUser();
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $course = $this->getDataGenerator()->create_course();
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
@@ -99,7 +99,7 @@ final class tutor_used_test extends \advanced_testcase {
      */
     public function test_a_refused_query_is_not_recorded(): void {
         [$course] = $this->ready_course();
-        set_config('enabled', 0, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
 
         $sink = $this->redirectEvents();
         try {

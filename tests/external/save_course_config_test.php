@@ -29,12 +29,11 @@ use local_dttutor\course_config;
  */
 final class save_course_config_test extends \advanced_testcase {
     /**
-     * Create a course with the plugin enabled and log an editing teacher in.
+     * Create a course and log an editing teacher in (the plugin is enabled in the provider by default).
      *
      * @return \stdClass The course.
      */
     private function course_with_teacher_logged_in(): \stdClass {
-        set_config('enabled', 1, 'local_dttutor');
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
         $this->setUser($teacher);
@@ -109,7 +108,6 @@ final class save_course_config_test extends \advanced_testcase {
      */
     public function test_student_without_course_update_is_refused(): void {
         $this->resetAfterTest();
-        set_config('enabled', 1, 'local_dttutor');
         $course = $this->getDataGenerator()->create_course();
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
         $this->setUser($student);
@@ -124,11 +122,15 @@ final class save_course_config_test extends \advanced_testcase {
     public function test_plugin_disabled_site_wide_is_refused(): void {
         $this->resetAfterTest();
         $course = $this->course_with_teacher_logged_in();
-        set_config('enabled', 0, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
 
-        $this->expectException(\moodle_exception::class);
-        $this->expectExceptionMessage(get_string('error_tutor_disabled_site', 'local_dttutor'));
-        save_course_config::execute((int)$course->id, true);
+        try {
+            save_course_config::execute((int)$course->id, true);
+            $this->fail('Saving must be refused while the plugin is disabled.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('plugindisabled', $e->errorcode);
+            $this->assertSame('aiprovider_datacurso', $e->module);
+        }
     }
 
     /**
