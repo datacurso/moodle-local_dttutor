@@ -22,7 +22,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use aiprovider_datacurso\local\plugin_settings;
+use local_dttutor\local\provider_state;
 
 /**
  * Extend course navigation with AI Tutor Management link
@@ -39,7 +39,7 @@ function local_dttutor_extend_navigation_course(navigation_node $parentnode, std
     }
 
     // Only if the plugin is enabled in the Datacurso AI provider.
-    if (!plugin_settings::is_enabled('local_dttutor')) {
+    if (!provider_state::is_enabled()) {
         return;
     }
 
@@ -71,7 +71,7 @@ function local_dttutor_extend_navigation_course(navigation_node $parentnode, std
  */
 function local_dttutor_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
     // Nothing is served while the plugin is disabled in the Datacurso AI provider.
-    if (!plugin_settings::is_enabled('local_dttutor')) {
+    if (!provider_state::is_enabled()) {
         return false;
     }
 

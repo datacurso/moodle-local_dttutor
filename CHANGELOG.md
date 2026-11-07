@@ -5,6 +5,11 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.16] - 2026-11-07
+
+### Fixed
+- **A tutor deployed before its provider no longer breaks every page**: the footer hook (`chat_hook::add_float_chat()`), the course navigation callback and the file serving callback of `lib.php` asked `aiprovider_datacurso\local\plugin_settings` for the plugin state, a class that only exists from `aiprovider_datacurso` 1.7.0 (2026110400). When the code of the tutor 2.0.15 reached a site before that provider, every page with a footer threw `Class "aiprovider_datacurso\local\plugin_settings" not found`, including the upgrade page that reports the missing dependency, so the administrator could not reach the upgrade. Those callbacks now ask `\local_dttutor\local\provider_state`, which reports the tutor as disabled while the provider class does not exist: the chat, the management link and the custom avatar stay away until the provider is upgraded. Tests: `tests/local/provider_state_test.php`
+
 ## [2.0.15] - 2026-11-06
 
 ### Changed
