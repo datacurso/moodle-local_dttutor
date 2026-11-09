@@ -85,6 +85,7 @@ $string['error_no_credits_fallback'] = 'Crédits insuffisants : {$a}';
 $string['error_provider_disabled'] = 'Le Tuteur IA n\'est pas disponible car le fournisseur d\'IA est désactivé sur ce site. Veuillez contacter votre administrateur.';
 $string['error_quiz_in_progress'] = 'Le Tuteur IA n\'est pas disponible tant qu\'une tentative de test est ouverte. Envoyez-la, ou attendez la fin du délai, et le tuteur revient.';
 $string['error_ratelimit_exceeded'] = 'La limite de consommation autorisée a été dépassée. Veuillez réessayer le {$a}.';
+$string['error_request_in_progress'] = 'Vous avez déjà une question en cours dans ce cours. Attendez sa réponse avant d\'en poser une autre.';
 $string['error_tutor_not_available'] = 'Le tuteur IA n\'est pas disponible pour ce cours.';
 $string['error_unexpected'] = 'Une erreur inattendue s\'est produite. Veuillez réessayer.';
 $string['error_unknown'] = 'Une erreur inconnue s\'est produite. Veuillez réessayer.';

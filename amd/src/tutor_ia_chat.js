@@ -924,9 +924,7 @@ define([
                 })
                     .then((response) => {
                         if (!response.ok) {
-                            return response.json().then((errData) => {
-                                throw new Error(errData.error || 'HTTP ' + response.status);
-                            });
+                            return this._rejectProxyResponse(response);
                         }
                         return this._readChatProxyStream(response, sendBtn, firstTokenReceived);
                     })
@@ -941,13 +939,35 @@ define([
                         }
                         this.hideTypingIndicator();
                         sendBtn.prop('disabled', false);
-                        ErrorModal.showGeneralError(this.strings.errorUnexpected);
+                        ErrorModal.showGeneralError(err.serverMessage || this.strings.errorUnexpected);
                     });
             } catch (error) {
                 this.hideTypingIndicator();
                 sendBtn.prop('disabled', false);
                 ErrorModal.showGeneralError(this.strings.errorInternal.replace('{$a}', error.message));
             }
+        }
+
+        /**
+         * Turn a refused chat proxy response into a rejected promise.
+         *
+         * The proxy answers a refusal with JSON: an `error` code and, when the user can act on it,
+         * a localized `message` (for instance a question already in progress, HTTP 429). That
+         * message travels on the error as `serverMessage` so that it is shown instead of the
+         * generic one.
+         *
+         * @param {Response} response - The non-OK fetch Response.
+         * @returns {Promise} Always rejected.
+         */
+        _rejectProxyResponse(response) {
+            return response.json().catch(() => ({})).then((errData) => {
+                const error = new Error((errData && errData.error) || 'HTTP ' + response.status);
+                const message = errData && typeof errData.message === 'string' ? errData.message.trim() : '';
+                if (message !== '') {
+                    error.serverMessage = message;
+                }
+                throw error;
+            });
         }
 
         /**
@@ -1565,9 +1585,7 @@ define([
             })
                 .then((response) => {
                     if (!response.ok) {
-                        return response.json().then((errData) => {
-                            throw new Error(errData.error || 'HTTP ' + response.status);
-                        });
+                        return this._rejectProxyResponse(response);
                     }
                     return this._readChatProxyStream(response, sendBtn, firstTokenReceived);
                 })
@@ -1581,7 +1599,7 @@ define([
                     }
                     this.hideTypingIndicator();
                     sendBtn.prop('disabled', false);
-                    ErrorModal.showGeneralError(this.strings.errorUnexpected);
+                    ErrorModal.showGeneralError(err.serverMessage || this.strings.errorUnexpected);
                 });
         }
 
