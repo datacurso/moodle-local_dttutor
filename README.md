@@ -206,18 +206,18 @@ The local deletion always completes, so a privacy request never waits on a third
 
 ### Usage limits
 
-**The tutor does not answer until this limit is enabled.** The tutor sets no quota of its own. As with the AI providers of Moodle core (OpenAI and Azure AI offer an optional site-wide and per-user rate limit, disabled by default), the limit is set in the AI provider, and the administrator of each site decides its values, according to the number of users, the expected use and the credits available.
+The tutor sets no quota of its own. As with the AI providers of Moodle core (OpenAI and Azure AI offer an optional site-wide and per-user rate limit, disabled by default), the limit is set in the AI provider, and the administrator of each site decides whether to enable it and with which values, according to the number of users, the expected use and the credits available.
 
 The Datacurso AI Provider holds the limit of every plugin of the suite in *Site administration > Reports > General report Datacurso AI > Configuration* (also linked from the settings of the provider). For **Tutor AI** the administrator can set:
 
 | Setting | Meaning |
 |---|---|
 | Enable rate limit | Whether the per-user limit applies to the tutor. |
-| Credit limit per window | Credits one user may consume within the window. Must be above `0`: with `0` the limit is not applied and the tutor does not answer. |
+| Credit limit per window | Credits one user may consume within the window. `0` for unlimited. |
 | Time window | Length of the window the credits are counted in. |
 | Credits per action | Estimated credits one question costs. A question is refused upfront when fewer credits remain in the window. |
 
-The tutor sends this limit with every question, and the Datacurso AI service enforces it on the consumption of each user, outside Moodle, so it holds across sessions and web servers. A question over the limit is refused, and the chat tells the user when they may ask again. **Enabling this limit is required**: while the limit of Tutor AI is off, or has no credit limit or window, every question is refused before anything is sent. Users are told to contact the administrator, and administrators are told where to enable it.
+The tutor sends this limit with every question, and the Datacurso AI service enforces it on the consumption of each user, outside Moodle, so it holds across sessions and web servers. A question over the limit is refused, and the chat tells the user when they may ask again. **Enabling this limit is the control recommended for every site that offers the tutor to its users.**
 
 Independently of that limit, each user may have only **one question in flight per course**. While an answer is on its way, a second question of the same user in the same course (from another tab or device, or sent directly to the chat proxy) is refused with HTTP 429 before any service is contacted, and the chat tells the user to wait for the answer. Other users, and the same user in other courses, are not affected. The lock uses the Moodle lock API (`\core\lock\lock_config`), so it holds across web servers that share the database.
 
