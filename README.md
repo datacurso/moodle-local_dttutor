@@ -178,6 +178,8 @@ AI Tutor Chat processes personal data both inside Moodle and in the external Dat
 | `local_dttutor_course_config` | The per-course enablement flag and the ID of the user who last edited it | Enable the tutor per course |
 | `local_dttutor_session` | One handle per user, course and activity of the chat session opened in the Datacurso AI service (no message content) | Reuse the remote session and be able to delete it later |
 | Cache `local_dttutor/sessions` | The same session handles, for fast lookup | Avoid creating a new remote session on every request |
+| Cache `local_dttutor/file_text` | The text read out of each course document, by content hash of the file (a week) | Read a document once instead of on every question |
+| Cache `local_dttutor/course_knowledge` | The course knowledge block built for each user and course, which carries that text (a day) | Avoid rebuilding it on every question |
 
 ### Sent to the Datacurso AI service
 
@@ -195,27 +197,29 @@ Nothing else from the client (for example the user's name or arbitrary page meta
 ### Export and deletion
 
 - **Privacy API export** returns, per course, the user's stored session handles with **the messages of each conversation**, read page by page from the Datacurso AI service, and the course configuration entries they edited. When the service cannot be reached the export still completes and says, for each conversation, that its messages could not be read and why, so it never looks complete when it is not.
-- **Privacy API deletion** (per user, per course, or for a set of users in a course) asks the Datacurso AI service to delete every conversation of that user and course, including the ones opened before the session handles began to be stored, and then deletes the stored session rows. The reference to the last editor of the course configuration is cleared; the course configuration itself is kept because it belongs to the course, not to a person.
-- **Course deletion** removes the course configuration and the course's sessions (locally and remotely).
-- **User deletion** removes the user's sessions (locally and remotely).
+- **Privacy API deletion** (per user, per course, or for a set of users in a course) asks the Datacurso AI service to delete every conversation of that user and course, including the ones opened before the session handles began to be stored, and then deletes the stored session rows. The reference to the last editor of the course configuration is cleared; the course configuration itself is kept because it belongs to the course, not to a person. The cached course knowledge block of each user concerned is removed; a deletion for the whole course also removes the cached text of its documents.
+- **Course deletion** removes the course configuration and the course's sessions (locally and remotely). Before the course is deleted, the cached text of its documents and the cached course knowledge blocks are removed as well.
+- **User deletion** removes the user's sessions (locally and remotely) and the cached course knowledge blocks.
 - **Retention**: the scheduled task *Delete conversations past the retention period* removes the conversations older than the configured number of days, here and in the AI service.
 
 The local deletion always completes, so a privacy request never waits on a third party. A remote deletion the service does not confirm (it is down, the licence is not valid, the request times out) is **not forgotten**: it is queued as an ad hoc task of Moodle, *Retry the conversation deletions the AI service has not confirmed*, and the plugin keeps no table of its own for it. The cron runs the task five minutes later and, while the service does not confirm, again and again, doubling the wait after each failure up to a day. A session the service no longer has (HTTP 404) counts as deleted. After eight failed attempts an *AI service failure* event with the operation `remote_deletion` is recorded and the error log says so. Moodle gives an ad hoc task a fixed number of attempts; on its last one the task hands the deletion to a new task instead of being left failed, so the deletion keeps being asked for until the service confirms it. A site without a licence for the AI provider (no licence key, or on Moodle 5.0+ no enabled provider instance, or an enabled one without a key) cannot ask at all: the task does not fail then, it logs that the deletion waits for a licence and hands it to a new task a day later, without counting attempts or raising the alert, and the deletion goes through on the first run after the licence is configured. The pending deletions can be seen in *Site administration > Server > Tasks > Ad hoc tasks*.
 
 ### Usage limits
 
-The tutor sets no quota of its own. As with the AI providers of Moodle core (OpenAI and Azure AI offer an optional site-wide and per-user rate limit, disabled by default), the limit is set in the AI provider, and the administrator of each site decides whether to enable it and with which values, according to the number of users, the expected use and the credits available.
+**The tutor does not answer until this limit is enabled.** The tutor sets no quota of its own. As with the AI providers of Moodle core (OpenAI and Azure AI offer an optional site-wide and per-user rate limit, disabled by default), the limit is set in the AI provider, and the administrator of each site decides its values, according to the number of users, the expected use and the credits available.
 
 The Datacurso AI Provider holds the limit of every plugin of the suite in *Site administration > Reports > General report Datacurso AI > Configuration* (also linked from the settings of the provider). For **Tutor AI** the administrator can set:
 
 | Setting | Meaning |
 |---|---|
 | Enable rate limit | Whether the per-user limit applies to the tutor. |
-| Credit limit per window | Credits one user may consume within the window. `0` for unlimited. |
+| Credit limit per window | Credits one user may consume within the window. Must be above `0`: with `0` the limit is not applied and the tutor does not answer. |
 | Time window | Length of the window the credits are counted in. |
 | Credits per action | Estimated credits one question costs. A question is refused upfront when fewer credits remain in the window. |
 
-The tutor sends this limit with every question, and the Datacurso AI service enforces it on the consumption of each user, outside Moodle, so it holds across sessions and web servers. A question over the limit is refused, and the chat tells the user when they may ask again. **Enabling this limit is the control recommended for every site that offers the tutor to its users.**
+The tutor sends this limit with every question, and the Datacurso AI service enforces it on the consumption of each user, outside Moodle, so it holds across sessions and web servers. A question over the limit is refused, and the chat tells the user when they may ask again. **Enabling this limit is required**: while the limit of Tutor AI is off, or has no credit limit or window, every question is refused before anything is sent. Users are told to contact the administrator, and administrators are told where to enable it.
+
+Independently of that limit, each user may have only **one question in flight per course**. While an answer is on its way, a second question of the same user in the same course (from another tab or device, or sent directly to the chat proxy) is refused with HTTP 429 before any service is contacted, and the chat tells the user to wait for the answer. Other users, and the same user in other courses, are not affected. The lock uses the Moodle lock API (`\core\lock\lock_config`), so it holds across web servers that share the database.
 
 ## Troubleshooting
 
