@@ -102,12 +102,6 @@ try {
 } catch (\moodle_exception $e) {
     http_response_code(403);
     header('Content-Type: application/json');
-    if ($e->errorcode === request_guard::RATE_LIMIT_ERROR) {
-        die(json_encode([
-            'error' => 'ratelimit_not_configured',
-            'message' => request_guard::rate_limit_error_message(),
-        ]));
-    }
     die(json_encode(['error' => 'permission_denied']));
 }
 

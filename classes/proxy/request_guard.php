@@ -40,9 +40,6 @@ class request_guard {
     /** @var int Maximum length (in characters) of a single message. */
     public const MAX_MESSAGE_LENGTH = 8000;
 
-    /** @var string Error code of a question refused because the provider applies no usage limit. */
-    public const RATE_LIMIT_ERROR = 'error_ratelimit_not_configured';
-
     /** @var string[] Message roles the client is allowed to send. */
     private const ALLOWED_ROLES = ['user', 'assistant'];
 
@@ -85,7 +82,6 @@ class request_guard {
 
         plugin_settings::require_enabled('local_dttutor');
         self::assert_provider_enabled();
-        self::assert_rate_limit_enabled();
 
         $context = is_array($input['context'] ?? null) ? $input['context'] : [];
         $courseid = (int)($context['course_id'] ?? 0);
@@ -190,54 +186,6 @@ class request_guard {
         if (!client_factory::is_provider_enabled()) {
             throw new \moodle_exception('error_provider_disabled', 'local_dttutor');
         }
-    }
-
-    /**
-     * Refuse every question while the provider applies no usage limit to the tutor (DTT-SEC-006-R1).
-     *
-     * The cumulative quota per user lives in the Datacurso AI provider, which is off by default; the
-     * tutor keeps none of its own, so that the same limit is not configured in two places. Without
-     * it a user could ask without bound, so the safe state is the default one: the tutor does not
-     * answer until the administrator enables the limit for Tutor AI, with a credit limit and a
-     * window. The limit is active exactly when the provider would send it with the question.
-     *
-     * Checked before anything is gathered, recorded or sent. A limit that cannot be read counts as
-     * not set. A client that cannot be built at all (no licence) is not refused here: no question
-     * can reach the service without it, and the chat reports the licence problem itself.
-     *
-     * @throws \moodle_exception With the code RATE_LIMIT_ERROR when the limit is not active.
-     */
-    public static function assert_rate_limit_enabled(): void {
-        try {
-            $client = client_factory::get();
-        } catch (\Throwable $e) {
-            return;
-        }
-
-        try {
-            $active = $client->get_rate_limit_headers() !== [];
-        } catch (\Throwable $e) {
-            $active = false;
-        }
-
-        if (!$active) {
-            throw new \moodle_exception(self::RATE_LIMIT_ERROR, 'local_dttutor');
-        }
-    }
-
-    /**
-     * Message for a question refused because the provider applies no usage limit to the tutor.
-     *
-     * Users are asked to contact the administrator; whoever can configure the site is told where
-     * to enable the limit.
-     *
-     * @return string
-     */
-    public static function rate_limit_error_message(): string {
-        if (has_capability('moodle/site:config', \context_system::instance())) {
-            return get_string(self::RATE_LIMIT_ERROR . '_admin', 'local_dttutor');
-        }
-        return get_string(self::RATE_LIMIT_ERROR, 'local_dttutor');
     }
 
     /**

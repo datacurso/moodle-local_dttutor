@@ -51,9 +51,6 @@ final class fake_ai_client implements ai_client {
     /** @var string[] Headers handed out by get_rate_limit_headers(). */
     private array $ratelimitheaders = [];
 
-    /** @var \Throwable|null Error thrown by get_rate_limit_headers() instead of the headers. */
-    private ?\Throwable $ratelimitfailure = null;
-
     /**
      * Bind a client that cannot be resolved: every resolution of the port throws.
      *
@@ -136,15 +133,6 @@ final class fake_ai_client implements ai_client {
     }
 
     /**
-     * Make get_rate_limit_headers() throw, as a limit that cannot be read.
-     *
-     * @param \Throwable $error
-     */
-    public function fail_rate_limit_headers(\Throwable $error): void {
-        $this->ratelimitfailure = $error;
-    }
-
-    /**
      * License key; 'fake-license' unless overridden.
      *
      * @return string
@@ -168,9 +156,6 @@ final class fake_ai_client implements ai_client {
      * @return string[]
      */
     public function get_rate_limit_headers(): array {
-        if ($this->ratelimitfailure !== null) {
-            throw $this->ratelimitfailure;
-        }
         return $this->ratelimitheaders;
     }
 
