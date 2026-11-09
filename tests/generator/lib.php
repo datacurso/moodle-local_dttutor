@@ -75,17 +75,27 @@ class local_dttutor_generator extends component_generator_base {
      * a provider that is not installed: the tests of this plugin never reach the provider itself,
      * and the sites that run them do not always have it.
      *
-     * @param array $data Keys, all optional: enabled (defaults to on) and licensekey.
+     * The usage limit of the tutor is enabled by default, as the tutor refuses every question
+     * without it (DTT-SEC-006-R1): one hour, with the given credit limit.
+     *
+     * @param array $data Keys, all optional: enabled (defaults to on), licensekey, ratelimit (defaults
+     *                    to on) and ratelimit_limit (credits per window, defaults to 100).
      */
     public function create_ai_provider(array $data = []): void {
         global $DB;
 
         $enabled = !array_key_exists('enabled', $data) || (bool)$data['enabled'];
         $licensekey = (string)($data['licensekey'] ?? 'test-licence-key');
+        $ratelimit = !array_key_exists('ratelimit', $data) || (bool)$data['ratelimit'];
+        $limit = (int)($data['ratelimit_limit'] ?? 100);
+        $sid = 'local_dttutor';
 
         if (!provider_config::has_instances()) {
             \core\plugininfo\aiprovider::enable_plugin(client_factory::PROVIDER, (int)$enabled);
             set_config('licensekey', $licensekey, provider_config::COMPONENT);
+            set_config("ratelimit_{$sid}_enable", (int)$ratelimit, provider_config::COMPONENT);
+            set_config("ratelimit_{$sid}_limit", $limit, provider_config::COMPONENT);
+            set_config("ratelimit_{$sid}_window", json_encode(['value' => 1, 'unit' => 'hours']), provider_config::COMPONENT);
             return;
         }
 
@@ -93,7 +103,13 @@ class local_dttutor_generator extends component_generator_base {
             'name' => 'Datacurso',
             'provider' => provider_config::PROVIDER_CLASS,
             'enabled' => (int)$enabled,
-            'config' => json_encode(['licensekey' => $licensekey]),
+            'config' => json_encode([
+                'licensekey' => $licensekey,
+                "ratelimit_{$sid}_enable" => (int)$ratelimit,
+                "ratelimit_{$sid}_limit" => $limit,
+                "ratelimit_{$sid}_window_value" => 1,
+                "ratelimit_{$sid}_window_unit" => 'hours',
+            ]),
             'actionconfig' => json_encode([]),
         ]);
     }
