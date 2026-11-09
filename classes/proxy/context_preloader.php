@@ -146,7 +146,7 @@ class context_preloader {
      */
     private static function get_static_block(\stdClass $course, int $userid): string {
         $cache    = \cache::make('local_dttutor', 'course_knowledge');
-        $cachekey = $course->id . '_' . $userid;
+        $cachekey = \local_dttutor\local\cached_text::knowledge_key((int)$course->id, $userid);
         $stamp    = self::content_stamp((int)$course->id);
 
         $now = \core\di::get(\core\clock::class)->time();
