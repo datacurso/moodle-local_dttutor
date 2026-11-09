@@ -38,9 +38,12 @@ final class save_course_config_test extends \advanced_testcase {
     /**
      * Create a course and log an editing teacher in (the plugin is enabled in the provider by default).
      *
+     * The AI provider is configured and enabled: the tutor cannot be managed without it.
+     *
      * @return \stdClass The course.
      */
     private function course_with_teacher_logged_in(): \stdClass {
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
         $this->setUser($teacher);
@@ -174,5 +177,24 @@ final class save_course_config_test extends \advanced_testcase {
 
         $this->expectException(\required_capability_exception::class);
         save_course_config::execute((int)$course->id, true);
+    }
+
+    /**
+     * The course switch cannot be changed through the web service while the AI provider is disabled.
+     */
+    public function test_ai_provider_disabled_is_refused(): void {
+        global $DB;
+        $this->require_provider();
+        $this->resetAfterTest();
+        $course = $this->course_with_teacher_logged_in();
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->disable_ai_provider();
+
+        try {
+            $this->execute((int)$course->id, true);
+            $this->fail('The AI provider is disabled, so the switch had to be refused.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('error_provider_disabled', $e->errorcode);
+        }
+        $this->assertFalse($DB->record_exists('local_dttutor_course_config', ['courseid' => $course->id]));
     }
 }

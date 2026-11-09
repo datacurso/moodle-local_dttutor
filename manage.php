@@ -32,6 +32,8 @@ $courseid = required_param('id', PARAM_INT);
 require_login($courseid);
 // Check the plugin is enabled in the Datacurso AI provider.
 plugin_settings::require_enabled('local_dttutor');
+// The tutor stays out of reach, management included, while the AI provider is disabled.
+\local_dttutor\proxy\request_guard::assert_provider_enabled();
 $course = get_course($courseid);
 $context = context_course::instance($courseid);
 
