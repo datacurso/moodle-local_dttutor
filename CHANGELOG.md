@@ -5,7 +5,9 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.17] - 2026-11-10
+## [2.0.17-wp] - 2026-11-10
+
+**Compatibility note:** This version is compatible only with **Moodle Workplace 4.5**. Requires `aiprovider_datacurso` 2026110901 (1.7.0-wp).
 
 ### Fixed
 - **The page is moved aside once on Edwiser RemUI**: 2.0.14 moved `#page.drawers` with a margin because Boost overrides the padding of the tutor with its own, but RemUI does not pad `#page.drawers`, so the padding and the margin both applied and left a blank band as wide as the chat between the content and the chat. The padding now applies only to a page without the drawers layout (`.tutor-ia-shifted-right:not(.drawers)`), and `#page.drawers` is moved by the margin alone. Boost and its child themes are unchanged.

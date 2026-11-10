@@ -27,10 +27,10 @@ defined('MOODLE_INTERNAL') || die();
 $plugin->component = 'local_dttutor';
 $plugin->version = 2026111000;
 $plugin->requires = 2024100700; // Moodle 4.5.
-$plugin->supported = [405, 503];
+$plugin->supported = [405, 405];
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '2.0.17';
+$plugin->release = '2.0.17-wp';
 // Plugin dependencies.
 $plugin->dependencies = [
-    'aiprovider_datacurso' => 2026110400,
+    'aiprovider_datacurso' => 2026110901,
 ];
