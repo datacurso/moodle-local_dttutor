@@ -65,6 +65,20 @@ final class fake_ai_client implements ai_client {
     }
 
     /**
+     * Bind a client whose resolution throws the given error.
+     *
+     * Mirrors the provider refusing to build its client, as it does without a licence key or, on
+     * Moodle 5.0+, without an enabled instance holding one.
+     *
+     * @param \Throwable $error Error every resolution of the port throws.
+     */
+    public static function bind_failing(\Throwable $error): void {
+        \core\di::set(ai_client::class, static function () use ($error): ai_client {
+            throw $error;
+        });
+    }
+
+    /**
      * Queue a response or an exception for the next request.
      *
      * @param array|\Throwable $response Decoded response body, or an exception to throw.

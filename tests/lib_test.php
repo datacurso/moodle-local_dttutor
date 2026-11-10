@@ -60,6 +60,7 @@ final class lib_test extends \advanced_testcase {
      */
     public function test_the_management_link_is_offered_to_an_editing_teacher(): void {
         $this->require_provider();
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
@@ -176,5 +177,21 @@ final class lib_test extends \advanced_testcase {
         $this->assertNotFalse($gate);
         $this->assertGreaterThan($login, $gate);
         $this->assertStringNotContainsString('error_tutor_disabled_site', $source);
+    }
+
+    /**
+     * The management link is not offered while the AI provider is disabled.
+     */
+    public function test_the_management_link_is_hidden_while_the_ai_provider_is_disabled(): void {
+        $this->require_provider();
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
+        $generator = $this->getDataGenerator()->get_plugin_generator('local_dttutor');
+        $generator->create_ai_provider();
+        $generator->disable_ai_provider();
+        $course = $this->getDataGenerator()->create_course();
+        $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
+        $this->setUser($teacher);
+
+        $this->assertFalse($this->navigation_has_manage_link($course));
     }
 }

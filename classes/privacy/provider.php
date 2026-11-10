@@ -26,6 +26,8 @@ use core_privacy\local\request\plugin\provider as plugin_provider;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
+use local_dttutor\local\cached_text;
+use local_dttutor\local\conversation_export;
 use local_dttutor\session_store;
 
 /**
@@ -33,8 +35,9 @@ use local_dttutor\session_store;
  *
  * User data lives in course contexts: the per-course tutor enablement (last editor)
  * and the handles of the chat sessions each user opened with the Datacurso AI service.
- * The conversations themselves are held by that service; deleting a session here also
- * requests its remote deletion.
+ * The conversations themselves are held by that service: exporting a session reads its
+ * messages from there, and deleting one also requests its remote deletion, kept pending
+ * until the service confirms it.
  *
  * @package    local_dttutor
  * @copyright  2026 Datacurso
@@ -56,6 +59,13 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             'timemodified' => 'privacy:metadata:local_dttutor_session:timemodified',
             'userid' => 'privacy:metadata:local_dttutor_session:userid',
         ], 'privacy:metadata:local_dttutor_session');
+
+        // A deletion the AI service failed to confirm waits in the queue of ad hoc tasks of Moodle
+        // until the service confirms it. It names no user for the deletion of a single session,
+        // and is never exported: it is the erasure itself still under way, not data about the person.
+        $collection->add_database_table('task_adhoc', [
+            'customdata' => 'privacy:metadata:task_adhoc:customdata',
+        ], 'privacy:metadata:task_adhoc');
 
         // Everything the chat proxy and the external functions send to the Datacurso AI service.
         $collection->add_external_location_link('datacurso_ai', [
@@ -140,6 +150,8 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
 
         $userid = (int)$contextlist->get_user()->id;
         $root = get_string('pluginname', 'local_dttutor');
+        // Built lazily: a person with no conversation never makes the export reach the service.
+        $conversations = null;
 
         foreach ($contextlist->get_contexts() as $context) {
             if (!$context instanceof \context_course) {
@@ -149,14 +161,10 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
 
             $sessions = $DB->get_records(session_store::TABLE, ['userid' => $userid, 'courseid' => $courseid], 'id');
             if ($sessions) {
+                $conversations ??= new conversation_export();
                 $rows = [];
                 foreach ($sessions as $session) {
-                    $rows[] = (object)[
-                        'cmid' => (int)$session->cmid,
-                        'remotesessionid' => $session->remotesessionid,
-                        'timecreated' => transform::datetime($session->timecreated),
-                        'timemodified' => transform::datetime($session->timemodified),
-                    ];
+                    $rows[] = self::export_session($session, $conversations);
                 }
                 writer::with_context($context)->export_data(
                     [$root, get_string('privacy:export:sessions', 'local_dttutor')],
@@ -176,6 +184,32 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         }
     }
 
+    /**
+     * One conversation of the person, with the messages the AI service keeps for it.
+     *
+     * When the messages could not all be read, the export says so and why, rather than handing
+     * over a conversation that only looks complete.
+     *
+     * @param \stdClass $session The stored session row.
+     * @param conversation_export $conversations Reader of the messages held by the service.
+     * @return \stdClass
+     */
+    private static function export_session(\stdClass $session, conversation_export $conversations): \stdClass {
+        $read = $conversations->messages_of((string)$session->remotesessionid);
+
+        $row = (object)[
+            'cmid' => (int)$session->cmid,
+            'remotesessionid' => $session->remotesessionid,
+            'timecreated' => transform::datetime($session->timecreated),
+            'timemodified' => transform::datetime($session->timemodified),
+            'messages' => $read['messages'],
+        ];
+        if ($read['unavailable'] !== null) {
+            $row->messages_unavailable = get_string('privacy:export:messages_unavailable', 'local_dttutor', $read['unavailable']);
+        }
+        return $row;
+    }
+
     #[\Override]
     public static function delete_data_for_all_users_in_context(\context $context) {
         global $DB;
@@ -183,6 +217,9 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
             return;
         }
         $courseid = (int)$context->instanceid;
+
+        // First the text cached from the course, which does not depend on the service (DTT-PRIV-005).
+        cached_text::forget_course($courseid);
 
         // The service is asked for the whole course first, so the conversations that were
         // never registered here go with it; the stored handles are then only deleted locally.
@@ -202,6 +239,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
                 continue;
             }
             $params = ['courseid' => (int)$context->instanceid, 'userid' => $userid];
+            cached_text::forget_users_in_course($params['courseid'], [$userid]);
 
             $remote = session_store::purge_remote_conversations($userid, $params['courseid']);
             session_store::purge('courseid = :courseid AND userid = :userid', $params, $remote === null);
@@ -224,6 +262,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
 
         [$insql, $inparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
         $params = ['courseid' => (int)$context->instanceid] + $inparams;
+        cached_text::forget_users_in_course($params['courseid'], $userids);
 
         $remote = true;
         foreach ($userids as $userid) {

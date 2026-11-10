@@ -26,12 +26,14 @@ define([
     'core/ajax',
     'core/pubsub',
     'core/str',
+    'core_message/message_drawer_events',
     'local_dttutor/error_modal'
 ], function (
     $,
     Ajax,
     PubSub,
     Str,
+    MessageDrawerEvents,
     ErrorModal
 ) {
     'use strict';
@@ -120,6 +122,9 @@ define([
             this.pageClass = this.position === 'left' ? 'tutor-ia-shifted-left' : 'tutor-ia-shifted-right';
             // Used for footer-popover positioning via CSS.
             this.bodyClass = this.position === 'left' ? 'tutor-ia-drawer-open-left' : 'tutor-ia-drawer-open-right';
+            // Only where the theme anchors its drawers to the centre (Moodle 5.3) do they step aside.
+            this.stepAsideClass = this.drawerElement && this.drawerElement.dataset.anchoredDrawers === '1'
+                ? 'tutor-ia-drawers-step-aside' : null;
 
             this.pageContext = this.detectPageContext();
             this.adjustDrawerTopPosition();
@@ -328,16 +333,26 @@ define([
             });
 
             document.addEventListener('keydown', (e) => {
-                if (this.isDrawerOpen() && e.key === 'Escape') {
+                // An Escape already handled inside the chat (cancelling an edit) must not close it too.
+                if (this.isDrawerOpen() && e.key === 'Escape' && !e.defaultPrevented) {
                     this.closeDrawer();
                 }
             });
 
-            // Close drawer if Moodle's message drawer opens (prevent conflict).
-            PubSub.subscribe('core_message/drawer_shown', () => {
-                if (this.isDrawerOpen()) {
-                    this.closeDrawer();
-                }
+            // Only one drawer at a time: the messaging drawer has no "shown" event, so every
+            // request that opens it closes the chat. A toggle that hides it finds the chat closed.
+            [
+                MessageDrawerEvents.SHOW,
+                MessageDrawerEvents.TOGGLE_VISIBILITY,
+                MessageDrawerEvents.SHOW_CONVERSATION,
+                MessageDrawerEvents.CREATE_CONVERSATION_WITH_USER,
+                MessageDrawerEvents.SHOW_SETTINGS,
+            ].forEach((eventname) => {
+                PubSub.subscribe(eventname, () => {
+                    if (this.isDrawerOpen()) {
+                        this.closeDrawer();
+                    }
+                });
             });
 
             if (this.jumpTo) {
@@ -507,13 +522,14 @@ define([
             }
 
             // Close Moodle's message drawer to prevent conflict.
-            PubSub.publish('core_message/hide', {});
+            PubSub.publish(MessageDrawerEvents.HIDE, {});
 
             this.drawerElement.classList.add('show');
             this.drawerElement.setAttribute('tabindex', '0');
 
             if (this.toggleButton) {
                 this.toggleButton.setAttribute('aria-expanded', 'true');
+                this.setToggleLabel(this.toggleButton.dataset.labelClose);
             }
 
             if (this.pageElement && !this.pageElement.classList.contains(this.pageClass)) {
@@ -522,6 +538,9 @@ define([
 
             if (this.bodyElement && !this.bodyElement.classList.contains(this.bodyClass)) {
                 this.bodyElement.classList.add(this.bodyClass);
+            }
+            if (this.bodyElement && this.stepAsideClass) {
+                this.bodyElement.classList.add(this.stepAsideClass);
             }
 
             if (this.jumpTo) {
@@ -548,6 +567,7 @@ define([
 
             if (this.toggleButton) {
                 this.toggleButton.setAttribute('aria-expanded', 'false');
+                this.setToggleLabel(this.toggleButton.dataset.labelOpen);
             }
 
             if (this.pageElement && this.pageElement.classList.contains(this.pageClass)) {
@@ -556,6 +576,9 @@ define([
 
             if (this.bodyElement && this.bodyElement.classList.contains(this.bodyClass)) {
                 this.bodyElement.classList.remove(this.bodyClass);
+            }
+            if (this.bodyElement && this.stepAsideClass) {
+                this.bodyElement.classList.remove(this.stepAsideClass);
             }
 
             if (this.jumpTo) {
@@ -749,7 +772,33 @@ define([
                 .attr('data-action', 'edit-message')
                 .attr('aria-label', this.strings.editMessage || 'Edit message')
                 .attr('title', this.strings.editMessage || 'Edit message')
+                .prop('disabled', this.streaming)
                 .text('✎');
+        }
+
+        /**
+         * Mark whether an answer is arriving, locking the edit buttons meanwhile.
+         *
+         * Editing a message restarts the conversation from it, so it waits for the answer.
+         *
+         * @param {boolean} streaming Whether an answer is arriving.
+         */
+        setStreaming(streaming) {
+            this.streaming = streaming;
+            this.root.find(SELECTORS.EDIT_MESSAGE).prop('disabled', streaming);
+        }
+
+        /**
+         * Name the floating button after what it does next.
+         *
+         * @param {string|undefined} label Label of the next action.
+         */
+        setToggleLabel(label) {
+            if (!label) {
+                return;
+            }
+            this.toggleButton.setAttribute('aria-label', label);
+            this.toggleButton.setAttribute('title', label);
         }
 
         /**
@@ -864,7 +913,7 @@ define([
                 // Use AbortController so closeCurrentStream() can cancel the fetch.
                 this.currentAbortController = new AbortController();
                 const signal = this.currentAbortController.signal;
-                this.streaming = true;
+                this.setStreaming(true);
                 let firstTokenReceived = false;
 
                 fetch(proxyUrl, {
@@ -875,9 +924,7 @@ define([
                 })
                     .then((response) => {
                         if (!response.ok) {
-                            return response.json().then((errData) => {
-                                throw new Error(errData.error || 'HTTP ' + response.status);
-                            });
+                            return this._rejectProxyResponse(response);
                         }
                         return this._readChatProxyStream(response, sendBtn, firstTokenReceived);
                     })
@@ -887,18 +934,40 @@ define([
                         this.clearSelection();
                     })
                     .catch((err) => {
-                        if (err.name === 'AbortError') {
+                        if (err.name === 'AbortError' || err.shown) {
                             return; // Cancelled by closeCurrentStream.
                         }
                         this.hideTypingIndicator();
                         sendBtn.prop('disabled', false);
-                        ErrorModal.showGeneralError(this.strings.errorUnexpected);
+                        ErrorModal.showGeneralError(err.serverMessage || this.strings.errorUnexpected);
                     });
             } catch (error) {
                 this.hideTypingIndicator();
                 sendBtn.prop('disabled', false);
                 ErrorModal.showGeneralError(this.strings.errorInternal.replace('{$a}', error.message));
             }
+        }
+
+        /**
+         * Turn a refused chat proxy response into a rejected promise.
+         *
+         * The proxy answers a refusal with JSON: an `error` code and, when the user can act on it,
+         * a localized `message` (for instance a question already in progress, HTTP 429). That
+         * message travels on the error as `serverMessage` so that it is shown instead of the
+         * generic one.
+         *
+         * @param {Response} response - The non-OK fetch Response.
+         * @returns {Promise} Always rejected.
+         */
+        _rejectProxyResponse(response) {
+            return response.json().catch(() => ({})).then((errData) => {
+                const error = new Error((errData && errData.error) || 'HTTP ' + response.status);
+                const message = errData && typeof errData.message === 'string' ? errData.message.trim() : '';
+                if (message !== '') {
+                    error.serverMessage = message;
+                }
+                throw error;
+            });
         }
 
         /**
@@ -983,7 +1052,10 @@ define([
                                 try {
                                     const errorData = JSON.parse(dataStr);
                                     that.handleStreamError(errorData, sendBtn);
-                                    reject(new Error('Stream error'));
+                                    // Already shown to the user: the caller must not add a generic one.
+                                    const shown = new Error('Stream error');
+                                    shown.shown = true;
+                                    reject(shown);
                                     return;
                                 } catch (e) {
                                     // Non-JSON error, fall through.
@@ -1358,6 +1430,7 @@ define([
                         this.saveEditing();
                     } else if (e.key === 'Escape') {
                         e.preventDefault();
+                        e.stopPropagation();
                         this.cancelEditing();
                     }
                 })
@@ -1501,7 +1574,7 @@ define([
 
             this.currentAbortController = new AbortController();
             const signal = this.currentAbortController.signal;
-            this.streaming = true;
+            this.setStreaming(true);
             let firstTokenReceived = false;
 
             fetch(proxyUrl, {
@@ -1512,9 +1585,7 @@ define([
             })
                 .then((response) => {
                     if (!response.ok) {
-                        return response.json().then((errData) => {
-                            throw new Error(errData.error || 'HTTP ' + response.status);
-                        });
+                        return this._rejectProxyResponse(response);
                     }
                     return this._readChatProxyStream(response, sendBtn, firstTokenReceived);
                 })
@@ -1523,12 +1594,12 @@ define([
                     this.clearSelection();
                 })
                 .catch((err) => {
-                    if (err.name === 'AbortError') {
+                    if (err.name === 'AbortError' || err.shown) {
                         return;
                     }
                     this.hideTypingIndicator();
                     sendBtn.prop('disabled', false);
-                    ErrorModal.showGeneralError(this.strings.errorUnexpected);
+                    ErrorModal.showGeneralError(err.serverMessage || this.strings.errorUnexpected);
                 });
         }
 
@@ -1569,7 +1640,12 @@ define([
                 });
             });
 
-            return builtMessages;
+            // A question followed straight by another one was never answered (the page was left
+            // while the answer arrived): sent along, the tutor would answer it with the next one.
+            return builtMessages.filter((message, index) => {
+                const next = builtMessages[index + 1];
+                return !(message.role === 'user' && next && next.role === 'user');
+            });
         }
 
         /**
@@ -1699,7 +1775,7 @@ define([
             }
             this.currentAbortController = null;
 
-            this.streaming = false;
+            this.setStreaming(false);
             this.currentAIMessageEl = null;
             this.currentAIMessageContainer = null;
             this.currentAIMessageRawText = '';
@@ -1733,64 +1809,41 @@ define([
         }
 
         /**
-         * Handle structured error data from SSE stream.
-         * Detects license and insufficient tokens errors and shows user-friendly modals.
+         * Show the error the chat proxy streamed.
          *
-         * @param {Object} errorData - Error data object from SSE event
+         * The proxy sends the message already in the language of the user, with a code for the
+         * refusals the user can do nothing about by retrying (licence, credits). A bare error code
+         * such as "ai_api_error" carries no message of its own and gets the generic one.
+         *
+         * @param {Object} errorData - Data of the SSE error event: {error, code}.
          * @param {jQuery} sendBtn - Send button element to re-enable
          */
         handleStreamError(errorData, sendBtn) {
             this.hideTypingIndicator();
             this.finalizeStream(sendBtn);
 
-            if (errorData && errorData.detail && errorData.detail.status === 'error') {
-                const errorMessage = errorData.detail.detail || '';
-
-                if (errorMessage.toLowerCase().includes('license not allowed')) {
-                    var self = this;
-                    Str.get_strings([
-                        { key: 'error_license_not_allowed', component: 'local_dttutor' },
-                        { key: 'error_license_not_allowed_short', component: 'local_dttutor' }
-                    ]).then(function (strings) {
-                        ErrorModal.showGeneralError(strings[0], strings[1]);
-                        return;
-                    }).catch(function () {
-                        ErrorModal.showGeneralError(
-                            self.strings.errorLicenseFallback.replace('{$a}', errorMessage),
-                            self.strings.errorLicenseFallbackShort
-                        );
-                    });
-                    return;
-                }
-
-                if (errorMessage.toLowerCase().includes('insufficient tokens')) {
-                    var selfTokens = this;
-                    Str.get_strings([
-                        { key: 'error_insufficient_tokens', component: 'local_dttutor' },
-                        { key: 'error_insufficient_tokens_short', component: 'local_dttutor' }
-                    ]).then(function (strings) {
-                        ErrorModal.showGeneralError(strings[0], strings[1]);
-                        return;
-                    }).catch(function () {
-                        ErrorModal.showGeneralError(
-                            selfTokens.strings.errorNoCreditssFallback.replace('{$a}', errorMessage),
-                            selfTokens.strings.errorInsufficientTokensShort
-                        );
-                    });
-                    return;
-                }
-
-                ErrorModal.showGeneralError(errorMessage);
-            } else {
+            const message = errorData && typeof errorData.error === 'string' ? errorData.error.trim() : '';
+            if (message === '' || /^[a-z_]+$/.test(message)) {
                 ErrorModal.showGeneralError(this.strings.errorUnexpected);
+                return;
             }
+
+            const titles = {
+                'license_not_allowed': this.strings.errorLicenseFallbackShort,
+                'license_missing': this.strings.errorLicenseFallbackShort,
+                'tokens_not_sufficient': this.strings.errorInsufficientTokensShort,
+            };
+            ErrorModal.showGeneralError(message, titles[errorData.code]);
         }
 
         /**
-         * Sanitizes a string by removing angle brackets.
+         * Make sure a message is a string before it is sent.
          *
-         * @param {string} str - String to sanitize
-         * @returns {string} Sanitized string
+         * The text is sent as the user wrote it, angle brackets included: it is escaped where it is
+         * displayed (renderMarkdown and jQuery text()), not here.
+         *
+         * @param {string} str - Message to send
+         * @returns {string} The message, or an empty string when it is not a string
          */
         sanitizeString(str) {
             if (typeof str !== 'string') {

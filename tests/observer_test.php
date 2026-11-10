@@ -168,7 +168,7 @@ final class observer_test extends \advanced_testcase {
      * Deleting a user this plugin never stored a conversation for asks the service nothing.
      *
      * Every user deletion on the site fires this observer, so an unconfigured or disabled provider
-     * must not turn into a logged failure for people the tutor never met.
+     * must not turn into a logged failure (and a queued purge) for people the tutor never met.
      */
     public function test_deleting_a_user_without_sessions_asks_nothing(): void {
         $this->resetAfterTest();
@@ -180,6 +180,7 @@ final class observer_test extends \advanced_testcase {
         delete_user($student);
 
         $this->assertDebuggingNotCalled();
+        $this->assertSame([], local\pending_deletion::pending());
     }
 
     /**
@@ -196,6 +197,7 @@ final class observer_test extends \advanced_testcase {
         delete_course($course->id, false);
 
         $this->assertDebuggingNotCalled();
+        $this->assertSame([], local\pending_deletion::pending());
         $this->assertFalse($DB->record_exists('local_dttutor_course_config', ['courseid' => $course->id]));
     }
 }

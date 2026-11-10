@@ -146,7 +146,7 @@ class context_preloader {
      */
     private static function get_static_block(\stdClass $course, int $userid): string {
         $cache    = \cache::make('local_dttutor', 'course_knowledge');
-        $cachekey = $course->id . '_' . $userid;
+        $cachekey = \local_dttutor\local\cached_text::knowledge_key((int)$course->id, $userid);
         $stamp    = self::content_stamp((int)$course->id);
 
         $now = \core\di::get(\core\clock::class)->time();
@@ -762,7 +762,7 @@ class context_preloader {
     }
 
     /**
-     * The course total of the user, when they are meant to see it.
+     * The course total of the user, as their own gradebook shows it ({@see course_total}).
      *
      * @param int $courseid
      * @param int $userid
@@ -785,20 +785,15 @@ class context_preloader {
             return '';
         }
 
-        $grade = $usergrades[(int)$item->id] ?? null;
-        if ($grade === null || $grade->finalgrade === null) {
-            return '';
-        }
-
-        $grade->grade_item = $item;
-        if (!$seehidden && $grade->is_hidden()) {
+        $total = course_total::as_seen_by($item, $userid, $usergrades, $seehidden);
+        if ($total === null) {
             return '';
         }
 
         $decimals = (int)$item->get_decimals();
-        $value    = format_float((float)$grade->finalgrade, $decimals);
-        if ((float)$item->grademax > 0) {
-            return $value . ' / ' . format_float((float)$item->grademax, $decimals);
+        $value    = format_float($total['grade'], $decimals);
+        if ($total['grademax'] > 0) {
+            return $value . ' / ' . format_float($total['grademax'], $decimals);
         }
         return $value;
     }

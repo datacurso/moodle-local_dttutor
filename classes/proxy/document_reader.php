@@ -38,6 +38,22 @@ final class document_reader {
     public const MAX_BYTES = 10485760;
 
     /**
+     * @var int Bytes of documents one request carries at most, unless configured otherwise.
+     *
+     * The documents are encoded in memory to be sent. Twenty-five documents of ten megabytes each
+     * came to more than a gigabyte of strings between the content, its encoding and the request,
+     * past the memory of any PHP worker, and a fatal error left nothing cached, so the next
+     * question tried again. The documents that do not fit wait for the next build.
+     */
+    public const DEFAULT_MAX_REQUEST_BYTES = 16777216;
+
+    /** @var int Seconds after which the reading of a course is let go even if its request died. */
+    private const LOCK_MAX_LIFETIME = 300;
+
+    /** @var string Type of the lock factory the readings of a course share. */
+    private const LOCK_TYPE = 'local_dttutor_documents';
+
+    /**
      * @var string[] Extensions the service can read.
      *
      * Checked here as well as there: a folder may hold a video of half a gigabyte, and encoding
@@ -54,9 +70,13 @@ final class document_reader {
      * Whatever cannot be read is remembered as well, so a document that has no text in it is not
      * sent again with every rebuild.
      *
+     * One course is read by one request at a time: the students who open the tutor together on a
+     * course nobody has asked about yet would otherwise each send the same documents.
+     *
      * @param \course_modinfo $modinfo Course the documents belong to.
      * @param int[] $cmids Activities whose documents may be read, in the order they are listed.
-     * @return bool False when the service could not be asked, so the documents are still unread.
+     * @return bool False when documents are still unread: the service could not be asked, another
+     *              request is reading them, or they did not all fit in one request.
      */
     public static function prefetch(\course_modinfo $modinfo, array $cmids): bool {
         if (!file_content::is_enabled()) {
@@ -64,25 +84,51 @@ final class document_reader {
         }
 
         $cache = \cache::make('local_dttutor', 'file_text');
-        $pending = self::pending_files($modinfo, $cmids, $cache);
+        [$pending] = self::pending_files($modinfo, $cmids, $cache);
         if ($pending === []) {
             return true;
         }
 
-        $api = self::resolve_api();
-        if ($api === null) {
-            return false;
-        }
-
         $courseid = (int)$modinfo->get_course_id();
-        $response = self::request_texts($api, $pending, $courseid);
-        if ($response === null) {
+        $factory = \core\lock\lock_config::get_lock_factory(self::LOCK_TYPE);
+        $lock = $factory->get_lock('course_' . $courseid, 0, self::LOCK_MAX_LIFETIME);
+        if ($lock === false) {
             return false;
         }
 
-        self::remember_extracted($response['extracted'] ?? [], $cache);
-        self::remember_skipped($response['skipped'] ?? [], $cache);
-        return true;
+        try {
+            // Read again under the lock: the request that held it may have read them meanwhile.
+            [$pending, $more] = self::pending_files($modinfo, $cmids, $cache);
+            if ($pending === []) {
+                return true;
+            }
+
+            $api = self::resolve_api();
+            if ($api === null) {
+                return false;
+            }
+
+            $response = self::request_texts($api, $pending, $courseid);
+            if ($response === null) {
+                return false;
+            }
+
+            self::remember_extracted($response['extracted'] ?? [], $cache);
+            self::remember_skipped($response['skipped'] ?? [], $cache);
+            return !$more;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Bytes of documents one request carries at most.
+     *
+     * @return int
+     */
+    public static function max_request_bytes(): int {
+        $configured = (int)get_config('local_dttutor', 'document_request_bytes');
+        return $configured > 0 ? $configured : self::DEFAULT_MAX_REQUEST_BYTES;
     }
 
     /**
@@ -91,18 +137,19 @@ final class document_reader {
      * @param \course_modinfo $modinfo Course the documents belong to.
      * @param int[] $cmids Activities whose documents may be read.
      * @param \cache $cache Text already read, by content hash.
-     * @return \stored_file[]
+     * @return array{0: \stored_file[], 1: bool} The documents that fit in one request, by content
+     *         hash, and whether more are left for the next one.
      */
     private static function pending_files(\course_modinfo $modinfo, array $cmids, \cache $cache): array {
         $pending = [];
+        $bytes = 0;
+        $more = false;
         foreach ($cmids as $cmid) {
             $files = file_content::files_of($modinfo, (int)$cmid);
-            $pending = self::add_pending($files, $pending, $cache);
-            if (count($pending) >= self::MAX_FILES) {
-                break;
-            }
+            [$pending, $bytes, $left] = self::add_pending($files, $pending, $bytes, $cache);
+            $more = $more || $left;
         }
-        return $pending;
+        return [$pending, $more];
     }
 
     /**
@@ -113,10 +160,13 @@ final class document_reader {
      *
      * @param \stored_file[] $files Files of the activity.
      * @param \stored_file[] $pending Documents already waiting, by content hash.
+     * @param int $bytes Bytes of the documents already waiting.
      * @param \cache $cache Text already read, by content hash.
-     * @return \stored_file[] The documents waiting, by content hash.
+     * @return array{0: \stored_file[], 1: int, 2: bool} The documents waiting, by content hash,
+     *         their bytes, and whether a document of this activity was left for a later request.
      */
-    private static function add_pending(array $files, array $pending, \cache $cache): array {
+    private static function add_pending(array $files, array $pending, int $bytes, \cache $cache): array {
+        $left = false;
         foreach ($files as $file) {
             $hash = $file->get_contenthash();
             if (isset($pending[$hash]) || $cache->get($hash) !== false) {
@@ -126,12 +176,17 @@ final class document_reader {
                 $cache->set($hash, ['text' => '', 'reason' => 'unsupported_type']);
                 continue;
             }
-            if (count($pending) >= self::MAX_FILES) {
-                return $pending;
+            // The first document always fits, so one larger than the budget is still read alone.
+            $size = (int)$file->get_filesize();
+            $overbudget = $pending !== [] && $bytes + $size > self::max_request_bytes();
+            if (count($pending) >= self::MAX_FILES || $overbudget) {
+                $left = true;
+                continue;
             }
             $pending[$hash] = $file;
+            $bytes += $size;
         }
-        return $pending;
+        return [$pending, $bytes, $left];
     }
 
     /**
@@ -236,12 +291,12 @@ final class document_reader {
     private static function as_payload(array $files): array {
         $payload = [];
         foreach ($files as $hash => $file) {
-            $content = $file->get_content();
             $payload[] = [
                 'filename' => $file->get_filename(),
                 'mimetype' => (string)$file->get_mimetype(),
                 'sha1' => (string)$hash,
-                'content_base64' => base64_encode($content),
+                // Encoded straight from the storage: the raw content is never kept beside it.
+                'content_base64' => base64_encode($file->get_content()),
             ];
         }
         return $payload;

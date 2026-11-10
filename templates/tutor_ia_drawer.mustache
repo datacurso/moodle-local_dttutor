@@ -29,6 +29,7 @@
     * avatarurl - Selected avatar URL
     * position - Drawer side (right/left, auto-determined for custom positions)
     * chatproxy_url - URL of the chat proxy endpoint the client posts to
+    * bs - Bootstrap class names for the running Moodle (\local_dttutor\local\bootstrap_classes::get())
 
     Example context (json):
     {
@@ -40,10 +41,12 @@
         "welcomemessage": "Hello! I'm John Doe, your AI assistant. How can I help you today?",
         "avatarurl": "/local/dttutor/pix/avatars/avatar_profesor_01.png",
         "position": "right",
-        "chatproxy_url": "/local/dttutor/chatproxy.php"
+        "chatproxy_url": "/local/dttutor/chatproxy.php",
+        "bs": {"visuallyhidden": "visually-hidden"},
+        "anchoreddrawers": true
     }
 }}
-<div class="tutor-ia-drawer tutor-ia-drawer-{{position}}" id="tutor-ia-drawer-{{uniqid}}" data-position="{{position}}" aria-label="{{tutorname}}" tabindex="-1" role="region">
+<div class="tutor-ia-drawer tutor-ia-drawer-{{position}}" id="tutor-ia-drawer-{{uniqid}}" data-position="{{position}}"{{#anchoreddrawers}} data-anchored-drawers="1"{{/anchoreddrawers}} aria-label="{{tutorname}}" tabindex="-1" role="region">
     <div class="tutor-ia-drawer-header">
         <div class="tutor-ia-header-content">
             <img src="{{avatarurl}}" alt="{{tutorname}}" class="tutor-ia-avatar-small">
@@ -58,11 +61,11 @@
         </button>
         <button id="tutor-ia-drawer-close-{{uniqid}}" class="btn tutor-ia-close-button" type="button">
             {{#pix}}e/cancel, core{{/pix}}
-            <span class="sr-only">{{#str}}close, local_dttutor{{/str}}</span>
+            <span class="{{bs.visuallyhidden}}">{{#str}}close, local_dttutor{{/str}}</span>
         </button>
     </div>
     <div class="tutor-ia-drawer-body" id="tutor-ia-drawer-content-{{uniqid}}" data-welcomemessage="{{welcomemessage}}" data-chatproxy-url="{{chatproxy_url}}">
-        <h2 class="sr-only">{{tutorname}}</h2>
+        <h2 class="{{bs.visuallyhidden}}">{{tutorname}}</h2>
 
         {{! Contenedor de mensajes }}
         <div class="tutor-ia-messages-container" data-region="tutor-ia-messages">

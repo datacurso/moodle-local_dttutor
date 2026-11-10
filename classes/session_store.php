@@ -19,6 +19,7 @@ namespace local_dttutor;
 use local_dttutor\httpclient\client_factory;
 use local_dttutor\httpclient\provider_config;
 use local_dttutor\httpclient\tutoria_api;
+use local_dttutor\local\pending_deletion;
 
 /**
  * Durable record of the remote chat sessions opened for each user.
@@ -140,10 +141,11 @@ class session_store {
      * suppression request that relied on them would leave data behind; this asks the service
      * by user and course instead, which covers both.
      *
-     * The call is best effort in the same way as {@see purge()}: a failure is logged as
-     * metadata only and never stops the local rows from being removed, so a Privacy API
-     * request always completes. The caller learns that the service was not reached from the
-     * null return, and can fall back to deleting the known sessions one by one.
+     * A failure never stops the local rows from being removed, so a Privacy API request always
+     * completes here; the deletion is kept among the pending ones instead and asked for again
+     * until the service confirms it ({@see pending_deletion}). The caller learns that the
+     * service was not reached from the null return, and can also delete the known sessions one
+     * by one.
      *
      * @param int|null $userid User whose conversations are deleted, or null for every user of
      *                         the course.
@@ -160,31 +162,35 @@ class session_store {
             return null;
         }
 
-        try {
-            $deleted = 0;
-            foreach (self::owners_by_tenant($userid, $courseid) as $owner) {
+        $deleted = 0;
+        $failed = false;
+        foreach (self::owners_by_tenant($userid, $courseid) as $owner) {
+            try {
                 $response = self::api_for($owner)->purge_conversations($userid, $courseid);
                 $deleted += (int)($response['deleted_sessions'] ?? 0);
+            } catch (\Throwable $e) {
+                // Metadata only: the scope says what was asked for without naming the person.
+                \local_dttutor_log('CONVERSATION_PURGE_FAILED', [
+                    'courseid' => $courseid,
+                    'exception' => get_class($e),
+                    'scope' => $userid === null ? 'course' : ($courseid === null ? 'user' : 'user_in_course'),
+                ], true);
+                // Each tenant keeps its own pending deletion, asked for again with its licence.
+                pending_deletion::queue_purge($userid, $courseid, $owner);
+                $failed = true;
             }
-        } catch (\Throwable $e) {
-            // Metadata only: the scope says what was asked for without naming the person.
-            \local_dttutor_log('CONVERSATION_PURGE_FAILED', [
-                'courseid' => $courseid,
-                'exception' => get_class($e),
-                'scope' => $userid === null ? 'course' : ($courseid === null ? 'user' : 'user_in_course'),
-            ], true);
-            return null;
         }
 
-        return $deleted;
+        return $failed ? null : $deleted;
     }
 
     /**
      * Delete the stored sessions matching a condition, remotely first and then locally.
      *
-     * Remote deletion is best effort: a failure (including the remote client being
-     * unavailable, e.g. no license key configured) is logged as metadata only and never
-     * prevents the local rows from being removed, so Privacy API deletions always complete.
+     * A remote failure (including the remote client being unavailable, e.g. no license key
+     * configured) never prevents the local rows from being removed, so Privacy API deletions
+     * always complete. Each session the service did not confirm is kept among the pending
+     * deletions and asked for again until it is ({@see pending_deletion}).
      *
      * @param string $select SQL fragment for the WHERE clause (named placeholders).
      * @param array $params Placeholder values.
@@ -215,11 +221,15 @@ class session_store {
                     ['exception' => get_class($e), 'rows' => count($group)],
                     true
                 );
+                foreach ($group as $row) {
+                    pending_deletion::queue_session((string)$row->remotesessionid, $owner ?: null);
+                }
                 continue;
             }
 
             foreach ($group as $row) {
                 try {
+                    // A failure leaves the session among the pending deletions.
                     $api->delete_session($row->remotesessionid);
                 } catch (\Throwable $e) {
                     debugging('Remote deletion of Tutor-IA session failed: ' . get_class($e), DEBUG_DEVELOPER);
@@ -241,7 +251,7 @@ class session_store {
      * @return tutoria_api
      * @throws \Throwable When the client cannot be built.
      */
-    private static function api_for(?int $userid): tutoria_api {
+    public static function api_for(?int $userid): tutoria_api {
         if ($userid === null || !provider_config::has_tenants()) {
             return \core\di::get(tutoria_api::class);
         }
