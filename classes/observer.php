@@ -27,6 +27,9 @@ class observer {
     /**
      * Remove the course configuration and the stored chat sessions of a deleted course.
      *
+     * The cached text of the course is forgotten earlier, before the course is deleted, by
+     * {@see \local_dttutor\hook\course_deletion}: its files are needed to find it.
+     *
      * @param \core\event\course_deleted $event
      */
     public static function course_deleted(\core\event\course_deleted $event): void {
@@ -41,12 +44,14 @@ class observer {
     }
 
     /**
-     * Remove the stored chat sessions of a deleted user.
+     * Remove the stored chat sessions and the cached course knowledge of a deleted user.
      *
      * @param \core\event\user_deleted $event
      */
     public static function user_deleted(\core\event\user_deleted $event): void {
         $userid = (int)$event->objectid;
+        // Before the early return: the knowledge blocks are cached whether or not a session was stored.
+        local\cached_text::forget_user($userid);
         // Nothing of the user ever reached the service: do not ask it, do not log a failure.
         if (!session_store::has_sessions($userid, null)) {
             return;

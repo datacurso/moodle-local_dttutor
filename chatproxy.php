@@ -36,6 +36,7 @@ require_once(__DIR__ . '/lib.php');
 use local_dttutor\httpclient\tutoria_api;
 use local_dttutor\proxy\context_preloader;
 use local_dttutor\proxy\handler;
+use local_dttutor\proxy\inflight_lock;
 use local_dttutor\proxy\request_guard;
 use local_dttutor\proxy\system_message;
 use local_dttutor\session_store;
@@ -79,6 +80,21 @@ if (!is_string($sesskey) || !confirm_sesskey($sesskey)) {
     header('Content-Type: application/json');
     die(json_encode(['error' => 'invalid_sesskey']));
 }
+
+// One question in flight per user and course (DTT-SEC-006-R1). Taken before the guard records the
+// use of the tutor and before any service is contacted, so a refused question costs nothing.
+$inflight = inflight_lock::acquire((int)$USER->id, inflight_lock::course_from_input($input));
+if ($inflight === null) {
+    http_response_code(429);
+    header('Content-Type: application/json');
+    header('Retry-After: 5');
+    die(json_encode([
+        'error' => 'request_in_progress',
+        'message' => get_string('error_request_in_progress', 'local_dttutor'),
+    ]));
+}
+// Released on every way out, the early refusals below included; release() is idempotent.
+\core_shutdown_manager::register_function([$inflight, 'release']);
 
 // Authorize against the requested course: login, enrolment, capability, enablement, module.
 try {
@@ -210,4 +226,5 @@ if ($sessionid !== null && $responsetext !== null && $tutoriaapi !== null) {
 }
 
 $timing->step('persist');
+$inflight->release();
 $timing->record();

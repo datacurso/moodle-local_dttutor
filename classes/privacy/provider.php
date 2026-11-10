@@ -26,6 +26,7 @@ use core_privacy\local\request\plugin\provider as plugin_provider;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
+use local_dttutor\local\cached_text;
 use local_dttutor\local\conversation_export;
 use local_dttutor\session_store;
 
@@ -217,6 +218,9 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
         }
         $courseid = (int)$context->instanceid;
 
+        // First the text cached from the course, which does not depend on the service (DTT-PRIV-005).
+        cached_text::forget_course($courseid);
+
         // The service is asked for the whole course first, so the conversations that were
         // never registered here go with it; the stored handles are then only deleted locally.
         $remote = session_store::purge_remote_conversations(null, $courseid);
@@ -235,6 +239,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
                 continue;
             }
             $params = ['courseid' => (int)$context->instanceid, 'userid' => $userid];
+            cached_text::forget_users_in_course($params['courseid'], [$userid]);
 
             $remote = session_store::purge_remote_conversations($userid, $params['courseid']);
             session_store::purge('courseid = :courseid AND userid = :userid', $params, $remote === null);
@@ -257,6 +262,7 @@ class provider implements core_userlist_provider, metadata_provider, plugin_prov
 
         [$insql, $inparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
         $params = ['courseid' => (int)$context->instanceid] + $inparams;
+        cached_text::forget_users_in_course($params['courseid'], $userids);
 
         $remote = true;
         foreach ($userids as $userid) {

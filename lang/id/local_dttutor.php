@@ -85,6 +85,7 @@ $string['error_no_credits_fallback'] = 'Kredit tidak cukup: {$a}';
 $string['error_provider_disabled'] = 'Tutor AI tidak tersedia karena penyedia AI dinonaktifkan di situs ini. Silakan hubungi administrator Anda.';
 $string['error_quiz_in_progress'] = 'Tutor AI tidak tersedia selama percobaan kuis Anda masih terbuka. Kirimkan, atau tunggu waktunya habis, dan tutor akan kembali.';
 $string['error_ratelimit_exceeded'] = 'Batas penggunaan yang diizinkan telah terlampaui. Silakan coba lagi pada {$a}.';
+$string['error_request_in_progress'] = 'Anda sudah memiliki pertanyaan yang sedang diproses di kursus ini. Tunggu jawabannya sebelum mengajukan pertanyaan lain.';
 $string['error_tutor_not_available'] = 'Tutor AI tidak tersedia untuk kursus ini.';
 $string['error_unexpected'] = 'Terjadi kesalahan yang tidak terduga. Silakan coba lagi.';
 $string['error_unknown'] = 'Terjadi kesalahan yang tidak diketahui. Silakan coba lagi.';

@@ -85,6 +85,7 @@ $string['error_no_credits_fallback'] = 'Unzureichendes Guthaben: {$a}';
 $string['error_provider_disabled'] = 'Der KI-Tutor ist nicht verfügbar, da der KI-Anbieter auf dieser Website deaktiviert ist. Bitte wenden Sie sich an Ihre Administration.';
 $string['error_quiz_in_progress'] = 'Der KI-Tutor ist nicht verfügbar, solange ein Testversuch offen ist. Geben Sie ihn ab oder warten Sie, bis die Zeit abläuft, dann kommt der Tutor zurück.';
 $string['error_ratelimit_exceeded'] = 'Das zulässige Nutzungslimit wurde überschritten. Bitte versuchen Sie es am {$a} erneut.';
+$string['error_request_in_progress'] = 'Sie haben in diesem Kurs bereits eine Frage in Bearbeitung. Warten Sie auf die Antwort, bevor Sie eine weitere stellen.';
 $string['error_tutor_not_available'] = 'Der KI-Tutor ist für diesen Kurs nicht verfügbar.';
 $string['error_unexpected'] = 'Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.';
 $string['error_unknown'] = 'Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.';

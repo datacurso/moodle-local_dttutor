@@ -30,4 +30,8 @@ $callbacks = [
         'callback' => \local_dttutor\hook\chat_hook::class . '::before_footer_html_generation',
         'priority' => 500,
     ],
+    [
+        'hook' => \core_course\hook\before_course_deleted::class,
+        'callback' => \local_dttutor\hook\course_deletion::class . '::before_course_deleted',
+    ],
 ];

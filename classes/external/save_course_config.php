@@ -30,6 +30,7 @@ use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_value;
 use local_dttutor\course_config;
+use local_dttutor\proxy\request_guard;
 
 /**
  * External service to save course configuration
@@ -77,6 +78,8 @@ class save_course_config extends external_api {
         $context = \context_course::instance($params['courseid']);
         self::validate_context($context);
         require_capability('moodle/course:update', $context);
+        // The tutor cannot be managed through the web service while the AI provider is disabled.
+        request_guard::assert_provider_enabled();
 
         // 5. Update configuration. The switch is all a course decides about the tutor: its name
         // and its welcome message belong to the site.
