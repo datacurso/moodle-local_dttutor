@@ -285,14 +285,15 @@ class chat_hook {
         $style = '';
 
         if ($preset === 'right') {
-            $style = "right: {$x}; bottom: {$y};";
+            // The variable lets a theme column of floating buttons push the button aside (styles.css).
+            $style = "right: {$x}; bottom: {$y}; --tutor-ia-toggle-right: {$x};";
         } else if ($preset === 'left') {
             $style = "left: {$x}; bottom: {$y};";
         } else if ($preset === 'custom') {
             // For custom, check if values are negative (position from opposite side).
             if (strpos($x, '-') === 0) {
                 $xvalue = ltrim($x, '-');
-                $style .= "right: {$xvalue}; ";
+                $style .= "right: {$xvalue}; --tutor-ia-toggle-right: {$xvalue}; ";
             } else {
                 $style .= "left: {$x}; ";
             }

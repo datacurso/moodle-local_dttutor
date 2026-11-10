@@ -5,6 +5,12 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.17] - 2026-11-10
+
+### Fixed
+- **The page is moved aside once on Edwiser RemUI**: 2.0.14 moved `#page.drawers` with a margin because Boost overrides the padding of the tutor with its own, but RemUI does not pad `#page.drawers`, so the padding and the margin both applied and left a blank band as wide as the chat between the content and the chat. The padding now applies only to a page without the drawers layout (`.tutor-ia-shifted-right:not(.drawers)`), and `#page.drawers` is moved by the margin alone. Boost and its child themes are unchanged.
+- **The floating buttons of Edwiser RemUI no longer cover the tutor**: RemUI stacks its floating buttons (help, focus mode, feedback, back to top) in a fixed column, `.floating-buttons-wrapper`, above the button of the tutor and the chat (z-index 1021 against 1015 and 1016). The rules of the tutor only moved the buttons of Boost. A button of the tutor placed from the right edge now keeps clear of that column: it stays where it was set when that is already left of the column, and moves just left of it otherwise (the inline style now also carries `--tutor-ia-toggle-right`). While the chat is open on the right the column moves aside as a whole, next to the chat, and on a screen narrower than 576px it is hidden until the chat closes. Themes without that column are unchanged.
+
 ## [2.0.16] - 2026-11-09
 
 ### Security
