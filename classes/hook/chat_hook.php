@@ -246,12 +246,28 @@ class chat_hook {
             'avatarurl' => $avatarurl->out(false),
             'position' => $drawerside,
             'chatproxy_url' => $chatproxyurl->out(false),
+            'bs' => \local_dttutor\local\bootstrap_classes::get(),
+            'anchoreddrawers' => self::theme_anchors_drawers(),
         ];
 
         $toggle = $OUTPUT->render_from_template('local_dttutor/tutor_ia_toggle', $toggledata);
         $drawer = $OUTPUT->render_from_template('local_dttutor/tutor_ia_drawer', $drawerdata);
 
         $hook->add_html($toggle . $drawer);
+    }
+
+    /**
+     * Whether Boost anchors the course index and the block drawer to the centre of the screen.
+     *
+     * Moodle 5.3 does so on the course page and the standard layout, so those drawers cannot
+     * follow the page aside when the chat opens and have to step out of the way. Earlier releases
+     * keep them against the edges of the screen, where the page moves aside with them in place.
+     *
+     * @return bool
+     */
+    private static function theme_anchors_drawers(): bool {
+        global $CFG;
+        return (int)($CFG->branch ?? 0) >= 503;
     }
 
     /**
@@ -269,14 +285,15 @@ class chat_hook {
         $style = '';
 
         if ($preset === 'right') {
-            $style = "right: {$x}; bottom: {$y};";
+            // The variable lets a theme column of floating buttons push the button aside (styles.css).
+            $style = "right: {$x}; bottom: {$y}; --tutor-ia-toggle-right: {$x};";
         } else if ($preset === 'left') {
             $style = "left: {$x}; bottom: {$y};";
         } else if ($preset === 'custom') {
             // For custom, check if values are negative (position from opposite side).
             if (strpos($x, '-') === 0) {
                 $xvalue = ltrim($x, '-');
-                $style .= "right: {$xvalue}; ";
+                $style .= "right: {$xvalue}; --tutor-ia-toggle-right: {$xvalue}; ";
             } else {
                 $style .= "left: {$x}; ";
             }

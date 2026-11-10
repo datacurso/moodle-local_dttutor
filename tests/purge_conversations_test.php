@@ -19,6 +19,7 @@ namespace local_dttutor;
 use local_dttutor\fixtures\fake_ai_client;
 use local_dttutor\httpclient\ai_client;
 use local_dttutor\httpclient\tutoria_api;
+use local_dttutor\local\pending_deletion;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -178,6 +179,36 @@ final class purge_conversations_test extends \advanced_testcase {
     }
 
     /**
+     * DTT-PRIV-004: a deletion by user and course the service did not confirm is kept, once.
+     */
+    public function test_a_failed_purge_is_kept_pending_with_its_scope(): void {
+        global $DB;
+        $this->fake_remote_api(
+            new \moodle_exception('error_unexpected', 'local_dttutor'),
+            new \moodle_exception('error_unexpected', 'local_dttutor')
+        );
+
+        session_store::purge_remote_conversations(42, 7);
+        session_store::purge_remote_conversations(42, 7);
+        $this->assertDebuggingCalledCount(2);
+
+        $this->assertSame([['remotesessionid' => null, 'userid' => 42, 'courseid' => 7]], pending_deletion::pending());
+    }
+
+    /**
+     * DTT-PRIV-004: a course-wide deletion keeps every user in its scope.
+     */
+    public function test_a_failed_course_purge_is_kept_for_every_user(): void {
+        global $DB;
+        fake_ai_client::bind_unavailable();
+
+        session_store::purge_remote_conversations(null, 7);
+        $this->assertDebuggingCalled();
+
+        $this->assertSame([['remotesessionid' => null, 'userid' => null, 'courseid' => 7]], pending_deletion::pending());
+    }
+
+    /**
      * API-CTR-005: a service that cannot be reached is not a completed deletion.
      */
     public function test_an_unreachable_service_is_reported_as_not_asked(): void {
@@ -218,5 +249,22 @@ final class purge_conversations_test extends \advanced_testcase {
             $fake->get_call_signatures()
         );
         $this->assertSame(0, $DB->count_records(session_store::TABLE));
+        $this->assertSame([], pending_deletion::pending());
+    }
+
+    /**
+     * DTT-PRIV-004: of the known sessions, only the ones the service did not confirm wait.
+     */
+    public function test_only_the_unconfirmed_sessions_are_kept_pending(): void {
+        global $DB;
+        $this->fake_remote_api(['deleted' => true], new \moodle_exception('error_unexpected', 'local_dttutor'));
+        $this->add_session(42, 7, 'sess-one');
+        $this->add_session(42, 8, 'sess-two');
+
+        session_store::purge('userid = :userid', ['userid' => 42], true);
+        $this->assertDebuggingCalled();
+
+        $this->assertSame(0, $DB->count_records(session_store::TABLE));
+        $this->assertSame([['remotesessionid' => 'sess-two', 'userid' => null, 'courseid' => null]], pending_deletion::pending());
     }
 }

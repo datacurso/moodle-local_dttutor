@@ -36,8 +36,10 @@ require_once(__DIR__ . '/lib.php');
 use local_dttutor\httpclient\tutoria_api;
 use local_dttutor\proxy\context_preloader;
 use local_dttutor\proxy\handler;
+use local_dttutor\proxy\inflight_lock;
 use local_dttutor\proxy\request_guard;
 use local_dttutor\proxy\system_message;
+use local_dttutor\session_store;
 
 // Method check.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -78,6 +80,21 @@ if (!is_string($sesskey) || !confirm_sesskey($sesskey)) {
     header('Content-Type: application/json');
     die(json_encode(['error' => 'invalid_sesskey']));
 }
+
+// One question in flight per user and course (DTT-SEC-006-R1). Taken before the guard records the
+// use of the tutor and before any service is contacted, so a refused question costs nothing.
+$inflight = inflight_lock::acquire((int)$USER->id, inflight_lock::course_from_input($input));
+if ($inflight === null) {
+    http_response_code(429);
+    header('Content-Type: application/json');
+    header('Retry-After: 5');
+    die(json_encode([
+        'error' => 'request_in_progress',
+        'message' => get_string('error_request_in_progress', 'local_dttutor'),
+    ]));
+}
+// Released on every way out, the early refusals below included; release() is idempotent.
+\core_shutdown_manager::register_function([$inflight, 'release']);
 
 // Authorize against the requested course: login, enrolment, capability, enablement, module.
 try {
@@ -139,18 +156,29 @@ $timing = new \local_dttutor\local\response_time();
 
 try {
     $tutoriaapi = new tutoria_api();
+
+    // The answers of the session about to be replaced, read before it is deleted: only those may
+    // be written back as answers of the tutor. Unreadable, no answer is trusted.
+    $knownanswers = [];
+    if ($resetsession) {
+        $previous = session_store::get_remote_session_id((int)$USER->id, $courseid, $cmid);
+        if ($previous !== null) {
+            try {
+                $knownanswers = $tutoriaapi->assistant_answers($previous);
+            } catch (\Throwable $e) {
+                \local_dttutor_log('REPLAY_HISTORY_UNAVAILABLE', ['exception' => get_class($e)], true);
+            }
+        }
+    }
+
     $session = $resetsession ?
         $tutoriaapi->reset_session_v2($courseid, $USER->id, $cmid) :
         $tutoriaapi->start_session_v2($courseid, $USER->id, $cmid);
     $sessionid = $session['session_id'] ?? null;
 
     if ($sessionid && $resetsession) {
-        foreach ($messages as $message) {
-            $replayrole = $message['role'];
-            $content = trim($message['content']);
-            if ($content !== '') {
-                $tutoriaapi->append_message($sessionid, $replayrole, $content);
-            }
+        foreach (tutoria_api::replayable_messages($messages, $knownanswers) as $message) {
+            $tutoriaapi->append_message($sessionid, $message['role'], trim($message['content']));
         }
     } else if ($sessionid && $usermessage !== '') {
         $tutoriaapi->append_message($sessionid, 'user', $usermessage);
@@ -198,4 +226,5 @@ if ($sessionid !== null && $responsetext !== null && $tutoriaapi !== null) {
 }
 
 $timing->step('persist');
+$inflight->release();
 $timing->record();

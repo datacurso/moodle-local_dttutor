@@ -62,12 +62,17 @@ class handler {
             // The stream is already open, so the failure has to leave through it.
             \local_dttutor_log('AI_API_UNAVAILABLE', ['exception' => get_class($e)], true);
             \local_dttutor\event\service_failed::record('provider_unavailable');
-            $response = ['type' => 'error', 'error' => get_string('error_unexpected', 'local_dttutor')];
+            $response = self::unavailable_response($e);
         }
 
         if ($response['type'] === 'error') {
-            // The client only dispatches frames that carry an explicit event name.
-            echo self::format_sse_event('error', ['error' => $response['error']]);
+            // The client only dispatches frames that carry an explicit event name. The code lets it
+            // title the message; the message itself is already in the language of the user.
+            $data = ['error' => $response['error']];
+            if (isset($response['code'])) {
+                $data['code'] = $response['code'];
+            }
+            echo self::format_sse_event('error', $data);
             self::flush();
             return null;
         }
@@ -82,6 +87,30 @@ class handler {
         echo self::format_sse_event('done', []);
         self::flush();
         return $response['content'];
+    }
+
+    /**
+     * The error to show when the client of the AI provider could not be built.
+     *
+     * A site without a licence is told so: retrying cannot help until an administrator configures
+     * the provider. Any other cause stays a generic error.
+     *
+     * @param \Throwable $error Why the client could not be built.
+     * @return array ['type' => 'error', 'error' => message, 'code' => code]
+     */
+    public static function unavailable_response(\Throwable $error): array {
+        if (\local_dttutor\local\licence::is_missing($error)) {
+            return [
+                'type' => 'error',
+                'error' => get_string('error_license_missing', 'local_dttutor'),
+                'code' => 'license_missing',
+            ];
+        }
+        return [
+            'type' => 'error',
+            'error' => get_string('error_unexpected', 'local_dttutor'),
+            'code' => 'provider_unavailable',
+        ];
     }
 
     /**
@@ -310,7 +339,11 @@ class handler {
             if (isset(self::REFUSALS[$detail])) {
                 \local_dttutor_log('AI_API_REFUSED', ['detail' => $detail], true);
                 \local_dttutor\event\service_failed::record($detail);
-                return ['type' => 'error', 'error' => get_string(self::REFUSALS[$detail], 'local_dttutor')];
+                return [
+                    'type' => 'error',
+                    'error' => get_string(self::REFUSALS[$detail], 'local_dttutor'),
+                    'code' => $detail,
+                ];
             }
         }
 

@@ -1,0 +1,159 @@
+<?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+namespace local_dttutor\task;
+
+use local_dttutor\event\service_failed;
+use local_dttutor\local\pending_deletion;
+use local_dttutor\proxy\document_read_failure;
+use local_dttutor\session_store;
+
+/**
+ * Ask the AI service again for a deletion it has not confirmed yet.
+ *
+ * A failure is thrown back to the cron, which runs the task again later and doubles the wait
+ * each time, up to a day. The queue of Moodle gives a task a fixed number of attempts and then
+ * leaves it failed for good, which would lose the deletion once more: on its last attempt the
+ * task hands the same deletion to a new task instead, so it is asked for until the service
+ * confirms it.
+ *
+ * A site without a licence for the AI provider cannot ask at all, and no retry changes that until
+ * an administrator configures one. Such an attempt is not a failure: the deletion is handed to a
+ * new task a day later, with every attempt left, instead of filling the task log with failures
+ * and reporting as stuck a deletion that is only waiting for the licence.
+ *
+ * @package    local_dttutor
+ * @copyright  2026 Datacurso
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class delete_remote_conversation extends \core\task\adhoc_task {
+    /** @var int Attempts a task is given before it hands the deletion to a new one. */
+    public const ATTEMPTS = 12;
+
+    /** @var int Failed attempts after which the administrator is told that a deletion is stuck. */
+    public const ALERT_AFTER_ATTEMPTS = 8;
+
+    /**
+     * Name of the task, as the administration shows it.
+     *
+     * @return string
+     */
+    public function get_name(): string {
+        return get_string('task_retry_pending_deletions', 'local_dttutor');
+    }
+
+    /**
+     * Ask for the deletion, and fail so that the cron asks again while the service does not confirm.
+     *
+     * @throws \Throwable When the service did not confirm the deletion and attempts remain.
+     */
+    public function execute(): void {
+        $scope = pending_deletion::scope_of($this->get_custom_data());
+        if ($scope === null) {
+            // Nothing is named, so there is nothing to delete.
+            return;
+        }
+
+        try {
+            // On Workplace the deletion goes with the licence of the tenant of its owner.
+            $api = session_store::api_for(pending_deletion::owner_of($this->get_custom_data()));
+        } catch (\Throwable $e) {
+            $this->failed($scope, pending_deletion::PROVIDER_UNAVAILABLE, $e);
+            return;
+        }
+
+        try {
+            pending_deletion::attempt($api, $scope);
+        } catch (\Throwable $e) {
+            $this->failed($scope, document_read_failure::reason_of($e), $e);
+            return;
+        }
+        mtrace('Remote deletion confirmed.');
+    }
+
+    /**
+     * Report a failed attempt, and keep the deletion for the next one.
+     *
+     * An attempt that failed for lack of a licence is not reported: the deletion waits for it.
+     *
+     * @param array $scope remotesessionid, userid and courseid of the deletion.
+     * @param string $reason Short machine-readable reason of the failure.
+     * @param \Throwable $error What the attempt failed with.
+     * @throws \Throwable The same error, while this task has attempts left.
+     */
+    private function failed(array $scope, string $reason, \Throwable $error): void {
+        if (pending_deletion::is_waiting_for_licence($error)) {
+            $licencereason = document_read_failure::reason_of($error);
+            mtrace("Remote deletion waits for a licence of the AI provider ({$licencereason}).");
+            $this->hand_on($scope, 0);
+            return;
+        }
+
+        $attempt = self::ATTEMPTS - $this->get_attempts_available() + 1;
+        mtrace("Remote deletion not confirmed ({$reason}), attempt {$attempt}.");
+
+        if ($attempt === self::ALERT_AFTER_ATTEMPTS) {
+            $this->alert($scope, $reason, $attempt);
+        }
+
+        if ($this->get_attempts_available() > 1) {
+            throw $error;
+        }
+
+        // The last attempt of this task: a new one carries the deletion on, waiting as long as the
+        // cron waits after a failure.
+        $this->hand_on($scope, DAYSECS);
+    }
+
+    /**
+     * Hand the deletion to a new task, a day from now and with every attempt left.
+     *
+     * @param array $scope remotesessionid, userid and courseid of the deletion.
+     * @param int $faildelay Wait the new task starts from if it fails; 0 when nothing failed.
+     */
+    private function hand_on(array $scope, int $faildelay): void {
+        $next = new self();
+        $next->set_custom_data(pending_deletion::task_data($scope, pending_deletion::owner_of($this->get_custom_data())));
+        $next->set_attempts_available(self::ATTEMPTS);
+        $next->set_fail_delay($faildelay);
+        $next->set_next_run_time(time() + DAYSECS);
+        \core\task\manager::queue_adhoc_task($next);
+        mtrace('Remote deletion handed to a new task.');
+    }
+
+    /**
+     * Tell the administrator that a deletion keeps failing.
+     *
+     * Metadata only: neither the person nor the session is named, so the alert itself does not
+     * become personal data that outlives the deletion it reports.
+     *
+     * @param array $scope remotesessionid, userid and courseid of the deletion.
+     * @param string $reason Short machine-readable reason of the last failure.
+     * @param int $attempt Attempts this task has made.
+     */
+    private function alert(array $scope, string $reason, int $attempt): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/local/dttutor/lib.php');
+
+        \local_dttutor_log('REMOTE_DELETION_OVERDUE', [
+            'task' => (int)$this->get_id(),
+            'attempts' => $attempt,
+            'reason' => $reason,
+            'kind' => $scope['remotesessionid'] === null ? 'purge' : 'session',
+        ], true);
+        service_failed::record($reason, service_failed::OPERATION_DELETION);
+    }
+}

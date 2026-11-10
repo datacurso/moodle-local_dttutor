@@ -22,6 +22,17 @@
     overflow: hidden;
 }
 
+/*
+ * Edwiser RemUI stacks its floating buttons (help, focus mode, feedback, back to top) in a column
+ * 14px from the bottom right corner, above the button of the tutor (z-index 1021 against 1015), so
+ * they covered it. A button placed from the right edge keeps clear of that column: it stays where
+ * it was set when that is already left of the column, and moves just left of it otherwise.
+ */
+body:has(#page-footer .floating-buttons-wrapper) .tutor-ia-toggle-button[style*="--tutor-ia-toggle-right"] {
+    /* stylelint-disable-next-line declaration-no-important */
+    right: max(var(--tutor-ia-toggle-right), calc(14px + 48px + 1rem)) !important;
+}
+
 /* Position classes for preset identification */
 .tutor-ia-position-right,
 .tutor-ia-position-left,
@@ -90,15 +101,60 @@
     visibility: visible;
 }
 
-/* Shifting the page aside is ours, so it does not depend on the classes of one theme. */
-.tutor-ia-shifted-right {
+/*
+ * Shifting the page aside is ours, so it does not depend on the classes of one theme. A page
+ * without the drawers layout is padded; #page.drawers is moved with a margin below instead.
+ */
+.tutor-ia-shifted-right:not(.drawers) {
     padding-right: var(--tutor-ia-drawer-width);
     transition: padding 0.2s ease;
 }
 
-.tutor-ia-shifted-left {
+.tutor-ia-shifted-left:not(.drawers) {
     padding-left: var(--tutor-ia-drawer-width);
     transition: padding 0.2s ease;
+}
+
+/*
+ * Boost and its child themes pad #page.drawers through an id selector, which outweighs a padding
+ * of ours, and move the page aside with a margin when one of their own drawers opens. The page is
+ * moved the same way, over the margin of the course index or the block drawer when one is open.
+ * Only the margin moves it: themes that do not pad #page.drawers (Edwiser RemUI) would otherwise
+ * be moved twice, by the padding and by the margin, leaving a blank band beside the chat.
+ */
+body #page.drawers.tutor-ia-shifted-right {
+    margin-right: var(--tutor-ia-drawer-width);
+    transition: margin 0.2s ease;
+}
+
+body #page.drawers.tutor-ia-shifted-left {
+    margin-left: var(--tutor-ia-drawer-width);
+    transition: margin 0.2s ease;
+}
+
+/*
+ * On the course page and the standard layout, Boost (Moodle 5.3) anchors the course index and the
+ * block drawer to the centre of the screen, not to the page, so they would not follow the page
+ * aside and would sit over the content. They step out of the way while the chat is open, and come
+ * back as the user left them when it closes: no preference of the user is changed. Earlier
+ * releases keep those drawers against the edges, so the chat only adds the step-aside class on
+ * Moodle 5.3 and later (see chat_hook::theme_anchors_drawers()).
+ */
+body.limitedwidth.tutor-ia-drawers-step-aside .drawer.drawer-left.show,
+body.limitedwidth.tutor-ia-drawers-step-aside .drawer.drawer-right.show,
+body.pagelayout-standard.tutor-ia-drawers-step-aside .drawer.drawer-left.show,
+body.pagelayout-standard.tutor-ia-drawers-step-aside .drawer.drawer-right.show {
+    visibility: hidden;
+}
+
+body.limitedwidth.tutor-ia-drawers-step-aside.tutor-ia-drawer-open-right #page.drawers.show-drawer-left,
+body.pagelayout-standard.tutor-ia-drawers-step-aside.tutor-ia-drawer-open-right #page.drawers.show-drawer-left {
+    margin-left: 0;
+}
+
+body.limitedwidth.tutor-ia-drawers-step-aside.tutor-ia-drawer-open-left #page.drawers.show-drawer-right,
+body.pagelayout-standard.tutor-ia-drawers-step-aside.tutor-ia-drawer-open-left #page.drawers.show-drawer-right {
+    margin-right: 0;
 }
 
 /* Too narrow to shift anything: the panel takes the screen while it is open. */
@@ -107,6 +163,12 @@
     .tutor-ia-shifted-left {
         padding-right: 0;
         padding-left: 0;
+    }
+
+    body #page.drawers.tutor-ia-shifted-right,
+    body #page.drawers.tutor-ia-shifted-left {
+        margin-right: 0;
+        margin-left: 0;
     }
 }
 
@@ -145,6 +207,36 @@ body.tutor-ia-drawer-open-right .maintenancewarning {
     /* stylelint-disable-next-line declaration-no-important */
     right: calc(380px + 5rem) !important;
     transition: right 0.2s ease;
+}
+
+/*
+ * Edwiser RemUI keeps its floating buttons (help, messaging, feedback, focus mode, back to top) in
+ * one fixed column, .floating-buttons-wrapper, above the chat (z-index 1021 against 1016). The
+ * column moves aside as a whole, as RemUI does for its own block drawer, and the buttons inside
+ * it are not moved a second time by the rules above.
+ */
+body.tutor-ia-drawer-open-right .floating-buttons-wrapper {
+    /* stylelint-disable-next-line declaration-no-important */
+    right: calc(var(--tutor-ia-drawer-width) + 14px) !important;
+    transition: right 0.2s ease;
+}
+
+body.tutor-ia-drawer-open-right .floating-buttons-wrapper .btn-footer-popover,
+body.tutor-ia-drawer-open-right .floating-buttons-wrapper .btn-footer-communication,
+body.tutor-ia-drawer-open-right .floating-buttons-wrapper .popover-process-monitor,
+body.tutor-ia-drawer-open-left .floating-buttons-wrapper .btn-footer-popover,
+body.tutor-ia-drawer-open-left .floating-buttons-wrapper .btn-footer-communication,
+body.tutor-ia-drawer-open-left .floating-buttons-wrapper .popover-process-monitor {
+    /* stylelint-disable-next-line declaration-no-important */
+    right: auto !important;
+}
+
+/* Too narrow to move them aside: the chat takes the screen, so they wait until it closes. */
+@media (max-width: 576px) {
+    body.tutor-ia-drawer-open-right .floating-buttons-wrapper,
+    body.tutor-ia-drawer-open-left .floating-buttons-wrapper {
+        visibility: hidden;
+    }
 }
 
 /* When Tutor-IA drawer is open on the LEFT */
@@ -313,6 +405,14 @@ body.tutor-ia-drawer-open-left .popover-process-monitor {
 .tutor-ia-edit-message:hover,
 .tutor-ia-edit-message:focus {
     background: rgba(255, 255, 255, 0.32);
+}
+
+/* While an answer arrives the message cannot be edited. */
+.tutor-ia-message.user:hover .tutor-ia-edit-message:disabled,
+.tutor-ia-edit-message:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: rgba(255, 255, 255, 0.18);
 }
 
 /* Inline Edit Container */

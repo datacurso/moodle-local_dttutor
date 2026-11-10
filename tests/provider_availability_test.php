@@ -40,7 +40,7 @@ require_once(__DIR__ . '/fixtures/provider_dependency_trait.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \local_dttutor\proxy\request_guard::assert_provider_enabled
  * @covers     \local_dttutor\httpclient\client_factory::is_provider_enabled
- * @covers     \local_dttutor\httpclient\datacurso_ai_client
+ * @covers     \local_dttutor\httpclient\client_factory::get
  */
 final class provider_availability_test extends \advanced_testcase {
     use provider_dependency_trait;
@@ -202,5 +202,28 @@ final class provider_availability_test extends \advanced_testcase {
                 set_config($name, $value, provider_config::COMPONENT);
             }
         }
+    }
+
+    /**
+     * Below every entry point, the client of the AI service cannot be built while the provider is disabled.
+     *
+     * Every path to the service (the chat, the web services, the tasks, the observers and the
+     * privacy provider) goes through client_factory::get(), and the production client refuses to
+     * be built without an enabled provider. A path that skipped its own check still sends nothing.
+     */
+    public function test_the_service_client_cannot_be_built_while_the_provider_is_disabled(): void {
+        $this->course_with_the_tutor_on();
+        $this->assertInstanceOf(ai_client::class, client_factory::get());
+
+        $this->disable_the_provider();
+
+        try {
+            client_factory::get();
+            $this->fail('The provider is disabled, so its client had to be refused.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('aiprovider_datacurso', $e->module);
+        }
+        $this->expectException(\moodle_exception::class);
+        \core\di::get(\local_dttutor\httpclient\tutoria_api::class);
     }
 }

@@ -93,6 +93,7 @@ final class plugin_state_test extends \advanced_testcase {
     public function test_navigation_entry_is_shown_when_enabled_in_provider(): void {
         $this->require_provider();
         $this->resetAfterTest();
+        $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         set_config('enabled', '0', 'local_dttutor');
