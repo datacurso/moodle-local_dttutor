@@ -19,12 +19,14 @@ namespace local_dttutor\external;
 use core_external\external_api;
 use local_dttutor\course_config;
 use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\fixtures\provider_dependency_trait;
 use local_dttutor\httpclient\ai_client;
 use local_dttutor\session_store;
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
+require_once(__DIR__ . '/../fixtures/provider_dependency_trait.php');
 
 /**
  * Declared contract of the web service functions the chat interface calls.
@@ -40,6 +42,8 @@ require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
  * @covers     \local_dttutor\external\save_course_config
  */
 final class services_contract_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest();
@@ -64,7 +68,7 @@ final class services_contract_test extends \advanced_testcase {
      */
     private function ready_course(): array {
         $this->setAdminUser();
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $course = $this->getDataGenerator()->create_course();
         course_config::update((int)$course->id, ['indexing_enabled' => 1]);
@@ -106,6 +110,7 @@ final class services_contract_test extends \advanced_testcase {
      * MDL-CTR-001: reading the history answers with the declared structure.
      */
     public function test_reading_the_history_answers_with_the_declared_structure(): void {
+        $this->require_provider();
         [$course, $student, $fake] = $this->ready_course();
         session_store::upsert((int)$student->id, (int)$course->id, null, 'remote-1');
         $fake->enqueue([
@@ -130,6 +135,7 @@ final class services_contract_test extends \advanced_testcase {
      * MDL-CTR-001: an empty history also answers with the declared structure.
      */
     public function test_an_empty_history_answers_with_the_declared_structure(): void {
+        $this->require_provider();
         [$course] = $this->ready_course();
 
         $result = get_chat_history::execute((int)$course->id);
@@ -144,6 +150,7 @@ final class services_contract_test extends \advanced_testcase {
      * MDL-CTR-001: deleting a conversation answers with the declared structure.
      */
     public function test_deleting_a_conversation_answers_with_the_declared_structure(): void {
+        $this->require_provider();
         [$course, $student, $fake] = $this->ready_course();
         session_store::upsert((int)$student->id, (int)$course->id, null, 'remote-2');
         $fake->enqueue(['deleted' => true]);
@@ -158,8 +165,9 @@ final class services_contract_test extends \advanced_testcase {
      * MDL-CTR-001: saving the course switch answers with the declared structure.
      */
     public function test_saving_the_course_switch_answers_with_the_declared_structure(): void {
+        $this->require_provider();
         $this->setAdminUser();
-        set_config('enabled', 1, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
@@ -194,6 +202,7 @@ final class services_contract_test extends \advanced_testcase {
      * @dataProvider pagination_provider
      */
     public function test_pagination_values_out_of_range_are_normalised(int $limit, int $offset, string $expected): void {
+        $this->require_provider();
         [$course, $student, $fake] = $this->ready_course();
         session_store::upsert((int)$student->id, (int)$course->id, null, 'remote-3');
         $fake->enqueue([

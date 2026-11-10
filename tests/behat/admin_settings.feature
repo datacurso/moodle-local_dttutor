@@ -5,8 +5,7 @@ Feature: Global configuration of the tutor
   I need one settings page with the avatar and the customisation of the tutor
 
   Background:
-    Given the following config values are set as admin:
-      | enabled | 1 | local_dttutor |
+    Given the tutor is enabled in the Datacurso AI provider
     And I log in as "admin"
     And I navigate to "Plugins > Local plugins > Tutor AI" in site administration
 

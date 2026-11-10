@@ -163,4 +163,39 @@ final class observer_test extends \advanced_testcase {
         $this->assertSame(0, $DB->count_records('local_dttutor_session'));
         $this->assertFalse($DB->record_exists('course', ['id' => $course->id]));
     }
+
+    /**
+     * Deleting a user this plugin never stored a conversation for asks the service nothing.
+     *
+     * Every user deletion on the site fires this observer, so an unconfigured or disabled provider
+     * must not turn into a logged failure for people the tutor never met.
+     */
+    public function test_deleting_a_user_without_sessions_asks_nothing(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        fake_ai_client::bind_unavailable();
+
+        delete_user($student);
+
+        $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * Deleting a course this plugin never stored a conversation for asks the service nothing.
+     */
+    public function test_deleting_a_course_without_sessions_asks_nothing(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        course_config::update($course->id, ['indexing_enabled' => 1]);
+        fake_ai_client::bind_unavailable();
+
+        delete_course($course->id, false);
+
+        $this->assertDebuggingNotCalled();
+        $this->assertFalse($DB->record_exists('local_dttutor_course_config', ['courseid' => $course->id]));
+    }
 }

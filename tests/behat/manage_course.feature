@@ -16,8 +16,7 @@ Feature: Managing the tutor inside a course
       | user     | course | role           |
       | student1 | C1     | student        |
       | teacher1 | C1     | editingteacher |
-    And the following config values are set as admin:
-      | enabled | 1 | local_dttutor |
+    And the tutor is enabled in the Datacurso AI provider
     And the following "local_dttutor > ai providers" exist:
       | enabled |
       | 1       |

@@ -25,7 +25,7 @@ The chat interface features:
 
 ![General settings and avatar selection](pix/screenshots/1.png)
 
-**General settings and avatar**: the global *Enable Chat* toggle, *Enable the tutor in new courses*, *Days conversations are kept* (default 7), and the gallery of 10 built-in avatars.
+**General settings and avatar**: *Enable the tutor in new courses*, *Days conversations are kept* (default 7), and the gallery of 10 built-in avatars.
 
 ---
 
@@ -110,7 +110,7 @@ After installation, configure the plugin:
 1. Navigate to **Site administration > Plugins > Local plugins > AI Tutor**
 
 2. **General settings**:
-   - **Enable Chat** (enabled by default): turns the floating chat on or off for the whole site
+   - The tutor is switched on or off in the Datacurso AI provider, per tenant on Moodle Workplace: **Site administration > AI > Datacurso plugins list** (enabled by default)
    - **Enable the tutor in new courses** (disabled by default): new courses start with the tutor switched on, so a site-wide rollout does not have to be done course by course. Teachers can still switch it off in their own course
    - **Days conversations are kept** (default `7`): conversations older than this are deleted in Moodle and in the AI service. Seven days matches what the AI service keeps. `0` keeps them until the user or the course is deleted, or a privacy request removes them
 
@@ -206,7 +206,7 @@ Remote deletion is best effort: a failure on the Datacurso side is logged and ne
 ### The floating button doesn't appear
 
 **Check these settings:**
-1. Verify the chat is enabled in plugin settings
+1. Verify the tutor is enabled for the tenant in the Datacurso AI provider (Site administration > AI > Datacurso plugins list)
 2. Confirm you're on a course page (not the site homepage)
 3. Clear Moodle caches: `php admin/cli/purge_caches.php`
 

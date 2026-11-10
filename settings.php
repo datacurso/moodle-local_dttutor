@@ -33,7 +33,7 @@ if ($hassiteconfig) {
     $settings = new admin_settingpage('local_dttutor', get_string('pluginname', 'local_dttutor'));
     $ADMIN->add('localplugins', $settings);
 
-    // Enable/Disable Chat.
+    // Recent failures of the AI service.
     $failures = \local_dttutor\local\service_status::get_recent_failures();
     if (!empty($failures)) {
         $settings->add(new admin_setting_description(
@@ -45,15 +45,6 @@ if ($hassiteconfig) {
             )
         ));
     }
-
-    $settings->add(
-        new admin_setting_configcheckbox(
-            'local_dttutor/enabled',
-            get_string('enabled', 'local_dttutor'),
-            get_string('enabled_desc', 'local_dttutor'),
-            '1'
-        )
-    );
 
     // Avatar Selection.
     $settings->add(

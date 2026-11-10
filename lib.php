@@ -22,6 +22,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use local_dttutor\local\provider_state;
+
 /**
  * Extend course navigation with AI Tutor Management link
  *
@@ -36,8 +38,8 @@ function local_dttutor_extend_navigation_course(navigation_node $parentnode, std
         return;
     }
 
-    // Only if plugin is enabled.
-    if (!get_config('local_dttutor', 'enabled')) {
+    // Only if the plugin is enabled in the Datacurso AI provider.
+    if (!provider_state::is_enabled()) {
         return;
     }
 
@@ -68,6 +70,11 @@ function local_dttutor_extend_navigation_course(navigation_node $parentnode, std
  * @return bool false if the file not found, just send the file otherwise and do not return anything
  */
 function local_dttutor_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = []) {
+    // Nothing is served while the plugin is disabled in the Datacurso AI provider.
+    if (!provider_state::is_enabled()) {
+        return false;
+    }
+
     // Handle custom avatar (system context).
     if ($context->contextlevel == CONTEXT_SYSTEM && $filearea === 'customavatar') {
         $itemid = array_shift($args);

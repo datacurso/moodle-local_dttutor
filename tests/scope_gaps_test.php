@@ -17,6 +17,11 @@
 namespace local_dttutor;
 
 use local_dttutor\external\save_course_config;
+use local_dttutor\fixtures\provider_dependency_trait;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/fixtures/provider_dependency_trait.php');
 
 /**
  * Scope items with no home of their own: features still to be built and one misleading message.
@@ -31,6 +36,8 @@ use local_dttutor\external\save_course_config;
  * @coversNothing
  */
 final class scope_gaps_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest();
@@ -40,8 +47,9 @@ final class scope_gaps_test extends \advanced_testcase {
      * MDL-E2E-010: with the chat switched off for the site, the message names that situation.
      */
     public function test_the_refusal_with_the_chat_off_site_wide_names_that_situation(): void {
+        $this->require_provider();
         $this->setAdminUser();
-        set_config('enabled', 0, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
         $course = $this->getDataGenerator()->create_course();
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
         $this->setUser($teacher);
@@ -50,7 +58,8 @@ final class scope_gaps_test extends \advanced_testcase {
             save_course_config::execute((int)$course->id, true);
             $this->fail('The tutor is switched off for the site, so the request had to be refused.');
         } catch (\moodle_exception $e) {
-            $this->assertEquals(get_string('error_tutor_disabled_site', 'local_dttutor'), $e->getMessage());
+            $this->assertSame('plugindisabled', $e->errorcode);
+            $this->assertSame('aiprovider_datacurso', $e->module);
             $this->assertNotEquals(get_string('error_api_not_configured', 'local_dttutor'), $e->getMessage());
         }
     }

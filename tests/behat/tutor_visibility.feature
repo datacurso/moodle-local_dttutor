@@ -16,8 +16,7 @@ Feature: Where the floating tutor button appears
       | user     | course | role           |
       | student1 | C1     | student        |
       | teacher1 | C1     | editingteacher |
-    And the following config values are set as admin:
-      | enabled | 1 | local_dttutor |
+    And the tutor is enabled in the Datacurso AI provider
     And the following "local_dttutor > ai providers" exist:
       | enabled |
       | 1       |
@@ -62,9 +61,8 @@ Feature: Where the floating tutor button appears
     Then "[data-action='tutor-ia-toggle']" "css_element" should not exist
 
   @MDL-E2E-001
-  Scenario: The button disappears when the chat is switched off for the site
-    Given the following config values are set as admin:
-      | enabled | 0 | local_dttutor |
+  Scenario: The button disappears when the tutor is disabled in the Datacurso AI provider
+    Given the tutor is disabled in the Datacurso AI provider
     When I am on the "Course 1" course page logged in as "student1"
     Then "[data-action='tutor-ia-toggle']" "css_element" should not exist
 

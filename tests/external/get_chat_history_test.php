@@ -18,12 +18,14 @@ namespace local_dttutor\external;
 
 use local_dttutor\course_config;
 use local_dttutor\fixtures\fake_ai_client;
+use local_dttutor\fixtures\provider_dependency_trait;
 use local_dttutor\httpclient\ai_client;
 use local_dttutor\session_store;
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
+require_once(__DIR__ . '/../fixtures/provider_dependency_trait.php');
 
 /**
  * Tests for the get_chat_history external function.
@@ -35,6 +37,16 @@ require_once(__DIR__ . '/../fixtures/fake_ai_client.php');
  * @covers     \local_dttutor\external\get_chat_history
  */
 final class get_chat_history_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
+    /**
+     * Skip every test of this class when the Datacurso AI provider is not installed.
+     */
+    protected function setUp(): void {
+        parent::setUp();
+        $this->require_provider();
+    }
+
     /**
      * Bind a fake AI client in the DI container.
      *
@@ -47,13 +59,12 @@ final class get_chat_history_test extends \advanced_testcase {
     }
 
     /**
-     * Create a course (tutor enabled globally and, optionally, for the course) with one enrolled student logged in.
+     * Create a course (tutor enabled in the provider and, optionally, for the course) with one enrolled student logged in.
      *
      * @param bool $courseenabled Whether the tutor is enabled for the course.
      * @return array{0: \stdClass, 1: \stdClass} The course and the student.
      */
     private function enrolled_student_in_course(bool $courseenabled): array {
-        set_config('enabled', 1, 'local_dttutor');
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
@@ -87,6 +98,28 @@ final class get_chat_history_test extends \advanced_testcase {
         $this->expectExceptionMessageMatches('/not available/');
         try {
             get_chat_history::execute((int)$course->id);
+        } finally {
+            $this->assertSame([], $fake->get_call_signatures());
+        }
+    }
+
+    /**
+     * S6: the history is refused without remote calls when the Datacurso AI provider disables the plugin.
+     *
+     * @return void
+     */
+    public function test_plugin_disabled_in_provider_is_refused(): void {
+        $this->resetAfterTest();
+        [$course] = $this->enrolled_student_in_course(true);
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
+        $fake = $this->fake_remote_api();
+
+        try {
+            get_chat_history::execute((int)$course->id);
+            $this->fail('The history must be refused while the plugin is disabled.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('plugindisabled', $e->errorcode);
+            $this->assertSame('aiprovider_datacurso', $e->module);
         } finally {
             $this->assertSame([], $fake->get_call_signatures());
         }

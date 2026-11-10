@@ -5,6 +5,22 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.13-wp] - 2026-11-09
+
+**Compatibility note:** This version is compatible only with **Moodle Workplace 4.5**. It brings the plugin settings centralization of `main` (2.0.15 and 2.0.16) to the `WORKPLACE_405_STABLE` branch. Requires `aiprovider_datacurso` 2026110901 (the Workplace release that keeps the plugin switches per tenant).
+
+### Changed
+- **The tutor switch lives only in the Datacurso AI provider, per tenant**: the provider keeps whether the tutor is enabled for each tenant, so disabling it for one tenant hides the chat and refuses the proxy, the management page and the web services only for the users of that tenant; the other tenants keep it. The tutor has no switch of its own, neither at site nor at tenant level, and reads the provider for the tenant of the current user. On upgrade (2026110902) the former site value of `local_dttutor/enabled` is copied into the provider site default, unless the provider already holds one, and then deleted; the tutor never had tenant values to migrate. Tests: `tests/plugin_state_test.php` (`test_tenant_a_disabled_while_tenant_b_enabled`, `test_upgrade_copies_the_former_setting_to_the_provider`, `test_upgrade_does_not_overwrite_the_provider`)
+- **Behat**: the features enable or disable the tutor through the Datacurso AI provider (`the tutor is enabled|disabled in the Datacurso AI provider`) instead of the removed `local_dttutor/enabled` setting
+- **The tutor follows its state in the Datacurso AI provider**: the site-wide *Enable Chat* setting (`local_dttutor/enabled`) moved to the Datacurso AI provider (Site administration > AI > Datacurso plugins list), which receives its value on upgrade; the plugin's own setting is removed, together with its strings `enabled` and `enabled_desc`. While the plugin is disabled there, the chat is not added to the pages, the course menu has no management link, the custom avatar is not served and the chat proxy refuses every question. The tutor management page (`manage.php`) and the web services `local_dttutor_get_chat_history`, `local_dttutor_delete_chat_session` and `local_dttutor_save_course_config` refuse with the provider's message instead of the plugin's own *The AI Tutor is switched off for this site.* error. The string `error_tutor_disabled_site` is removed, and the help of the course switch (`enable_tutor_for_course_help`) no longer mentions a global plugin setting. Each entry point checks the plugin state once; `request_guard::assert_course_enabled()` now checks only the course switch. The tenant licence and region handling of the Workplace branch is unchanged. Tests: `tests/plugin_state_test.php`, `tests/lib_test.php`, `tests/scope_gaps_test.php`, `tests/course_config_test.php`, `tests/proxy/request_guard_test.php`, `tests/external/get_chat_history_test.php`, `tests/external/delete_chat_session_test.php`, `tests/external/save_course_config_test.php`
+
+### Fixed
+- **Deleting a user or a course the tutor never served no longer contacts the AI service**: the observers now ask the service only when `local_dttutor_session` holds a conversation of that user or course (`session_store::has_sessions()`). Tests: `tests/observer_test.php`
+- **A tutor deployed before its provider no longer breaks every page**: the footer hook, the course navigation callback and the file serving callback ask `\local_dttutor\local\provider_state`, which reports the tutor as disabled while `aiprovider_datacurso\local\plugin_settings` does not exist, so the upgrade page that reports the missing dependency stays reachable. Tests: `tests/local/provider_state_test.php`
+
+### Tests
+- **The tests skip when the AI provider is not installed**: test cases that need `aiprovider_datacurso` use `tests/fixtures/provider_dependency_trait.php` and are skipped with "aiprovider_datacurso is not installed." on a site without it.
+
 ## [2.0.12-wp] - 2026-10-07
 
 **Compatibility note:** This version is compatible only with **Moodle Workplace 4.5**. It is the first release of the `WORKPLACE_405_STABLE` branch, created from `main` (2.0.11).

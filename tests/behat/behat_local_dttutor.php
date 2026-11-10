@@ -45,4 +45,17 @@ class behat_local_dttutor extends behat_base {
                 throw new Exception('Unrecognised local_dttutor page type "' . $type . '".');
         }
     }
+
+    /**
+     * Sets the state of the tutor kept by the Datacurso AI provider, for the site or for one tenant.
+     *
+     * The tutor has no switch of its own: the provider keeps whether it is enabled, per tenant. Without a tenant
+     * the site default is set, which applies to every user that does not belong to a tenant.
+     *
+     * @Given /^the tutor is (enabled|disabled) in the Datacurso AI provider$/
+     * @param string $state Either "enabled" or "disabled".
+     */
+    public function the_tutor_is_in_the_datacurso_ai_provider(string $state): void {
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', $state === 'enabled', null);
+    }
 }
