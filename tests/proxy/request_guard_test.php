@@ -17,6 +17,11 @@
 namespace local_dttutor\proxy;
 
 use local_dttutor\course_config;
+use local_dttutor\fixtures\provider_dependency_trait;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/../fixtures/provider_dependency_trait.php');
 
 /**
  * Tests for the chat proxy request guard.
@@ -27,16 +32,18 @@ use local_dttutor\course_config;
  * @covers     \local_dttutor\proxy\request_guard
  */
 final class request_guard_test extends \advanced_testcase {
+    use provider_dependency_trait;
+
     /**
-     * Create a course with the tutor enabled globally and for the course.
+     * Create a course with the tutor enabled in the provider and for the course.
      *
      * @param array $courseoptions Extra options for the course generator.
      * @return \stdClass The course record.
      */
     private function create_enabled_course(array $courseoptions = []): \stdClass {
+        $this->require_provider();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course($courseoptions);
-        set_config('enabled', 1, 'local_dttutor');
         $this->getDataGenerator()->get_plugin_generator('local_dttutor')->create_ai_provider();
         course_config::update($course->id, ['indexing_enabled' => 1]);
         return $course;
@@ -51,6 +58,7 @@ final class request_guard_test extends \advanced_testcase {
      * @return array
      */
     private function build_input(int $courseid, array $messages = [], array $extracontext = []): array {
+        $this->require_provider();
         if ($messages === []) {
             $messages = [['role' => 'user', 'content' => 'Hello']];
         }
@@ -103,12 +111,12 @@ final class request_guard_test extends \advanced_testcase {
     public function test_plugin_globally_disabled_is_rejected(): void {
         $this->resetAfterTest();
         $course = $this->create_enabled_course();
-        set_config('enabled', 0, 'local_dttutor');
+        \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', false);
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
         $this->setUser($student);
 
         $this->expectException(\moodle_exception::class);
-        $this->expectExceptionMessageMatches('/not available/');
+        $this->expectExceptionMessageMatches('/is not enabled on this site/');
         request_guard::authorize($this->build_input($course->id));
     }
 

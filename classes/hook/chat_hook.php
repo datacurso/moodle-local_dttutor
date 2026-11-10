@@ -17,6 +17,7 @@
 namespace local_dttutor\hook;
 
 use core\hook\output\before_footer_html_generation;
+use local_dttutor\local\provider_state;
 
 /**
  * Hook to load the Tutor-IA floating chat
@@ -151,8 +152,8 @@ class chat_hook {
     private static function add_float_chat(before_footer_html_generation $hook): void {
         global $PAGE, $COURSE, $USER, $OUTPUT;
 
-        // Check 1: Global plugin enabled.
-        if (!get_config('local_dttutor', 'enabled')) {
+        // Check 1: Plugin enabled in the Datacurso AI provider.
+        if (!provider_state::is_enabled()) {
             return;
         }
 

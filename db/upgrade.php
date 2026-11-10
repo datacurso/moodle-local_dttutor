@@ -22,6 +22,10 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
+require_once(__DIR__ . '/upgradelib.php');
+
 /**
  * Execute local_dttutor upgrade from the given old version.
  *
@@ -184,6 +188,15 @@ function xmldb_local_dttutor_upgrade($oldversion) {
 
         // Dttutor savepoint reached.
         upgrade_plugin_savepoint(true, 2026093001, 'local', 'dttutor');
+    }
+
+    if ($oldversion < 2026110902) {
+        // The "Enabled" switch is now kept by the Datacurso AI provider, per tenant. The former site value is
+        // copied into the provider site default (never over a value the provider holds) before it is deleted.
+        local_dttutor_upgrade_move_switch_to_provider();
+
+        // Dttutor savepoint reached.
+        upgrade_plugin_savepoint(true, 2026110902, 'local', 'dttutor');
     }
 
     return true;

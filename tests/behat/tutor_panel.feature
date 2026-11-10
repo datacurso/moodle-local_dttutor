@@ -16,8 +16,8 @@ Feature: Opening and closing the chat panel
       | user     | course | role           |
       | student1 | C1     | student        |
       | teacher1 | C1     | editingteacher |
+    And the tutor is enabled in the Datacurso AI provider
     And the following config values are set as admin:
-      | enabled        | 1                                                  | local_dttutor |
       | tutorname      | Tutor of {coursename}                              | local_dttutor |
       | welcomemessage | Hello {firstname}, I am {teachername}. Ask me away. | local_dttutor |
     And the following "local_dttutor > ai providers" exist:

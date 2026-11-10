@@ -24,6 +24,7 @@
 
 namespace local_dttutor\external;
 
+use aiprovider_datacurso\local\plugin_settings;
 use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
@@ -69,10 +70,8 @@ class save_course_config extends external_api {
         // 2. Check authentication.
         require_login();
 
-        // 3. Verify plugin is enabled.
-        if (!get_config('local_dttutor', 'enabled')) {
-            throw new \moodle_exception('error_tutor_disabled_site', 'local_dttutor');
-        }
+        // 3. Verify the plugin is enabled in the Datacurso AI provider.
+        plugin_settings::require_enabled('local_dttutor');
 
         // 4. Validate course context and check capabilities.
         $context = \context_course::instance($params['courseid']);
