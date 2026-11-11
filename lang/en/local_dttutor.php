@@ -83,6 +83,7 @@ $string['error_license_not_allowed_short'] = 'License Error';
 $string['error_message_too_long'] = '[Error] Message is too long. Maximum 4000 characters.';
 $string['error_no_credits_fallback'] = 'Insufficient credits: {$a}';
 $string['error_provider_disabled'] = 'The AI Tutor is unavailable because the AI provider is disabled on this site. Please contact your administrator.';
+$string['error_provider_disabled_admin'] = 'The AI Tutor is unavailable because the Datacurso AI provider is disabled on this site. Enable it in <a href="{$a}">AI providers</a> so that teachers can manage the tutor of their courses.';
 $string['error_quiz_in_progress'] = 'The AI Tutor is not available while you have a quiz attempt open. Submit it, or wait for its time to run out, and the tutor comes back.';
 $string['error_ratelimit_exceeded'] = 'The allowed consumption limit has been exceeded. Please try again at {$a}.';
 $string['error_request_in_progress'] = 'You already have a question in progress in this course. Wait for its answer before asking another one.';

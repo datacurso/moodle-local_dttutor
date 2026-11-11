@@ -32,8 +32,6 @@ $courseid = required_param('id', PARAM_INT);
 require_login($courseid);
 // Check the plugin is enabled in the Datacurso AI provider.
 plugin_settings::require_enabled('local_dttutor');
-// The tutor stays out of reach, management included, while the AI provider is disabled.
-\local_dttutor\proxy\request_guard::assert_provider_enabled();
 $course = get_course($courseid);
 $context = context_course::instance($courseid);
 
@@ -47,6 +45,20 @@ $PAGE->set_course($course);
 $PAGE->set_pagelayout('incourse');
 $PAGE->set_title(get_string('manage_tutor', 'local_dttutor'));
 $PAGE->set_heading($course->fullname);
+
+// The tutor stays out of reach, management included, while the AI provider is disabled: the
+// page only says so, and tells an administrator where the provider is switched back on.
+if (!\local_dttutor\httpclient\client_factory::is_provider_enabled()) {
+    $message = has_capability('moodle/site:config', context_system::instance())
+        ? get_string('error_provider_disabled_admin', 'local_dttutor',
+            (new moodle_url('/admin/settings.php', ['section' => 'aiprovider']))->out(false))
+        : get_string('error_provider_disabled', 'local_dttutor');
+    echo $OUTPUT->header();
+    echo $OUTPUT->heading(get_string('manage_tutor', 'local_dttutor'));
+    echo $OUTPUT->notification($message, \core\output\notification::NOTIFY_WARNING, false);
+    echo $OUTPUT->footer();
+    die();
+}
 
 // Get course configuration.
 $config = course_config::get_by_course($courseid);

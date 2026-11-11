@@ -83,6 +83,7 @@ $string['error_license_not_allowed_short'] = 'Erro de licença';
 $string['error_message_too_long'] = '[Erro] A mensagem é muito longa. Máximo 4000 caracteres.';
 $string['error_no_credits_fallback'] = 'Créditos insuficientes: {$a}';
 $string['error_provider_disabled'] = 'O Tutor IA não está disponível porque o provedor de IA está desativado neste site. Entre em contato com o administrador.';
+$string['error_provider_disabled_admin'] = 'O Tutor IA não está disponível porque o provedor de IA Datacurso está desativado neste site. Ative-o em <a href="{$a}">Provedores de IA</a> para que os professores possam gerenciar o tutor de seus cursos.';
 $string['error_quiz_in_progress'] = 'O Tutor IA não está disponível enquanto você tiver uma tentativa de questionário aberta. Envie-a, ou espere o prazo acabar, e o tutor volta.';
 $string['error_ratelimit_exceeded'] = 'O limite de consumo permitido foi excedido. Por favor, tente novamente em {$a}.';
 $string['error_request_in_progress'] = 'Você já tem uma pergunta em andamento neste curso. Aguarde a resposta antes de fazer outra.';

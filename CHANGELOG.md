@@ -5,6 +5,14 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.15-wp] - 2026-11-11
+
+**Compatibility note:** This version is compatible only with **Moodle Workplace 4.5**. Requires `aiprovider_datacurso` 2026110901.
+
+### Fixed
+- **The management page of a course says that the AI provider is disabled instead of failing**: while the Datacurso provider is switched off in *Site administration → General → AI → AI providers*, `manage.php` threw `error_provider_disabled` and showed the exception with its stack trace. It now shows a warning to the teacher. A site administrator gets the same warning with a link to the AI providers page, where the provider is switched back on (new string `error_provider_disabled_admin`). Nothing about the course is read or sent while the provider is disabled, as before.
+- **The management link stays in the course while the AI provider is disabled**: it disappeared with the provider, so teachers had no way to reach the tutor of their course nor to learn why. It now depends only on the switch of the tutor in the Datacurso AI provider and on `moodle/course:update`, and leads to the warning above. The chat, the chat proxy and the external functions still refuse every request while the provider is disabled, each with its own check.
+
 ## [2.0.14-wp] - 2026-11-10
 
 **Compatibility note:** This version is compatible only with **Moodle Workplace 4.5**. It brings to the `WORKPLACE_405_STABLE` branch the fixes of `main` from 2.0.12 to 2.0.16 that the branch did not have yet (see those entries below): the deletions kept until the AI service confirms them, the deletions that wait for a licence, the bounded reading of course documents, the replayed answers checked against the session, the export of the messages, the course total that hides hidden grades, the drawer fixes, the refusals shown to the student, one question in flight per user and course, the cached text forgotten on deletion and the management page refused while the AI provider is disabled. Requires `aiprovider_datacurso` 2026110901.
