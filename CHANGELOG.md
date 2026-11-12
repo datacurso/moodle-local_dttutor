@@ -5,6 +5,15 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.17] - 2026-11-12
+
+### Changed
+- **Moodle 5.0 to 5.3 branch (`MOODLE_503_STABLE`)**: first release of the tutor for Moodle 5.0, 5.1, 5.2 and 5.3, carrying every change of 2.0.16 from `MOODLE_405_STABLE`. The plugin requires Moodle 5.0 (2025041400) and declares support for 5.0 to 5.3; Moodle 4.5 stays on `MOODLE_405_STABLE`. The plugin CI runs against `MOODLE_503_STABLE`.
+- **Requires `aiprovider_datacurso` 2026110900**: on the Moodle 5.x branches of the provider, `aiprovider_datacurso\local\plugin_settings` ships from 2.2.0 (2026110900), not from 2026110400 as on Moodle 4.5, so the dependency now names the first 5.x release that has it and an older provider cannot be paired with the tutor.
+
+### Removed
+- **GitHub workflows**: the `.github` folder is not part of this branch; its CI runs in Jenkins.
+
 ## [2.0.16] - 2026-11-09
 
 ### Security
