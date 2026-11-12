@@ -5,6 +5,11 @@ All notable changes to the Tutor-IA plugin (local_dttutor) will be documented in
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.18] - 2026-11-12
+
+### Changed
+- **Moodle 4.5 only (`MOODLE_405_STABLE`)**: the plugin declared support for Moodle 4.5 to 5.3 (`supported = [405, 503]`); this branch now declares Moodle 4.5 alone (`[405, 405]`). Moodle 5.0 to 5.3 are served by the `MOODLE_503_STABLE` branch (2.0.17), which requires the 5.x releases of `aiprovider_datacurso`. The README states the supported release and points to that branch.
+
 ## [2.0.16] - 2026-11-09
 
 ### Security
