@@ -83,6 +83,7 @@ $string['error_license_not_allowed_short'] = 'Kesalahan Lisensi';
 $string['error_message_too_long'] = '[Kesalahan] Pesan terlalu panjang. Maksimal 4000 karakter.';
 $string['error_no_credits_fallback'] = 'Kredit tidak cukup: {$a}';
 $string['error_provider_disabled'] = 'Tutor AI tidak tersedia karena penyedia AI dinonaktifkan di situs ini. Silakan hubungi administrator Anda.';
+$string['error_provider_disabled_admin'] = 'Tutor AI tidak tersedia karena penyedia AI Datacurso dinonaktifkan di situs ini. Aktifkan di <a href="{$a}">Penyedia AI</a> agar pengajar dapat mengelola tutor kursus mereka.';
 $string['error_quiz_in_progress'] = 'Tutor AI tidak tersedia selama percobaan kuis Anda masih terbuka. Kirimkan, atau tunggu waktunya habis, dan tutor akan kembali.';
 $string['error_ratelimit_exceeded'] = 'Batas penggunaan yang diizinkan telah terlampaui. Silakan coba lagi pada {$a}.';
 $string['error_request_in_progress'] = 'Anda sudah memiliki pertanyaan yang sedang diproses di kursus ini. Tunggu jawabannya sebelum mengajukan pertanyaan lain.';

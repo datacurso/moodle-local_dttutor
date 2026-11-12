@@ -38,8 +38,9 @@ function local_dttutor_extend_navigation_course(navigation_node $parentnode, std
         return;
     }
 
-    // Only if the plugin is enabled in the Datacurso AI provider, and that provider is enabled.
-    if (!provider_state::is_enabled() || !\local_dttutor\httpclient\client_factory::is_provider_enabled()) {
+    // Only if the plugin is enabled in the Datacurso AI provider. The link stays while the AI provider
+    // itself is disabled: the page then only says so, and reads or sends nothing about the course.
+    if (!provider_state::is_enabled()) {
         return;
     }
 

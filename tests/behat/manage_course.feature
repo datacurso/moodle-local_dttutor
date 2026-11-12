@@ -58,3 +58,15 @@ Feature: Managing the tutor inside a course
     And I log out
     And I am on the "Course 1" course page logged in as "student1"
     Then "[data-action='tutor-ia-toggle']" "css_element" should not exist
+
+  Scenario: The page says that the AI provider is disabled instead of failing
+    Given the following "local_dttutor > ai providers" exist:
+      | enabled |
+      | 0       |
+    When I am on the "C1" "local_dttutor > course management" page logged in as "teacher1"
+    Then I should see "The AI Tutor is unavailable because the AI provider is disabled on this site."
+    And I should not see "AI Tutor Status"
+    And I log out
+    And I am on the "C1" "local_dttutor > course management" page logged in as "admin"
+    And I should see "The AI Tutor is unavailable because the Datacurso AI provider is disabled on this site."
+    And "AI providers" "link" should exist

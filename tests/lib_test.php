@@ -180,9 +180,27 @@ final class lib_test extends \advanced_testcase {
     }
 
     /**
-     * The management link is not offered while the AI provider is disabled.
+     * The management page shows a notice, not an exception, while the AI provider is disabled.
+     *
+     * The notice comes after the capability check, so that only a teacher of the course reads it.
      */
-    public function test_the_management_link_is_hidden_while_the_ai_provider_is_disabled(): void {
+    public function test_the_management_page_warns_while_the_ai_provider_is_disabled(): void {
+        global $CFG;
+        $source = file_get_contents($CFG->dirroot . '/local/dttutor/manage.php');
+
+        $capability = strpos($source, 'require_capability(\'moodle/course:update\', $context);');
+        $check = strpos($source, 'client_factory::is_provider_enabled()');
+        $this->assertNotFalse($capability);
+        $this->assertNotFalse($check);
+        $this->assertGreaterThan($capability, $check);
+        $this->assertStringContainsString("'error_provider_disabled_admin'", $source);
+        $this->assertStringNotContainsString('assert_provider_enabled', $source);
+    }
+
+    /**
+     * The management link stays while the AI provider is disabled, so a teacher reaches the notice that says so.
+     */
+    public function test_the_management_link_stays_while_the_ai_provider_is_disabled(): void {
         $this->require_provider();
         \aiprovider_datacurso\local\plugin_settings::set_enabled('local_dttutor', true);
         $generator = $this->getDataGenerator()->get_plugin_generator('local_dttutor');
@@ -192,6 +210,6 @@ final class lib_test extends \advanced_testcase {
         $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
         $this->setUser($teacher);
 
-        $this->assertFalse($this->navigation_has_manage_link($course));
+        $this->assertTrue($this->navigation_has_manage_link($course));
     }
 }
