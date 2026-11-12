@@ -49,9 +49,9 @@ $PAGE->set_heading($course->fullname);
 // The tutor stays out of reach, management included, while the AI provider is disabled: the
 // page only says so, and tells an administrator where the provider is switched back on.
 if (!\local_dttutor\httpclient\client_factory::is_provider_enabled()) {
+    $settingsurl = (new moodle_url('/admin/settings.php', ['section' => 'aiprovider']))->out(false);
     $message = has_capability('moodle/site:config', context_system::instance())
-        ? get_string('error_provider_disabled_admin', 'local_dttutor',
-            (new moodle_url('/admin/settings.php', ['section' => 'aiprovider']))->out(false))
+        ? get_string('error_provider_disabled_admin', 'local_dttutor', $settingsurl)
         : get_string('error_provider_disabled', 'local_dttutor');
     echo $OUTPUT->header();
     echo $OUTPUT->heading(get_string('manage_tutor', 'local_dttutor'));
