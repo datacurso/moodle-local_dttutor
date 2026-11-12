@@ -69,7 +69,7 @@ All plugins in the suite require the **Datacurso AI Provider** to function.
 
 Before installing AI Tutor Chat, ensure your system meets these requirements:
 
-1. **Moodle 4.5 or later** - This plugin requires Moodle version 4.5 or higher
+1. **Moodle 5.0 to 5.3** - This branch of the plugin supports Moodle 5.0, 5.1, 5.2 and 5.3
 2. **Datacurso AI Provider plugin** - Must be installed and configured
    - Download the free AI Provider plugin from [Moodle Plugins Directory](https://moodle.org/plugins/aiprovider_datacurso)
    - Install the AI Provider plugin
